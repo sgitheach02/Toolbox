@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.93 scan initiated Wed Jun 11 21:51:31 2025 as: nmap -sn -oX /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.xml -oN /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.txt 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -sn -oX /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.xml -oN /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.txt 127.0.0.1" start="1749678691" startstr="Wed Jun 11 21:51:31 2025" version="7.93" xmloutputversion="1.05">
+<verbose level="0"/>
+<debugging level="0"/>
+<host><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+</host>
+<runstats><finished time="1749678691" timestr="Wed Jun 11 21:51:31 2025" summary="Nmap done at Wed Jun 11 21:51:31 2025; 1 IP address (1 host up) scanned in 0.01 seconds" elapsed="0.01" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

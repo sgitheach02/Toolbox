@@ -1,0 +1,4 @@
+# Nmap 7.93 scan initiated Wed Jun 11 21:51:31 2025 as: nmap -sn -oX /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.xml -oN /app/reports/nmap_cc1475aa-e475-4fad-b108-6197e5f5e531_20250611_215130.txt 127.0.0.1
+Nmap scan report for localhost (127.0.0.1)
+Host is up.
+# Nmap done at Wed Jun 11 21:51:31 2025 -- 1 IP address (1 host up) scanned in 0.01 seconds
