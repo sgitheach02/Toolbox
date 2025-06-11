@@ -1,0 +1,41 @@
+# Nmap 7.93 scan initiated Wed Jun 11 11:56:18 2025 as: nmap -sV -oX /app/reports/nmap_eba9c8db-9947-44a9-b145-0c5bf8a6aad5_20250611_115618.xml -oN /app/reports/nmap_eba9c8db-9947-44a9-b145-0c5bf8a6aad5_20250611_115618.txt 127.0.0.1
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.0000070s latency).
+Not shown: 999 closed tcp ports (reset)
+PORT     STATE SERVICE VERSION
+5000/tcp open  upnp?
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port5000-TCP:V=7.93%I=7%D=6/11%Time=68496EE9%P=x86_64-pc-linux-gnu%r(Ge
+SF:tRequest,1C5,"HTTP/1\.1\x20404\x20NOT\x20FOUND\r\nServer:\x20Werkzeug/2
+SF:\.3\.7\x20Python/3\.9\.23\r\nDate:\x20Wed,\x2011\x20Jun\x202025\x2011:5
+SF:6:25\x20GMT\r\nContent-Type:\x20text/html;\x20charset=utf-8\r\nContent-
+SF:Length:\x20207\r\nAccess-Control-Allow-Origin:\x20http://frontend:3000\
+SF:r\nVary:\x20Origin\r\nConnection:\x20close\r\n\r\n<!doctype\x20html>\n<
+SF:html\x20lang=en>\n<title>404\x20Not\x20Found</title>\n<h1>Not\x20Found<
+SF:/h1>\n<p>The\x20requested\x20URL\x20was\x20not\x20found\x20on\x20the\x2
+SF:0server\.\x20If\x20you\x20entered\x20the\x20URL\x20manually\x20please\x
+SF:20check\x20your\x20spelling\x20and\x20try\x20again\.</p>\n")%r(RTSPRequ
+SF:est,1F4,"<!DOCTYPE\x20HTML\x20PUBLIC\x20\"-//W3C//DTD\x20HTML\x204\.01/
+SF:/EN\"\n\x20\x20\x20\x20\x20\x20\x20\x20\"http://www\.w3\.org/TR/html4/s
+SF:trict\.dtd\">\n<html>\n\x20\x20\x20\x20<head>\n\x20\x20\x20\x20\x20\x20
+SF:\x20\x20<meta\x20http-equiv=\"Content-Type\"\x20content=\"text/html;cha
+SF:rset=utf-8\">\n\x20\x20\x20\x20\x20\x20\x20\x20<title>Error\x20response
+SF:</title>\n\x20\x20\x20\x20</head>\n\x20\x20\x20\x20<body>\n\x20\x20\x20
+SF:\x20\x20\x20\x20\x20<h1>Error\x20response</h1>\n\x20\x20\x20\x20\x20\x2
+SF:0\x20\x20<p>Error\x20code:\x20400</p>\n\x20\x20\x20\x20\x20\x20\x20\x20
+SF:<p>Message:\x20Bad\x20request\x20version\x20\('RTSP/1\.0'\)\.</p>\n\x20
+SF:\x20\x20\x20\x20\x20\x20\x20<p>Error\x20code\x20explanation:\x20HTTPSta
+SF:tus\.BAD_REQUEST\x20-\x20Bad\x20request\x20syntax\x20or\x20unsupported\
+SF:x20method\.</p>\n\x20\x20\x20\x20</body>\n</html>\n")%r(HTTPOptions,1C5
+SF:,"HTTP/1\.1\x20404\x20NOT\x20FOUND\r\nServer:\x20Werkzeug/2\.3\.7\x20Py
+SF:thon/3\.9\.23\r\nDate:\x20Wed,\x2011\x20Jun\x202025\x2011:56:40\x20GMT\
+SF:r\nContent-Type:\x20text/html;\x20charset=utf-8\r\nContent-Length:\x202
+SF:07\r\nAccess-Control-Allow-Origin:\x20http://frontend:3000\r\nVary:\x20
+SF:Origin\r\nConnection:\x20close\r\n\r\n<!doctype\x20html>\n<html\x20lang
+SF:=en>\n<title>404\x20Not\x20Found</title>\n<h1>Not\x20Found</h1>\n<p>The
+SF:\x20requested\x20URL\x20was\x20not\x20found\x20on\x20the\x20server\.\x2
+SF:0If\x20you\x20entered\x20the\x20URL\x20manually\x20please\x20check\x20y
+SF:our\x20spelling\x20and\x20try\x20again\.</p>\n");
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Wed Jun 11 11:57:51 2025 -- 1 IP address (1 host up) scanned in 92.84 seconds

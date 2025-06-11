@@ -1,0 +1,85 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Rapport Nmap - 1.1.1.1</title>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+                .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+                .summary { background: #ecf0f1; padding: 15px; margin: 20px 0; border-radius: 5px; }
+                .host { background: #f8f9fa; border: 1px solid #dee2e6; margin: 20px 0; border-radius: 5px; }
+                .host-header { background: #3498db; color: white; padding: 15px; border-radius: 5px 5px 0 0; }
+                .host-content { padding: 15px; }
+                .ports-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                .ports-table th, .ports-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+                .ports-table th { background: #34495e; color: white; }
+                .open { color: #27ae60; font-weight: bold; }
+                .closed { color: #e74c3c; }
+                .filtered { color: #f39c12; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔍 Rapport de Scan Nmap</h1>
+                    <p><strong>Cible:</strong> 1.1.1.1</p>
+                    <p><strong>ID du Scan:</strong> 2cc19cdf-6d43-4f53-91d9-4acac9aa11c9</p>
+                    <p><strong>Date:</strong> 20250611_114858</p>
+                    <p><strong>Scanner:</strong> nmap 7.93</p>
+                </div>
+        
+                <div class="summary">
+                    <h2>📊 Résumé</h2>
+                    <p><strong>Nombre d'hôtes scannés:</strong> 1</p>
+        
+                <div class="host">
+                    <div class="host-header">
+                        <h3>🖥️ Hôte 1: 1.1.1.1</h3>
+                        <p>Nom: one.one.one.one</p>
+                        <p>Statut: <span class="up">UP</span></p>
+                    </div>
+                    <div class="host-content">
+            
+                        <h4>🔌 Ports et Services:</h4>
+                        <table class="ports-table">
+                            <tr>
+                                <th>Port</th>
+                                <th>Protocole</th>
+                                <th>État</th>
+                                <th>Service</th>
+                                <th>Version</th>
+                            </tr>
+                
+                            <tr>
+                                <td>53</td>
+                                <td>tcp</td>
+                                <td class="open">OPEN</td>
+                                <td>domain</td>
+                                <td>N/A</td>
+                            </tr>
+                    
+                            <tr>
+                                <td>80</td>
+                                <td>tcp</td>
+                                <td class="open">OPEN</td>
+                                <td>http</td>
+                                <td>Cloudflare http proxy</td>
+                            </tr>
+                    
+                            <tr>
+                                <td>443</td>
+                                <td>tcp</td>
+                                <td class="open">OPEN</td>
+                                <td>http</td>
+                                <td>Cloudflare http proxy</td>
+                            </tr>
+                    </table></div></div>
+                <div style="margin-top: 30px; text-align: center; color: #7f8c8d;">
+                    <p>Rapport généré par Pacha Toolbox</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        

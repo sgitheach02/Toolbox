@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.93 scan initiated Wed Jun 11 11:56:37 2025 as: nmap -p1-1000 -&#45;max-rate=1000 -oX /app/reports/masscan_35b8b6b3-98d1-4e7b-9aa8-02e6ac94866a_20250611_115637.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -p1-1000 -&#45;max-rate=1000 -oX /app/reports/masscan_35b8b6b3-98d1-4e7b-9aa8-02e6ac94866a_20250611_115637.xml 127.0.0.1" start="1749642997" startstr="Wed Jun 11 11:56:37 2025" version="7.93" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1000" services="1-1000"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1749642997" endtime="1749642998"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><extraports state="closed" count="1000">
+<extrareasons reason="reset" count="1000" proto="tcp" ports="1-1000"/>
+</extraports>
+</ports>
+<times srtt="15" rttvar="8" to="100000"/>
+</host>
+<runstats><finished time="1749642998" timestr="Wed Jun 11 11:56:38 2025" summary="Nmap done at Wed Jun 11 11:56:38 2025; 1 IP address (1 host up) scanned in 1.19 seconds" elapsed="1.19" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

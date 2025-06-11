@@ -1,0 +1,39 @@
+# Nmap 7.93 scan initiated Wed Jun 11 11:48:58 2025 as: nmap -sV -oX /app/reports/nmap_2cc19cdf-6d43-4f53-91d9-4acac9aa11c9_20250611_114858.xml -oN /app/reports/nmap_2cc19cdf-6d43-4f53-91d9-4acac9aa11c9_20250611_114858.txt 1.1.1.1
+Nmap scan report for one.one.one.one (1.1.1.1)
+Host is up (0.0075s latency).
+Not shown: 997 filtered tcp ports (no-response)
+PORT    STATE SERVICE  VERSION
+53/tcp  open  domain?
+80/tcp  open  http     Cloudflare http proxy
+443/tcp open  ssl/http Cloudflare http proxy
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port53-TCP:V=7.93%I=7%D=6/11%Time=68496D3E%P=x86_64-pc-linux-gnu%r(GetR
+SF:equest,12D,"HTTP/1\.1\x20302\x20Moved\x20Temporarily\r\nConnection:\x20
+SF:close\r\nLocation:\x20http://10\.1\.224\.33:8880/guest/s/default/\?ap=7
+SF:4:ac:b9:66:98:65&ec=LaRa_0FCKxs8z7rPFv_FDnWnpdB7INdAj9tOzg1wmGZdlcZlr1P
+SF:L-oYJXEOr44vEfkN1bPevTOSkS0bDYGavRCewX3ab36rNRI56ApQD3R3CylON99Tbx603Pa
+SF:VlITDwbzh-CwUfy10NmiW39YJEVKFxGQD8m7D4Dw54p4OzTg0\r\n\r\n")%r(HTTPOptio
+SF:ns,12D,"HTTP/1\.1\x20302\x20Moved\x20Temporarily\r\nConnection:\x20clos
+SF:e\r\nLocation:\x20http://10\.1\.224\.33:8880/guest/s/default/\?ap=74:ac
+SF::b9:66:98:65&ec=LaRa_0FCKxs8z7rPFv_FDnWnpdB7INdAj9tOzg1wmGZdlcZlr1PL-oY
+SF:JXEOr44vEfkN1bPevTOSkS0bDYGavRCewX3ab36rNRI56ApQD3R3CylON99Tbx603PaVlIT
+SF:Dwbzh-CwUfy10NmiW39YJEVKFxGQD8m7D4Dw54p4OzTg0\r\n\r\n")%r(RTSPRequest,1
+SF:2D,"HTTP/1\.1\x20302\x20Moved\x20Temporarily\r\nConnection:\x20close\r\
+SF:nLocation:\x20http://10\.1\.224\.33:8880/guest/s/default/\?ap=74:ac:b9:
+SF:66:98:65&ec=LaRa_0FCKxs8z7rPFv_FDnWnpdB7INdAj9tOzg1wmGZdlcZlr1PL-oYJXEO
+SF:r44vEfkN1bPevTOSkS0bDYGavRCewX3ab36rNRI56ApQD3R3CylON99Tbx603PaVlITDwbz
+SF:h-CwUfy10NmiW39YJEVKFxGQD8m7D4Dw54p4OzTg0\r\n\r\n")%r(FourOhFourRequest
+SF:,158,"HTTP/1\.1\x20302\x20Moved\x20Temporarily\r\nConnection:\x20close\
+SF:r\nLocation:\x20http://10\.1\.224\.33:8880/guest/s/default/\?ap=74:ac:b
+SF:9:66:98:65&ec=LaRa_0FCKxs8z7rPFv_FDnWnpdB7INdAj9tOzg1wmGZdlcZlr1PL-oYJX
+SF:EOr44vEfkN1bPevTOSkS0bDYGavRCewX3ab36rNRI56ApQD3R3CylON99Tbx603PaVlITDw
+SF:bzh-CwUfy10NmiW39YJEVIiVfDpT4GJ-Sf3FHBudGPwwgW9TJbFbWx_eXVmxjfWrD5WlQ28
+SF:Sgg0PWQezP_shXA\r\n\r\n")%r(SIPOptions,12D,"HTTP/1\.1\x20302\x20Moved\x
+SF:20Temporarily\r\nConnection:\x20close\r\nLocation:\x20http://10\.1\.224
+SF:\.33:8880/guest/s/default/\?ap=74:ac:b9:66:98:65&ec=LaRa_0FCKxs8z7rPFv_
+SF:FDnWnpdB7INdAj9tOzg1wmGZdlcZlr1PL-oYJXEOr44vEfkN1bPevTOSkS0bDYGavRCewX3
+SF:ab36rNRI56ApQD3R3CylON99Tbx603PaVlITDwbzh-CwUfy10NmiW39YJEVBW8RoehWg4sL
+SF:7WIjczndtE\r\n\r\n");
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Wed Jun 11 11:51:05 2025 -- 1 IP address (1 host up) scanned in 126.81 seconds
