@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 
 // Configuration de l'API
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+if (!process.env.REACT_APP_API_URL) {
+  console.warn("Warning: REACT_APP_API_URL is not set. Falling back to default API URL.");
+}
 
 // Composant principal
 function App() {
@@ -16,7 +20,13 @@ function App() {
       type,
       timestamp: new Date()
     };
-    setNotifications(prev => [notification, ...prev.slice(0, 9)]);
+    setNotifications(prev => {
+      const updatedNotifications = [notification, ...prev];
+      if (updatedNotifications.length > 10) {
+        updatedNotifications.pop();
+      }
+      return updatedNotifications;
+    });
   };
 
   return (
@@ -859,7 +869,7 @@ function OpenVASScanner({ addNotification }) {
           setNetworkInfo(data);
         }
       })
-      .catch(err => console.log("Info réseau non disponible"));
+      .catch(() => console.log("Info réseau non disponible"));
   }, []);
 
   const startVulnScan = async (e) => {

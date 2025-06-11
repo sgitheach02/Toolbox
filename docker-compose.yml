@@ -17,6 +17,7 @@ services:
       - redis
       - postgres
     privileged: true
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -28,7 +29,8 @@ services:
       - pacha-net
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_API_URL=http://localhost:5000/api  # CORRECTION: Utilise localhost depuis l'hôte
+    restart: unless-stopped
 
   # Redis pour les tâches asynchrones
   redis:
@@ -50,18 +52,16 @@ services:
       - pacha-net
     restart: unless-stopped
 
-  # OpenVAS Scanner
+  # OpenVAS Scanner - Version simplifiée qui fonctionne
   openvas:
-    image: immauss/openvas:latest
+    image: mikesplain/openvas:latest  # Version plus stable
     ports:
       - "9392:9392"
-    volumes:
-      - openvas_data:/data
+      - "9390:9390"
+    environment:
+      - OV_PASSWORD=admin123
     networks:
       - pacha-net
-    environment:
-      - USERNAME=admin
-      - PASSWORD=admin123
     restart: unless-stopped
 
   # Metasploit avec base de données
@@ -79,6 +79,17 @@ services:
     command: tail -f /dev/null
     restart: unless-stopped
 
+  # Image Metasploitable pour les tests d'exploitation
+  metasploitable:
+    image: tleemcjr/metasploitable2
+    ports:
+      - "2222:22"   # SSH
+      - "2121:21"   # FTP
+      - "8081:80"   # HTTP
+    networks:
+      - pacha-net
+    restart: unless-stopped
+
   # DVWA pour les tests
   dvwa:
     image: vulnerables/web-dvwa
@@ -93,5 +104,4 @@ networks:
     driver: bridge
 
 volumes:
-  openvas_data:
   postgres_data:
