@@ -1,58 +1,52 @@
 from flask import Blueprint, request, jsonify
-import subprocess
+import nmap
 import os
 import uuid
-from datetime import datetime, timezone
-import threading
+from datetime import datetime
 import logging
-import re
-import xml.etree.ElementTree as ET
+import json
+import threading
 
 scan_bp = Blueprint("scan", __name__)
 logger = logging.getLogger(__name__)
 
-# Stockage en mémoire des scans actifs avec progression
+# Stockage des scans actifs avec progression
 active_scans = {}
 
 @scan_bp.route("/nmap", methods=["POST"])
 def nmap_scan():
-    """Lancement d'un scan Nmap avec progression en temps réel"""
+    """Scan Nmap avec python-nmap - Plus propre et efficace"""
     try:
         data = request.get_json()
         target = data.get("target", "").strip()
         args = data.get("args", "-sV")
         async_scan = data.get("async", False)
-
+        
         if not target:
             return jsonify({"error": "La cible est requise"}), 400
-
-        # Validation de sécurité
-        if not validate_target(target):
-            return jsonify({"error": "Cible invalide ou dangereuse"}), 400
-
+        
+        logger.info(f"🔍 Scan Nmap: {target} avec args: {args}")
+        
         scan_id = str(uuid.uuid4())
-        logger.info(f"🔍 Nouveau scan Nmap: {target} (ID: {scan_id})")
-
+        
         if async_scan:
-            # Scan asynchrone avec suivi de progression
+            # Scan asynchrone avec suivi
             thread = threading.Thread(
-                target=run_nmap_with_progress,
+                target=run_nmap_async,
                 args=(scan_id, target, args)
             )
             thread.daemon = True
             thread.start()
-
+            
             active_scans[scan_id] = {
-                "status": "starting",
+                "status": "running",
                 "target": target,
                 "args": args,
                 "started_at": datetime.now(),
                 "progress": 0,
-                "current_phase": "Initialisation",
-                "result": None,
-                "report_files": []
+                "current_phase": "Initialisation"
             }
-
+            
             return jsonify({
                 "scan_id": scan_id,
                 "status": "started",
@@ -64,398 +58,396 @@ def nmap_scan():
             # Scan synchrone
             result = run_nmap_sync(scan_id, target, args)
             return jsonify(result)
-
+            
     except Exception as e:
         logger.error(f"Erreur scan Nmap: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-def validate_target(target):
-    """Validation robuste de la cible"""
-    import ipaddress
-
-    # Caractères dangereux
-    dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '{', '}', '<', '>']
-    if any(char in target for char in dangerous_chars):
-        return False
-
-    # Longueur raisonnable
-    if len(target) > 253:
-        return False
-
+def run_nmap_sync(scan_id, target, args):
+    """Exécution synchrone avec python-nmap"""
     try:
-        # Test IP
-        ip = ipaddress.ip_address(target)
-        # Autoriser seulement les IPs locales et de test
-        if ip.is_private or ip.is_loopback or str(ip) in ['1.1.1.1', '8.8.8.8']:
-            return True
-        return False
-    except ValueError:
-        try:
-            # Test réseau
-            network = ipaddress.ip_network(target, strict=False)
-            return network.is_private
-        except ValueError:
-            # Test nom d'hôte/domaine
-            allowed_hosts = ['dvwa', 'metasploitable', 'backend', 'localhost']
-            if target.lower() in allowed_hosts:
-                return True
+        # Initialisation du scanner Nmap
+        nm = nmap.PortScanner()
+        
+        # Parsing des arguments pour python-nmap
+        nmap_args = parse_nmap_args(args)
+        
+        logger.info(f"Exécution Nmap: nmap {nmap_args} {target}")
+        
+        # Lancement du scan
+        scan_result = nm.scan(target, arguments=nmap_args)
+        
+        # Génération des fichiers de rapport
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_files = generate_reports(nm, scan_id, timestamp, target)
+        
+        # Analyse des résultats
+        analysis = analyze_nmap_results(nm, scan_result)
+        
+        return {
+            "scan_id": scan_id,
+            "target": target,
+            "status": "completed",
+            "scan_info": scan_result.get('nmap', {}),
+            "results": analysis,
+            "report_files": report_files,
+            "timestamp": timestamp,
+            "command_line": nm.command_line(),
+            "scan_stats": nm.scanstats()
+        }
+        
+    except Exception as e:
+        logger.error(f"Erreur scan Nmap sync: {str(e)}")
+        return {"error": str(e), "scan_id": scan_id}
 
-            # Validation domaine basique
-            domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
-            return bool(re.match(domain_pattern, target)) and len(target.split('.')) >= 2
-
-def run_nmap_with_progress(scan_id, target, args):
-    """Exécution Nmap avec suivi de progression"""
+def run_nmap_async(scan_id, target, args):
+    """Exécution asynchrone avec suivi de progression"""
     try:
         # Mise à jour du statut
         active_scans[scan_id]["status"] = "running"
-        active_scans[scan_id]["current_phase"] = "Résolution DNS"
-        active_scans[scan_id]["progress"] = 5
-
+        active_scans[scan_id]["progress"] = 10
+        active_scans[scan_id]["current_phase"] = "Initialisation du scanner"
+        
+        # Initialisation
+        nm = nmap.PortScanner()
+        nmap_args = parse_nmap_args(args)
+        
+        active_scans[scan_id]["progress"] = 20
+        active_scans[scan_id]["current_phase"] = "Démarrage du scan"
+        
+        # Callback pour suivi de progression (si disponible)
+        def scan_progress_callback(host, scan_data):
+            if scan_id in active_scans:
+                active_scans[scan_id]["progress"] = min(90, active_scans[scan_id]["progress"] + 10)
+                active_scans[scan_id]["current_phase"] = f"Scan en cours: {host}"
+        
+        # Lancement du scan
+        scan_result = nm.scan(target, arguments=nmap_args)
+        
+        # Progression finale
+        active_scans[scan_id]["progress"] = 95
+        active_scans[scan_id]["current_phase"] = "Génération des rapports"
+        
+        # Génération des fichiers
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_xml = f"/app/reports/nmap_{scan_id}_{timestamp}.xml"
-        output_txt = f"/app/reports/nmap_{scan_id}_{timestamp}.txt"
-
-        # Commande Nmap avec sortie verbose pour progression
-        command = f"nmap {args} -v -oX {output_xml} -oN {output_txt} {target}"
-
-        logger.info(f"Exécution: {command}")
-
-        # Lancement avec suivi en temps réel
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            universal_newlines=True
-        )
-
-        output_lines = []
-
-        # Lecture en temps réel avec progression
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-
-            if line:
-                output_lines.append(line.strip())
-                update_scan_progress(scan_id, line)
-
-        process.wait()
-
-        if process.returncode == 0:
-            # Génération du rapport HTML
-            active_scans[scan_id]["current_phase"] = "Génération des rapports"
-            active_scans[scan_id]["progress"] = 90
-
-            html_report = generate_nmap_html_report(output_xml, target, scan_id, timestamp)
-            html_file = f"/app/reports/nmap_{scan_id}_{timestamp}.html"
-
-            with open(html_file, 'w', encoding='utf-8') as f:
-                f.write(html_report)
-
-            # Liste des fichiers générés
-            report_files = []
-            for file_path in [output_xml, output_txt, html_file]:
-                if os.path.exists(file_path):
-                    report_files.append({
-                        "filename": os.path.basename(file_path),
-                        "size": os.path.getsize(file_path),
-                        "format": os.path.splitext(file_path)[1][1:] or "html",
-                        "download_url": f"/api/download/{os.path.basename(file_path)}"
-                    })
-
-            active_scans[scan_id].update({
-                "status": "completed",
-                "progress": 100,
-                "current_phase": "Terminé",
-                "result": "\n".join(output_lines),
-                "report_files": report_files,
-                "completed_at": datetime.now()
-            })
-
-            logger.info(f"✅ Scan {scan_id} terminé avec succès")
-
-        else:
+        report_files = generate_reports(nm, scan_id, timestamp, target)
+        
+        # Analyse des résultats
+        analysis = analyze_nmap_results(nm, scan_result)
+        
+        # Finalisation
+        active_scans[scan_id].update({
+            "status": "completed",
+            "progress": 100,
+            "current_phase": "Terminé",
+            "results": analysis,
+            "report_files": report_files,
+            "command_line": nm.command_line(),
+            "scan_stats": nm.scanstats(),
+            "completed_at": datetime.now()
+        })
+        
+        logger.info(f"✅ Scan async {scan_id} terminé")
+        
+    except Exception as e:
+        logger.error(f"Erreur scan async {scan_id}: {str(e)}")
+        if scan_id in active_scans:
             active_scans[scan_id].update({
                 "status": "failed",
                 "progress": 0,
-                "current_phase": "Échec",
-                "result": "\n".join(output_lines),
-                "error": "Échec de l'exécution Nmap"
+                "current_phase": "Erreur",
+                "error": str(e)
             })
 
-            logger.error(f"❌ Scan {scan_id} échoué")
+def parse_nmap_args(args_string):
+    """Conversion des arguments string en format python-nmap"""
+    # Arguments courants et leur équivalent
+    args_map = {
+        "-sV": "-sV",  # Version detection
+        "-sS": "-sS",  # SYN scan
+        "-sU": "-sU",  # UDP scan
+        "-sn": "-sn",  # Ping scan
+        "-A": "-A",    # Aggressive scan
+        "-O": "-O",    # OS detection
+        "-sC": "-sC",  # Script scan
+        "-T4": "-T4",  # Timing template
+        "-p-": "-p-",  # All ports
+    }
+    
+    # Si c'est un argument simple connu, le retourner
+    if args_string in args_map:
+        return args_map[args_string]
+    
+    # Sinon, retourner tel quel (python-nmap gère la plupart des arguments)
+    return args_string
 
-    except Exception as e:
-        logger.error(f"Erreur scan asynchrone {scan_id}: {str(e)}")
-        active_scans[scan_id].update({
-            "status": "failed",
-            "progress": 0,
-            "current_phase": "Erreur",
-            "error": str(e)
-        })
-
-def update_scan_progress(scan_id, line):
-    """Mise à jour de la progression basée sur la sortie Nmap"""
-    if scan_id not in active_scans:
-        return
-
-    line_lower = line.lower()
-
-    # Phases de progression Nmap
-    if "starting nmap" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Démarrage Nmap"
-        active_scans[scan_id]["progress"] = 10
-    elif "dns resolution" in line_lower or "resolving" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Résolution DNS"
-        active_scans[scan_id]["progress"] = 15
-    elif "ping scan" in line_lower or "host discovery" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Découverte d'hôtes"
-        active_scans[scan_id]["progress"] = 25
-    elif "scanning" in line_lower and "ports" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Scan des ports"
-        active_scans[scan_id]["progress"] = 40
-    elif "service detection" in line_lower or "version detection" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Détection des services"
-        active_scans[scan_id]["progress"] = 60
-    elif "os detection" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Détection OS"
-        active_scans[scan_id]["progress"] = 70
-    elif "script scanning" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Exécution des scripts"
-        active_scans[scan_id]["progress"] = 80
-    elif "nmap done" in line_lower:
-        active_scans[scan_id]["current_phase"] = "Finalisation"
-        active_scans[scan_id]["progress"] = 85
-
-def run_nmap_sync(scan_id, target, args):
-    """Exécution synchrone du scan Nmap"""
-    try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_xml = f"/app/reports/nmap_{scan_id}_{timestamp}.xml"
-        output_txt = f"/app/reports/nmap_{scan_id}_{timestamp}.txt"
-
-        command = f"nmap {args} -oX {output_xml} -oN {output_txt} {target}"
-
-        logger.info(f"Exécution synchrone: {command}")
-
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-
-        if result.returncode != 0:
-            return {"error": result.stderr or "Erreur Nmap inconnue", "scan_id": scan_id}
-
-        # Génération du rapport HTML
-        html_report = generate_nmap_html_report(output_xml, target, scan_id, timestamp)
-        html_file = f"/app/reports/nmap_{scan_id}_{timestamp}.html"
-
-        with open(html_file, 'w', encoding='utf-8') as f:
-            f.write(html_report)
-
-        # Analyse des résultats
-        scan_summary = analyze_nmap_results(output_xml)
-
-        # Liste des fichiers générés
-        report_files = []
-        for file_path in [output_xml, output_txt, html_file]:
-            if os.path.exists(file_path):
-                report_files.append({
-                    "filename": os.path.basename(file_path),
-                    "size": os.path.getsize(file_path),
-                    "format": os.path.splitext(file_path)[1][1:] or "html",
-                    "download_url": f"/api/download/{os.path.basename(file_path)}"
-                })
-
-        return {
-            "scan_id": scan_id,
-            "result": result.stdout,
-            "target": target,
-            "timestamp": timestamp,
-            "report_files": report_files,
-            "summary": scan_summary,
-            "status": "completed"
+def analyze_nmap_results(nm, scan_result):
+    """Analyse détaillée des résultats avec python-nmap"""
+    analysis = {
+        "hosts_scanned": len(nm.all_hosts()),
+        "hosts_up": 0,
+        "hosts_down": 0,
+        "total_ports": 0,
+        "open_ports": 0,
+        "closed_ports": 0,
+        "filtered_ports": 0,
+        "services": {},
+        "os_info": {},
+        "hosts_details": []
+    }
+    
+    for host in nm.all_hosts():
+        host_info = {
+            "ip": host,
+            "hostname": nm[host].hostname(),
+            "status": nm[host].state(),
+            "protocols": list(nm[host].all_protocols()),
+            "ports": {},
+            "os": {}
         }
-
-    except subprocess.TimeoutExpired:
-        return {"error": "Timeout du scan (5 minutes)", "scan_id": scan_id}
-    except Exception as e:
-        logger.error(f"Erreur exécution Nmap: {str(e)}")
-        return {"error": str(e), "scan_id": scan_id}
-
-def analyze_nmap_results(xml_file):
-    """Analyse rapide des résultats Nmap"""
-    try:
-        if not os.path.exists(xml_file):
-            return {"error": "Fichier XML non trouvé"}
-
-        tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        summary = {
-            "hosts_total": 0,
-            "hosts_up": 0,
-            "ports_total": 0,
-            "ports_open": 0,
-            "services": {},
-            "scan_duration": root.get("elapsed", "0") + "s"
-        }
-
-        for host in root.findall(".//host"):
-            summary["hosts_total"] += 1
-
-            status = host.find("status")
-            if status is not None and status.get("state") == "up":
-                summary["hosts_up"] += 1
-
-            for port in host.findall(".//port"):
-                summary["ports_total"] += 1
-
-                state = port.find("state")
-                if state is not None and state.get("state") == "open":
-                    summary["ports_open"] += 1
-
-                    service = port.find("service")
-                    if service is not None:
-                        service_name = service.get("name", "unknown")
-                        summary["services"][service_name] = summary["services"].get(service_name, 0) + 1
-
-        return summary
-
-    except Exception as e:
-        return {"error": f"Erreur analyse: {str(e)}"}
-
-def generate_nmap_html_report(xml_file, target, scan_id, timestamp):
-    """Génération d'un rapport HTML basé sur le fichier XML de Nmap"""
-    try:
-        if not os.path.exists(xml_file):
-            return "<html><body><h1>Erreur</h1><p>Fichier XML non trouvé</p></body></html>"
-
-        tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        # Début du rapport HTML
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8">
-            <title>Rapport Nmap - {target}</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
-                h1, h2 {{ color: #8B0000; }}
-                table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #f2f2f2; }}
-                .host {{ margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }}
-                .port-item {{ margin-bottom: 10px; }}
-                .service-name {{ font-weight: bold; }}
-                .critical {{ color: red; }}
-                .warning {{ color: orange; }}
-                .info {{ color: blue; }}
-            </style>
-        </head>
-        <body>
-            <h1>Rapport de scan Nmap</h1>
-            <p><strong>Cible:</strong> {target}</p>
-            <p><strong>ID de scan:</strong> {scan_id}</p>
-            <p><strong>Date:</strong> {timestamp}</p>
-
-            <h2>Résumé du scan</h2>
-        """
-
-        summary = analyze_nmap_results(xml_file)
-        scan_duration = summary.get("scan_duration", "0s")
-
-        html_content += f"""
-            <p><strong>Durée du scan:</strong> {scan_duration}</p>
-            <p><strong>Nombre total d'hôtes:</strong> {summary.get('hosts_total', 0)}</p>
-            <p><strong>Nombre d'hôtes actifs:</strong> {summary.get('hosts_up', 0)}</p>
-            <p><strong>Nombre total de ports scannés:</strong> {summary.get('ports_total', 0)}</p>
-            <p><strong>Nombre de ports ouverts:</strong> {summary.get('ports_open', 0)}</p>
-
-            <h2>Détails par hôte</h2>
-        """
-
-        for host in root.findall(".//host"):
-            host_address = host.find("address").get("addr") if host.find("address") is not None else "Unknown"
-            host_status = host.find("status").get("state") if host.find("status") is not None else "Unknown"
-            os_info = host.find(".//osmatch")
-            os_name = os_info.get("name") if os_info is not None else "Unknown"
-
-            html_content += f"""
-            <div class="host">
-                <h3>Hôte: {host_address}</h3>
-                <p><strong>Statut:</strong> {host_status}</p>
-                <p><strong>Système d'exploitation:</strong> {os_name}</p>
-                <h4>Ports ouverts:</h4>
-            """
-
-            ports = []
-            for port in host.findall(".//port"):
-                port_id = port.get("portid")
-                protocol = port.get("protocol", "unknown")
-                state = port.find("state").get("state") if port.find("state") is not None else "Unknown"
-                service = port.find("service")
-                service_name = service.get("name", "unknown") if service is not None else "unknown"
-                product = service.get("product", "") if service is not None else ""
-                version = service.get("version", "") if service is not None else ""
-                service_info = f"{product} {version}".strip()
-
-                ports.append({
-                    "port_id": port_id,
-                    "protocol": protocol,
+        
+        # Comptage des états d'hôtes
+        if nm[host].state() == 'up':
+            analysis["hosts_up"] += 1
+        else:
+            analysis["hosts_down"] += 1
+        
+        # Analyse des ports par protocole
+        for protocol in nm[host].all_protocols():
+            ports = nm[host][protocol].keys()
+            host_info["ports"][protocol] = {}
+            
+            for port in ports:
+                port_info = nm[host][protocol][port]
+                state = port_info['state']
+                service = port_info.get('name', 'unknown')
+                product = port_info.get('product', '')
+                version = port_info.get('version', '')
+                
+                host_info["ports"][protocol][port] = {
                     "state": state,
-                    "service_name": service_name,
-                    "service_info": service_info
-                })
+                    "service": service,
+                    "product": product,
+                    "version": version,
+                    "extrainfo": port_info.get('extrainfo', '')
+                }
+                
+                # Comptage global
+                analysis["total_ports"] += 1
+                if state == 'open':
+                    analysis["open_ports"] += 1
+                elif state == 'closed':
+                    analysis["closed_ports"] += 1
+                elif state == 'filtered':
+                    analysis["filtered_ports"] += 1
+                
+                # Comptage des services
+                if state == 'open':
+                    if service in analysis["services"]:
+                        analysis["services"][service] += 1
+                    else:
+                        analysis["services"][service] = 1
+        
+        # Détection OS si disponible
+        if 'osmatch' in nm[host]:
+            for os_match in nm[host]['osmatch']:
+                host_info["os"] = {
+                    "name": os_match.get('name', 'Unknown'),
+                    "accuracy": os_match.get('accuracy', '0'),
+                    "line": os_match.get('line', 0)
+                }
+                break  # Prendre le premier match
+        
+        analysis["hosts_details"].append(host_info)
+    
+    return analysis
 
+def generate_reports(nm, scan_id, timestamp, target):
+    """Génération des fichiers de rapport avec python-nmap"""
+    report_files = []
+    
+    try:
+        # Rapport XML (standard Nmap)
+        xml_content = nm.get_nmap_last_output()
+        if xml_content:
+            xml_file = f"/app/reports/nmap_{scan_id}_{timestamp}.xml"
+            with open(xml_file, 'w', encoding='utf-8') as f:
+                f.write(xml_content)
+            
+            report_files.append({
+                "filename": os.path.basename(xml_file),
+                "size": os.path.getsize(xml_file),
+                "format": "xml",
+                "download_url": f"/api/download/{os.path.basename(xml_file)}",
+                "description": "Rapport XML Nmap standard"
+            })
+        
+        # Rapport JSON (données structurées)
+        json_file = f"/app/reports/nmap_{scan_id}_{timestamp}.json"
+        json_data = {
+            "scan_info": nm.scaninfo(),
+            "command_line": nm.command_line(),
+            "scan_stats": nm.scanstats(),
+            "hosts": {}
+        }
+        
+        for host in nm.all_hosts():
+            json_data["hosts"][host] = {
+                "hostname": nm[host].hostname(),
+                "status": nm[host].state(),
+                "protocols": {}
+            }
+            
+            for protocol in nm[host].all_protocols():
+                json_data["hosts"][host]["protocols"][protocol] = dict(nm[host][protocol])
+        
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        
+        report_files.append({
+            "filename": os.path.basename(json_file),
+            "size": os.path.getsize(json_file),
+            "format": "json",
+            "download_url": f"/api/download/{os.path.basename(json_file)}",
+            "description": "Données structurées JSON"
+        })
+        
+        # Rapport HTML (lisible)
+        html_content = generate_html_report(nm, scan_id, timestamp, target)
+        html_file = f"/app/reports/nmap_{scan_id}_{timestamp}.html"
+        
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        report_files.append({
+            "filename": os.path.basename(html_file),
+            "size": os.path.getsize(html_file),
+            "format": "html",
+            "download_url": f"/api/download/{os.path.basename(html_file)}",
+            "description": "Rapport HTML interactif"
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur génération rapports: {str(e)}")
+    
+    return report_files
+
+def generate_html_report(nm, scan_id, timestamp, target):
+    """Génération d'un rapport HTML avec les données python-nmap"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rapport Nmap - {target}</title>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f7fa; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; 
+                     box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+                   padding: 30px; text-align: center; }}
+        .summary {{ background: #f8f9fa; padding: 25px; }}
+        .host {{ background: white; margin: 20px; border-radius: 10px; border: 1px solid #e9ecef; }}
+        .host-header {{ background: #28a745; color: white; padding: 20px; }}
+        .host-content {{ padding: 25px; }}
+        .ports-table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+        .ports-table th, .ports-table td {{ border: 1px solid #dee2e6; padding: 12px; text-align: left; }}
+        .ports-table th {{ background: #343a40; color: white; }}
+        .open {{ color: #28a745; font-weight: bold; }}
+        .closed {{ color: #dc3545; font-weight: bold; }}
+        .filtered {{ color: #ffc107; font-weight: bold; }}
+        .service-badge {{ background: #17a2b8; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Rapport Nmap - Python Integration</h1>
+            <p><strong>Cible:</strong> {target}</p>
+            <p><strong>Commande:</strong> {nm.command_line()}</p>
+            <p><strong>Scan ID:</strong> {scan_id}</p>
+            <p><strong>Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        
+        <div class="summary">
+            <h2>📊 Résumé du Scan</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2em; font-weight: bold; color: #667eea;">{len(nm.all_hosts())}</div>
+                    <div>Hôtes scannés</div>
+                </div>
+            </div>
+            <p><strong>Statistiques:</strong> {nm.scanstats()}</p>
+        </div>
+"""
+    
+    # Détails par hôte
+    for host in nm.all_hosts():
+        hostname = nm[host].hostname()
+        status = nm[host].state()
+        
+        html_content += f"""
+        <div class="host">
+            <div class="host-header">
+                <h3>🖥️ Hôte: {host}</h3>
+                {'<p>Nom: ' + hostname + '</p>' if hostname else ''}
+                <p>Statut: <span class="{status}">{status.upper()}</span></p>
+            </div>
+            <div class="host-content">
+"""
+        
+        # Ports par protocole
+        for protocol in nm[host].all_protocols():
+            ports = nm[host][protocol].keys()
+            
             if ports:
-                html_content += """
-                <table>
+                html_content += f"""
+                <h4>🔌 Ports {protocol.upper()}</h4>
+                <table class="ports-table">
                     <tr>
                         <th>Port</th>
-                        <th>Protocole</th>
+                        <th>État</th>
                         <th>Service</th>
-                        <th>Détails du service</th>
+                        <th>Version</th>
+                        <th>Info</th>
                     </tr>
-                """
-
-                for port in ports:
+"""
+                
+                for port in sorted(ports):
+                    port_info = nm[host][protocol][port]
+                    state = port_info['state']
+                    service = port_info.get('name', 'unknown')
+                    product = port_info.get('product', '')
+                    version = port_info.get('version', '')
+                    extrainfo = port_info.get('extrainfo', '')
+                    
+                    version_str = f"{product} {version}".strip() or "N/A"
+                    
                     html_content += f"""
                     <tr>
-                        <td>{port['port_id']}</td>
-                        <td>{port['protocol']}</td>
-                        <td>{port['service_name']}</td>
-                        <td>{port['service_info']}</td>
+                        <td><strong>{port}</strong></td>
+                        <td><span class="{state}">{state.upper()}</span></td>
+                        <td><span class="service-badge">{service}</span></td>
+                        <td>{version_str}</td>
+                        <td>{extrainfo}</td>
                     </tr>
-                    """
-
-                html_content += """
-                </table>
-                """
-
-            html_content += """
-            </div>
-            """
-
-        html_content += """
-            </body>
-        </html>
-        """
-
-        return html_content
-
-    except Exception as e:
-        return f"<html><body><h1>Erreur</h1><p>Erreur lors de la génération du rapport: {str(e)}</p></body></html>"
+"""
+                
+                html_content += "</table>"
+        
+        html_content += "</div></div>"
+    
+    html_content += """
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d;">
+            <p><strong>Rapport généré par Pacha Toolbox avec python-nmap</strong></p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    return html_content
 
 @scan_bp.route("/status/<scan_id>", methods=["GET"])
 def get_scan_status(scan_id):
@@ -463,12 +455,10 @@ def get_scan_status(scan_id):
     try:
         if scan_id not in active_scans:
             return jsonify({"error": "Scan non trouvé"}), 404
-
+        
         scan_info = active_scans[scan_id]
-
-        # Calcul du temps écoulé
         elapsed_time = (datetime.now() - scan_info["started_at"]).total_seconds()
-
+        
         response = {
             "scan_id": scan_id,
             "status": scan_info["status"],
@@ -478,175 +468,41 @@ def get_scan_status(scan_id):
             "elapsed_time": int(elapsed_time),
             "started_at": scan_info["started_at"].isoformat()
         }
-
+        
         if scan_info.get("completed_at"):
             response["completed_at"] = scan_info["completed_at"].isoformat()
-            response["total_duration"] = int((scan_info["completed_at"] - scan_info["started_at"]).total_seconds())
-
-        if scan_info.get("result"):
-            response["result"] = scan_info["result"]
-
+        
+        if scan_info.get("results"):
+            response["results"] = scan_info["results"]
+        
         if scan_info.get("report_files"):
             response["report_files"] = scan_info["report_files"]
-
+        
         if scan_info.get("error"):
             response["error"] = scan_info["error"]
-
+        
         return jsonify(response)
-
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@scan_bp.route("/list", methods=["GET"])
-def list_active_scans():
-    """Liste des scans actifs et récents"""
+@scan_bp.route("/test", methods=["GET"])
+def test_scan_route():
+    """Test de la route scan avec python-nmap"""
     try:
-        scans = []
-        current_time = datetime.now()
-
-        for scan_id, scan_info in active_scans.items():
-            elapsed_time = (current_time - scan_info["started_at"]).total_seconds()
-
-            scan_data = {
-                "scan_id": scan_id,
-                "status": scan_info["status"],
-                "target": scan_info["target"],
-                "progress": scan_info.get("progress", 0),
-                "current_phase": scan_info.get("current_phase", "Unknown"),
-                "elapsed_time": int(elapsed_time),
-                "started_at": scan_info["started_at"].isoformat()
-            }
-
-            if scan_info.get("completed_at"):
-                scan_data["completed_at"] = scan_info["completed_at"].isoformat()
-
-            if scan_info.get("report_files"):
-                scan_data["report_files"] = scan_info["report_files"]
-
-            scans.append(scan_data)
-
-        # Tri par date de création (plus récent en premier)
-        scans.sort(key=lambda x: x["started_at"], reverse=True)
-
+        nm = nmap.PortScanner()
+        nmap_version = nm.nmap_version()
+        
         return jsonify({
-            "scans": scans,
-            "total": len(scans),
-            "active": len([s for s in scans if s["status"] == "running"])
+            "message": "Route scan fonctionnelle avec python-nmap",
+            "nmap_version": f"{nmap_version[0]}.{nmap_version[1]}",
+            "python_nmap": "OK",
+            "available_endpoints": ["/nmap", "/status/<scan_id>", "/test"]
         })
-
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@scan_bp.route("/masscan", methods=["POST"])
-def masscan_scan():
-    """Scan rapide avec Masscan (fallback vers Nmap)"""
-    try:
-        data = request.get_json()
-        target = data.get("target", "").strip()
-        ports = data.get("ports", "1-1000")
-        rate = data.get("rate", "1000")
-
-        if not target:
-            return jsonify({"error": "La cible est requise"}), 400
-
-        if not validate_target(target):
-            return jsonify({"error": "Cible invalide"}), 400
-
-        scan_id = str(uuid.uuid4())
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"/app/reports/masscan_{scan_id}_{timestamp}.xml"
-
-        # Utilisation de Nmap en mode rapide (pas de Masscan dans l'image)
-        command = f"nmap -p{ports} -T4 --max-rate={rate} -oX {output_file} {target}"
-
-        logger.info(f"Scan rapide: {command}")
-
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-
-        if result.returncode != 0:
-            return jsonify({"error": result.stderr or "Erreur scan rapide"}), 500
-
-        report_files = []
-        if os.path.exists(output_file):
-            report_files.append({
-                "filename": os.path.basename(output_file),
-                "size": os.path.getsize(output_file),
-                "format": "xml",
-                "download_url": f"/api/download/{os.path.basename(output_file)}"
-            })
-
         return jsonify({
-            "result": result.stdout,
-            "target": target,
-            "timestamp": timestamp,
-            "report_files": report_files,
-            "status": "completed"
-        })
-
-    except subprocess.TimeoutExpired:
-        return jsonify({"error": "Timeout du scan rapide (2 minutes)"}), 500
-    except subprocess.TimeoutExpired:
-        return jsonify({"error": "Timeout du scan rapide (2 minutes)"}), 500
-    except Exception as e:
-        logger.error(f"Erreur scan rapide: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-from flask import send_file
-
-@scan_bp.route("/download/<filename>", methods=["GET"])
-def download_report(filename):
-    try:
-        file_path = os.path.join("/app/reports", filename)
-
-        if not os.path.exists(file_path):
-            return jsonify({"error": "Fichier non trouvé"}), 404
-
-        return send_file(file_path, as_attachment=True, download_name=filename)
-    except Exception as e:
-        logger.error(f"Erreur téléchargement: {str(e)}")
-        return jsonify({"error": "Erreur lors du téléchargement"}), 500
-
-@scan_bp.route("/health", methods=["GET"])
-def health_check():
-    """Point de contrôle de santé de l'API de scan"""
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "1.0.0",
-        "message": "API de scan fonctionnelle"
-    })
-
-@scan_bp.route("/clear", methods=["POST"])
-def clear_active_scans():
-    try:
-        active_scans.clear()
-        return jsonify({"message": "Scans actifs effacés"}), 200
-    except Exception as e:
-        logger.error(f"Erreur lors de l'effacement des scans: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-@scan_bp.route("/status", methods=["GET"])
-def get_all_scan_status():
-    """Récupère le statut de tous les scans actifs"""
-    try:
-        return jsonify(active_scans), 200
-    except Exception as e:
-        logger.error(f"Erreur lors de la récupération des statuts: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-@scan_bp.route("/stop/<scan_id>", methods=["POST"])
-def stop_scan(scan_id):
-    """Arrête un scan en cours"""
-    try:
-        if scan_id not in active_scans:
-            return jsonify({"error": "Scan non trouvé"}), 404
-
-        active_scans[scan_id]["status"] = "stopped"
-        return jsonify({"message": "Scan arrêté"}), 200
-    except Exception as e:
-        logger.error(f"Erreur lors de l'arrêt du scan: {str(e)}")
-        return jsonify({"error": str(e)}), 500          
+            "message": "Erreur python-nmap",
+            "error": str(e),
+            "fallback": "Utilisation subprocess disponible"
+        }), 500

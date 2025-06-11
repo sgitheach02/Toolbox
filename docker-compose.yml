@@ -1,107 +1,209 @@
+# docker-compose.yml - Version finale optimisée
 version: "3.8"
+
 services:
+  # Backend API principal
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
+      # Données persistantes
       - ./data:/app/data
       - ./reports:/app/reports
+      - ./logs:/app/logs
+      # Socket Docker pour contrôle des containers
       - /var/run/docker.sock:/var/run/docker.sock
+      # ExploitDB externe (optionnel pour mises à jour)
+      - exploitdb_data:/opt/exploitdb
     networks:
-      - pacha-net
+      - security-net
     environment:
-      - FLASK_ENV=development
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
       - REDIS_URL=redis://redis:6379/0
+      - TARGET_HOST=printnightmare.thm
+      - OPENVAS_URL=http://openvas:9392
+      - OPENVAS_USER=admin
+      - OPENVAS_PASS=SecurePass123!
+      - PYTHONPATH=/app
     depends_on:
       - redis
-      - postgres
-    privileged: true
+    privileged: true  # Nécessaire pour nmap et tcpdump
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
+  # Frontend React
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     depends_on:
       - backend
     networks:
-      - pacha-net
+      - security-net
     environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:5000/api  # CORRECTION: Utilise localhost depuis l'hôte
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_TARGET_HOST=printnightmare.thm
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis pour les tâches asynchrones
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
     networks:
-      - pacha-net
+      - security-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # OpenVAS Scanner de vulnérabilités
+  openvas:
+    image: immauss/openvas:latest
+    ports:
+      - "9392:9392"    # Interface web OpenVAS
+      - "5432:5432"    # PostgreSQL pour OpenVAS
+    volumes:
+      - openvas_data:/data
+      - openvas_var:/var/lib/openvas
+      - openvas_etc:/etc/openvas
+    networks:
+      - security-net
+    environment:
+      - USERNAME=admin
+      - PASSWORD=SecurePass123!
+      - RELAYHOST=
+      - SMTPPORT=587
+      - AUTO_SYNC=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:9392"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 300s
+
+  # Metasploit Framework
+  metasploit:
+    build:
+      context: ./metasploit
+      dockerfile: Dockerfile
+    volumes:
+      - ./data/metasploit:/root/.msf4
+      - ./reports:/reports
+      - exploitdb_data:/opt/exploitdb:ro
+    networks:
+      - security-net
+    environment:
+      - DATABASE_URL=postgresql://msf:msf123@postgres:5432/msf
+    depends_on:
+      - postgres
+    command: tail -f /dev/null
     restart: unless-stopped
 
-  # PostgreSQL pour OpenVAS et Metasploit
+  # PostgreSQL pour Metasploit
   postgres:
-    image: postgres:13
+    image: postgres:15-alpine
     environment:
       - POSTGRES_DB=msf
       - POSTGRES_USER=msf
       - POSTGRES_PASSWORD=msf123
+      - POSTGRES_INITDB_ARGS=--auth-host=md5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - pacha-net
+      - security-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U msf"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # OpenVAS Scanner - Version simplifiée qui fonctionne
-  openvas:
-    image: mikesplain/openvas:latest  # Version plus stable
+  # Cible Print Nightmare (simulation)
+  printnightmare:
+    image: vulnerables/cve-2021-34527:latest
     ports:
-      - "9392:9392"
-      - "9390:9390"
-    environment:
-      - OV_PASSWORD=admin123
+      - "445:445"      # SMB
+      - "135:135"      # RPC Endpoint Mapper
+      - "139:139"      # NetBIOS
+      - "3389:3389"    # RDP
     networks:
-      - pacha-net
+      security-net:
+        aliases:
+          - printnightmare.thm
+    environment:
+      - VULNERABLE=true
+      - ENABLE_PRINT_SPOOLER=true
     restart: unless-stopped
+    # Simulation de vulnérabilité - NE PAS UTILISER EN PRODUCTION
 
-  # Metasploit avec base de données
-  metasploit:
-    image: metasploitframework/metasploit-framework:latest
-    depends_on:
-      - postgres
+  # Monitor système (optionnel)
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
     volumes:
-      - ./data/metasploit:/root/.msf4
-      - ./reports:/reports
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
     networks:
-      - pacha-net
-    environment:
-      - DATABASE_URL=postgres://msf:msf123@postgres:5432/msf
-    command: tail -f /dev/null
+      - security-net
     restart: unless-stopped
+    profiles:
+      - monitoring
 
-  # Image Metasploitable pour les tests d'exploitation
-  metasploitable:
-    image: tleemcjr/metasploitable2
-    ports:
-      - "2222:22"   # SSH
-      - "2121:21"   # FTP
-      - "8081:80"   # HTTP
-    networks:
-      - pacha-net
-    restart: unless-stopped
-
-  # DVWA pour les tests
-  dvwa:
-    image: vulnerables/web-dvwa
-    ports:
-      - "8080:80"
-    networks:
-      - pacha-net
-    restart: unless-stopped
-
+# Configuration réseau
 networks:
-  pacha-net:
+  security-net:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: pacha-br0
 
+# Volumes persistants
 volumes:
+  # Données applicatives
+  redis_data:
+    driver: local
   postgres_data:
+    driver: local
+  
+  # OpenVAS data
+  openvas_data:
+    driver: local
+  openvas_var:
+    driver: local
+  openvas_etc:
+    driver: local
+    
+  # ExploitDB partagé
+  exploitdb_data:
+    driver: local
+    
+  # Monitoring (optionnel)
+  portainer_data:
+    driver: local

@@ -1,0 +1,14 @@
+# metasploit/config/database.yml
+production:
+  adapter: postgresql
+  database: msf
+  username: msf
+  password: msf123
+  host: postgres
+  port: 5432
+  pool: 200
+  timeout: 5
+  encoding: utf8
+  reconnect: true
+  sslmode: disable
+

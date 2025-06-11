@@ -1,0 +1,12 @@
+administrator
+admin
+guest
+support
+user
+test
+service
+operator
+backup
+print
+printer
+spooler

@@ -2,177 +2,159 @@ from flask import Flask, send_file, jsonify, request
 from flask_cors import CORS
 import os
 import logging
-from datetime import datetime
 
 # Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'pacha-toolbox-secret-key')
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
 
-# Configuration CORS très permissive pour corriger les problèmes
+# CORS ULTRA PERMISSIF - Pour éliminer tout problème CORS
 CORS(app, 
-     origins="*",  # Autoriser toutes les origines
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-     supports_credentials=False)
+     origins="*",
+     methods="*", 
+     allow_headers="*",
+     supports_credentials=False,
+     send_wildcard=True)
 
-# Middleware pour gérer les requêtes OPTIONS
+# Middleware pour debug et CORS manuel
 @app.before_request
-def handle_preflight():
+def before_request():
+    logger.info(f"🌐 {request.method} {request.url} from {request.remote_addr}")
+    logger.info(f"📨 Headers: {dict(request.headers)}")
+    
+    # CORS préflight
     if request.method == "OPTIONS":
-        response = jsonify({'status': 'ok'})
+        logger.info("🔄 Requête OPTIONS (preflight)")
+        response = jsonify({'status': 'preflight ok'})
         response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "*")
-        response.headers.add('Access-Control-Allow-Methods', "*")
+        response.headers.add("Access-Control-Allow-Methods", "*")
+        response.headers.add("Access-Control-Allow-Headers", "*")
+        response.headers.add("Access-Control-Max-Age", "3600")
         return response
 
 @app.after_request
 def after_request(response):
+    # Headers CORS pour toutes les réponses
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Max-Age', '3600')
+    
+    logger.info(f"📤 Response {response.status_code} avec headers CORS")
     return response
 
-# Création des répertoires nécessaires
-os.makedirs('/app/data', exist_ok=True)
+# Création des répertoires
 os.makedirs('/app/reports', exist_ok=True)
-os.makedirs('/app/temp', exist_ok=True)
-os.makedirs('/app/logs', exist_ok=True)
+os.makedirs('/app/data', exist_ok=True)
 
-# Import des routes essentielles
-from app.routes.scan import scan_bp
-from app.routes.reports import reports_bp
+# Import des routes
+logger.info("🔧 Chargement des routes...")
+try:
+    from app.routes.scan import scan_bp
+    app.register_blueprint(scan_bp, url_prefix="/api/scan")
+    logger.info("✅ Routes scan chargées")
+except Exception as e:
+    logger.error(f"❌ Erreur routes scan: {e}")
 
-app.register_blueprint(scan_bp, url_prefix="/api/scan")
-app.register_blueprint(reports_bp, url_prefix="/api/reports")
-
-logging.info("✅ Routes essentielles chargées")
-
-# Routes optionnelles
-optional_routes = [
-    ("app.routes.wireshark", "wireshark_bp", "/api/wireshark"),
-    ("app.routes.metasploit", "metasploit_bp", "/api/metasploit"),
-    ("app.routes.openvas", "openvas_bp", "/api/openvas")
-]
-
-for module_name, blueprint_name, url_prefix in optional_routes:
-    try:
-        module = __import__(module_name, fromlist=[blueprint_name])
-        blueprint = getattr(module, blueprint_name)
-        app.register_blueprint(blueprint, url_prefix=url_prefix)
-        logging.info(f"✅ Routes {blueprint_name} chargées")
-    except Exception as e:
-        logging.warning(f"⚠️ Routes {blueprint_name} non disponibles: {e}")
-
-@app.route('/api/health')
+@app.route('/api/health', methods=['GET', 'POST', 'OPTIONS'])
 def health_check():
-    """Point de contrôle de santé de l'API"""
+    """Test de santé avec méthodes multiples"""
+    logger.info("💚 Health check appelé")
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
-        'version': '2.0.0',
-        'message': 'API Pacha Toolbox fonctionnelle'
+        'message': 'API Pacha Toolbox ULTRA fonctionnelle',
+        'method': request.method,
+        'cors_enabled': True,
+        'version': '2.0.0'
     })
 
-@app.route('/api/download/<path:filename>')
+@app.route('/api/test', methods=['GET', 'POST', 'OPTIONS'])
+def test_endpoint():
+    """Endpoint de test simple"""
+    logger.info("🧪 Test endpoint appelé")
+    
+    data = {
+        'message': 'Test endpoint fonctionnel',
+        'method': request.method,
+        'timestamp': str(datetime.now()) if 'datetime' in globals() else 'N/A'
+    }
+    
+    if request.method == 'POST':
+        try:
+            json_data = request.get_json()
+            data['received_data'] = json_data
+        except:
+            data['received_data'] = 'No JSON data'
+    
+    return jsonify(data)
+
+@app.route('/api/download/<filename>')
 def download_file(filename):
-    """Téléchargement sécurisé des fichiers de rapport"""
+    """Téléchargement des rapports"""
     try:
         safe_filename = os.path.basename(filename)
         file_path = os.path.join('/app/reports', safe_filename)
         
+        logger.info(f"📥 Download: {file_path}")
+        
         if not os.path.exists(file_path):
             return jsonify({'error': 'Fichier non trouvé'}), 404
             
-        if not os.path.commonpath(['/app/reports', file_path]) == '/app/reports':
-            return jsonify({'error': 'Accès non autorisé'}), 403
-        
         return send_file(file_path, as_attachment=True, download_name=safe_filename)
         
     except Exception as e:
-        logging.error(f"Erreur téléchargement: {str(e)}")
-        return jsonify({'error': 'Erreur lors du téléchargement'}), 500
+        logger.error(f"❌ Erreur download: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/targets')
-def get_targets():
-    """Liste des cibles disponibles pour les tests"""
+# Route racine pour debug
+@app.route('/')
+def root():
     return jsonify({
-        'targets': [
-            {
-                'name': 'DVWA (Damn Vulnerable Web App)',
-                'host': 'dvwa',
-                'ip': '172.18.0.x',
-                'ports': [80],
-                'description': 'Application web intentionnellement vulnérable',
-                'recommended_for': ['nmap', 'openvas', 'wireshark']
-            },
-            {
-                'name': 'Metasploitable 2',
-                'host': 'metasploitable',
-                'ip': '172.18.0.x',
-                'ports': [22, 21, 80, 443, 3306],
-                'description': 'VM Linux avec vulnérabilités multiples',
-                'recommended_for': ['nmap', 'metasploit', 'openvas']
-            },
-            {
-                'name': 'Backend Local',
-                'host': 'backend',
-                'ip': '172.18.0.x',
-                'ports': [5000],
-                'description': 'API Backend Pacha Toolbox',
-                'recommended_for': ['nmap', 'wireshark']
-            },
-            {
-                'name': 'Localhost',
-                'host': '127.0.0.1',
-                'ip': '127.0.0.1',
-                'ports': [5000],
-                'description': 'Machine locale',
-                'recommended_for': ['nmap']
-            }
+        'message': 'Pacha Toolbox API',
+        'endpoints': [
+            '/api/health',
+            '/api/test', 
+            '/api/scan/nmap',
+            '/api/scan/test'
         ]
     })
 
-# Test de connectivité réseau
-@app.route('/api/network/test')
-def network_test():
-    """Test de connectivité réseau vers les cibles"""
-    import subprocess
-    
-    targets = ['dvwa', 'metasploitable', 'backend', '127.0.0.1']
-    results = {}
-    
-    for target in targets:
-        try:
-            # Ping test
-            result = subprocess.run(['ping', '-c', '1', '-W', '2', target], 
-                                  capture_output=True, text=True, timeout=5)
-            results[target] = {
-                'reachable': result.returncode == 0,
-                'response_time': 'N/A'
-            }
-        except:
-            results[target] = {
-                'reachable': False,
-                'response_time': 'N/A'
-            }
-    
-    return jsonify({'network_test': results})
-
-# Gestion des erreurs
+# Gestion d'erreurs
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Endpoint non trouvé'}), 404
+    logger.warning(f"❌ 404: {request.url}")
+    return jsonify({
+        'error': 'Endpoint non trouvé',
+        'url': request.url,
+        'method': request.method,
+        'available_endpoints': [
+            '/api/health',
+            '/api/test',
+            '/api/scan/nmap'
+        ]
+    }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    logger.error(f"❌ 500: {error}")
     return jsonify({'error': 'Erreur interne du serveur'}), 500
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"❌ Exception: {e}")
+    return jsonify({'error': 'Erreur inattendue', 'details': str(e)}), 500
+
 if __name__ == "__main__":
-    logging.info("🚀 Démarrage de Pacha Toolbox Backend")
+    from datetime import datetime
+    logger.info("🚀 Démarrage Pacha Toolbox Backend avec CORS ULTRA")
+    logger.info(f"🌐 CORS: Toutes origines autorisées")
+    logger.info(f"📁 Reports: /app/reports")
+    
+    # Test de connectivité interne
+    logger.info("🧪 Test des routes importées...")
+    with app.test_client() as client:
+        response = client.get('/api/health')
+        logger.info(f"✅ Health check interne: {response.status_code}")
+    
     app.run(host="0.0.0.0", port=5000, debug=True)

