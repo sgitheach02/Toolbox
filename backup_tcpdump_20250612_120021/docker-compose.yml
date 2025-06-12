@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Backend API Flask avec tcpdump
+  # Backend API Flask
   backend:
     build: 
       context: ./backend
@@ -20,11 +20,6 @@ services:
       - logs_data:/app/logs
     networks:
       - pacha-network
-    # Permissions réseau pour tcpdump
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    privileged: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]

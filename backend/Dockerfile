@@ -1,13 +1,13 @@
 FROM python:3.11-slim
 
-# Installation des outils système incluant wkhtmltopdf
+# Installation des outils système avec tcpdump
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
     nmap \
+    tcpdump \
+    tshark \
     netcat-openbsd \
-    wkhtmltopdf \
-    xvfb \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -20,19 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copie du code
 COPY . .
 
-# Création des répertoires
-RUN mkdir -p /app/reports /app/reports/pdf /app/logs /app/data /app/temp
-
-# Variables d'environnement
-ENV PYTHONPATH=/app
-ENV FLASK_APP=main.py
-ENV PYTHONUNBUFFERED=1
-
+# Port d'exposition
 EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
 
 # Commande de démarrage
 CMD ["python", "main.py"]
