@@ -1,11 +1,13 @@
 FROM python:3.11-slim
 
-# Installation des outils système
+# Installation des outils système incluant wkhtmltopdf
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
     nmap \
     netcat-openbsd \
+    wkhtmltopdf \
+    xvfb \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -19,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Création des répertoires
-RUN mkdir -p /app/reports /app/logs /app/data /app/temp
+RUN mkdir -p /app/reports /app/reports/pdf /app/logs /app/data /app/temp
 
 # Variables d'environnement
 ENV PYTHONPATH=/app
