@@ -1,4 +1,4 @@
-// frontend/src/components/ReportsModule.js - Version optimisée
+// frontend/src/components/ReportsModule.js - Version corrigée et optimisée
 import React, { useState, useEffect } from 'react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -7,7 +7,6 @@ const ReportsModule = () => {
   const [reports, setReports] = useState([]);
   const [reportStats, setReportStats] = useState({ total: 0, by_type: {} });
   const [selectedReport, setSelectedReport] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [loadingAction, setLoadingAction] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -25,19 +24,9 @@ const ReportsModule = () => {
       if (response.ok) {
         const data = await response.json();
         setReports(data.reports || []);
-        
-        // Calcul des stats
-        const stats = {
-          total: data.reports?.length || 0,
-          by_type: {}
-        };
-        
-        data.reports?.forEach(report => {
-          const type = report.type || 'unknown';
-          stats.by_type[type] = (stats.by_type[type] || 0) + 1;
-        });
-        
-        setReportStats(stats);
+        setReportStats(data.stats || { total: 0, by_type: {} });
+      } else {
+        console.error('Erreur lors du chargement des rapports');
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des rapports:', error);
@@ -70,7 +59,11 @@ const ReportsModule = () => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(100%)';
       toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => document.body.removeChild(toast), 300);
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
     }, 4000);
   };
 
@@ -111,7 +104,6 @@ const ReportsModule = () => {
         document.body.removeChild(a);
         
         showNotification(`✅ Téléchargement réussi: ${downloadFilename}`, 'success');
-        console.log(`📥 Téléchargement réussi: ${downloadFilename}`);
       } else {
         throw new Error(`Erreur ${response.status}`);
       }
@@ -144,7 +136,6 @@ const ReportsModule = () => {
           showNotification('❌ Votre navigateur bloque les pop-ups. Veuillez autoriser les pop-ups pour voir l\'aperçu.', 'error');
         } else {
           showNotification(`👁️ Aperçu ouvert pour: ${filename}`, 'success');
-          console.log(`👁️ Aperçu ouvert pour le rapport: ${reportId}`);
         }
       } else {
         throw new Error(`Rapport non disponible (${response.status})`);
@@ -217,39 +208,6 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
     }
   };
 
-  const generateReport = async (type) => {
-    setIsGenerating(true);
-    
-    try {
-      const response = await fetch(`${API_BASE}/reports/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: type, 
-          format: 'html' 
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Rapport généré:', data);
-        
-        // Rafraîchir la liste des rapports
-        await fetchReports();
-        
-        showNotification(`✅ ${data.message}`, 'success');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la génération:', error);
-      showNotification(`❌ Erreur lors de la génération du rapport: ${error.message}`, 'error');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const getTypeIcon = (type) => {
     const icons = {
       'nmap': '🔍',
@@ -314,7 +272,7 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
             <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Rapports Total</div>
           </div>
           
-          {Object.entries(reportStats.by_type).map(([type, count]) => (
+          {Object.entries(reportStats.by_type || {}).map(([type, count]) => (
             <div key={type} style={{
               background: getTypeColor(type),
               padding: '15px',
@@ -370,7 +328,6 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
           
           <button
             onClick={fetchReports}
-            disabled={isGenerating}
             style={{
               background: 'linear-gradient(135deg, #10b981, #047857)',
               color: 'white',
@@ -384,45 +341,6 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
           >
             🔄 Actualiser
           </button>
-        </div>
-      </div>
-
-      {/* Boutons de génération rapide */}
-      <div style={{
-        background: 'rgba(255,255,255,0.05)',
-        padding: '20px',
-        borderRadius: '15px',
-        border: '1px solid rgba(255,255,255,0.1)',
-        marginBottom: '20px'
-      }}>
-        <h3 style={{ color: '#10b981', marginBottom: '15px' }}>⚡ Génération rapide</h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '15px'
-        }}>
-          {['nmap', 'nikto', 'tcpdump'].map(type => (
-            <button
-              key={type}
-              onClick={() => generateReport(type)}
-              disabled={isGenerating}
-              style={{
-                background: isGenerating 
-                  ? 'rgba(107, 114, 128, 0.5)' 
-                  : getTypeColor(type),
-                color: 'white',
-                border: 'none',
-                padding: '15px 20px',
-                borderRadius: '10px',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {isGenerating ? '⏳' : getTypeIcon(type)} Générer {type.toUpperCase()}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -658,7 +576,7 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
             <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>
               {searchTerm || filterType !== 'all' 
                 ? 'Essayez d\'ajuster vos filtres' 
-                : 'Générez votre premier rapport en utilisant les boutons ci-dessus'
+                : 'Les rapports seront générés automatiquement lors des scans'
               }
             </p>
           </div>
@@ -688,8 +606,8 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
           }}>
             <h4 style={{ color: '#3b82f6', marginBottom: '10px' }}>🔍 Rapports Nmap</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Analyses réseau : découverte d'hôtes, scan de ports, détection de services et OS.
-              <br/>Formats disponibles : HTML et PDF.
+              Analyses réseau : découverte d'hôtes, scan de ports, détection de services.
+              <br/>Génération automatique lors des scans.
             </p>
           </div>
 
@@ -701,8 +619,8 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
           }}>
             <h4 style={{ color: '#06b6d4', marginBottom: '10px' }}>🌐 Rapports Nikto</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Audits de sécurité web : vulnérabilités, configurations, failles courantes.
-              <br/>Formats disponibles : HTML et PDF.
+              Audits de sécurité web : vulnérabilités, configurations, failles.
+              <br/>Génération automatique lors des scans.
             </p>
           </div>
 
@@ -712,30 +630,11 @@ Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
             borderRadius: '8px',
             border: '1px solid rgba(16, 185, 129, 0.2)'
           }}>
-            <h4 style={{ color: '#10b981', marginBottom: '10px' }}>📡 Rapports tcpdump</h4>
+            <h4 style={{ color: '#10b981', marginBottom: '10px' }}>⚙️ Fonctionnalités</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Analyses de trafic réseau : capture, inspection, détection d'anomalies.
-              <br/>Formats disponibles : PCAP et HTML.
+              📥 Téléchargement HTML • 👁️ Aperçu instantané • 🗑️ Suppression sécurisée
+              <br/>🔍 Recherche et filtres avancés • 🔄 Actualisation automatique
             </p>
-          </div>
-        </div>
-        
-        <div style={{
-          marginTop: '20px',
-          padding: '15px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          fontSize: '0.9rem',
-          color: 'rgba(255,255,255,0.8)'
-        }}>
-          <h5 style={{ color: '#f59e0b', marginBottom: '10px' }}>🔧 Fonctionnalités :</h5>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '10px' }}>
-            <div>📥 <strong>Téléchargement</strong> : Tous formats disponibles</div>
-            <div>👁️ <strong>Aperçu</strong> : Visualisation dans nouvel onglet</div>
-            <div>🗑️ <strong>Suppression</strong> : Avec confirmation sécurisée</div>
-            <div>🔍 <strong>Recherche</strong> : Par nom ou fichier</div>
-            <div>🏷️ <strong>Filtrage</strong> : Par type d'outil</div>
-            <div>🔄 <strong>Auto-refresh</strong> : Mise à jour automatique</div>
           </div>
         </div>
       </div>
