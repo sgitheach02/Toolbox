@@ -1,4 +1,4 @@
-// frontend/src/App.js - Version corrigée complète
+// frontend/src/App.js - Version corrigée sans variables inutilisées
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
@@ -8,7 +8,6 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [apiStatus, setApiStatus] = useState('checking');
   const [systemData, setSystemData] = useState({});
-  const [loading, setLoading] = useState(false);
 
   // Vérification de l'API au démarrage
   useEffect(() => {
@@ -173,7 +172,6 @@ function App() {
   const Dashboard = () => {
     const activeScans = systemData.scans?.filter(scan => scan.status === 'running')?.length || 0;
     const totalScans = systemData.total_scans || 0;
-    const totalReports = systemData.total_reports || 0;
 
     return (
       <div style={{ padding: '40px' }}>

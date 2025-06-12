@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacha Toolbox Backend v2.0 - Version corrigée avec chemins relatifs
+Pacha Toolbox Backend v2.0 - Version finale corrigée sans duplication de routes
 """
 
 import os
@@ -95,6 +95,7 @@ def get_all_tasks():
                 'target': f'192.168.1.{i+1}',
                 'status': 'completed' if i < 8 else 'failed',
                 'created_at': (datetime.now() - timedelta(days=i)).isoformat(),
+                'timestamp': (datetime.now() - timedelta(days=i)).isoformat(),
                 'vulnerabilities': [f'vuln_{j}' for j in range(i % 5)]
             }
             for i in range(10)
@@ -102,8 +103,6 @@ def get_all_tasks():
     except Exception as e:
         logger.error(f"Erreur récupération tâches: {e}")
         return []
-
-# Correction spécifique pour l'erreur 'created_at' dans la génération de rapports
 
 def create_report_data(tasks, report_type='comprehensive', period='7_days'):
     """Créer les données structurées du rapport - VERSION CORRIGÉE"""
@@ -231,32 +230,318 @@ def create_report_data(tasks, report_type='comprehensive', period='7_days'):
         ]
     }
 
-# Correction de la fonction create_test_scan_data
-def create_test_scan_data():
-    """Créer des données de scan pour les tests - VERSION CORRIGÉE"""
-    scan_id = str(uuid.uuid4())[:8]
-    current_time = datetime.now()
+def generate_html_report(report_data):
+    """Générer un rapport HTML stylisé"""
+    ensure_directories()
     
-    return {
-        'scan_id': scan_id,
-        'tool': 'nmap',
-        'target': '127.0.0.1',
-        'status': 'completed',
-        'timestamp': current_time.isoformat(),
-        'created_at': current_time.isoformat(),  # Ajouter explicitement created_at
-        'duration': '5.2s',
-        'results': {
-            'hosts_discovered': 1,
-            'ports_open': [22, 80, 443],
-            'vulnerabilities': ['SSH version disclosure', 'HTTP server headers exposed'],
-            'risk_level': 'medium'
-        }
-    }
+    html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{report_data['title']}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }}
+        
+        .title {{
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }}
+        
+        .subtitle {{
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat-card {{
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }}
+        
+        .stat-card:hover {{
+            transform: translateY(-5px);
+        }}
+        
+        .stat-number {{
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }}
+        
+        .stat-label {{
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }}
+        
+        .high {{ color: #e74c3c; }}
+        .medium {{ color: #f39c12; }}
+        .low {{ color: #27ae60; }}
+        .primary {{ color: #3498db; }}
+        
+        .section {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .section-title {{
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }}
+        
+        .task-item {{
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }}
+        
+        .task-status {{
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }}
+        
+        .status-completed {{
+            background: #d4edda;
+            color: #155724;
+        }}
+        
+        .status-failed {{
+            background: #f8d7da;
+            color: #721c24;
+        }}
+        
+        .recommendations {{
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+        }}
+        
+        .recommendation {{
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }}
+        
+        .footer {{
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 30px;
+        }}
+        
+        @media (max-width: 768px) {{
+            .stats-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .title {{
+                font-size: 2em;
+            }}
+            
+            .container {{
+                padding: 10px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🛡️ {report_data['title']}</h1>
+            <p class="subtitle">Généré le {datetime.fromisoformat(report_data['generated_at']).strftime('%d/%m/%Y à %H:%M')}</p>
+            <p class="subtitle">Rapport ID: {report_data['metadata']['report_id']}</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number primary">{report_data['summary']['total_tasks']}</div>
+                <div class="stat-label">Tâches Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number high">{report_data['summary']['vulnerabilities_by_severity']['high']}</div>
+                <div class="stat-label">Vulnérabilités Critiques</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number medium">{report_data['summary']['vulnerabilities_by_severity']['medium']}</div>
+                <div class="stat-label">Vulnérabilités Moyennes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number low">{report_data['summary']['vulnerabilities_by_severity']['low']}</div>
+                <div class="stat-label">Vulnérabilités Basses</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">📊 Résumé Exécutif</h2>
+            <p><strong>Score de Risque:</strong> <span class="{'high' if report_data['summary']['risk_score'] > 70 else 'medium' if report_data['summary']['risk_score'] > 30 else 'low'}">{report_data['summary']['risk_score']}/100</span></p>
+            <p><strong>Tâches Complétées:</strong> {report_data['summary']['completed_tasks']}/{report_data['summary']['total_tasks']}</p>
+            <p><strong>Vulnérabilités Totales:</strong> {report_data['summary']['total_vulnerabilities']}</p>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">🔍 Détails des Tâches</h2>"""
+    
+    for task in report_data['tasks'][:10]:  # Limiter à 10 tâches pour l'affichage
+        status_class = 'status-completed' if task['status'] == 'completed' else 'status-failed'
+        html_content += f"""
+            <div class="task-item">
+                <span class="task-status {status_class}">{task['status'].upper()}</span>
+                <h4>{task['tool'].upper()} - {task['target']}</h4>
+                <p><strong>Date:</strong> {datetime.fromisoformat(task['created_at'].replace('Z', '')).strftime('%d/%m/%Y %H:%M')}</p>
+                <p><strong>Vulnérabilités:</strong> {len(task.get('vulnerabilities', []))}</p>
+            </div>"""
+    
+    html_content += f"""
+        </div>
+        
+        <div class="recommendations">
+            <h2 class="section-title" style="color: white; border-color: rgba(255,255,255,0.3);">💡 Recommandations</h2>"""
+    
+    for rec in report_data['recommendations']:
+        priority_color = 'high' if rec['priority'] == 'high' else 'medium'
+        html_content += f"""
+            <div class="recommendation">
+                <h4>🎯 {rec['title']} <span class="{priority_color}">({rec['priority'].upper()})</span></h4>
+                <p>{rec['description']}</p>
+            </div>"""
+    
+    html_content += f"""
+        </div>
+        
+        <div class="footer">
+            <p>📄 Rapport généré par Pacha Toolbox v2.0</p>
+            <p>🕒 {datetime.now().strftime('%d/%m/%Y à %H:%M:%S')}</p>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    report_filename = f"report_{report_data['metadata']['report_id']}.html"
+    report_path = os.path.join(REPORTS_CONFIG['reports_dir'], report_filename)
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    logger.info(f"📄 Rapport HTML généré: {report_filename}")
+    return report_path, report_filename
 
-# Corrections pour les routes de scan
+def generate_json_report(report_data):
+    """Générer un rapport JSON"""
+    ensure_directories()
+    
+    report_filename = f"report_{report_data['metadata']['report_id']}.json"
+    report_path = os.path.join(REPORTS_CONFIG['reports_dir'], report_filename)
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(report_data, f, indent=2, ensure_ascii=False)
+    
+    return report_path, report_filename
+
+# ==================== ROUTES DE BASE ====================
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Vérification de l'état de santé de l'API"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.0',
+        'message': 'Pacha Toolbox Backend opérationnel',
+        'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()}
+    })
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    """Status détaillé du système"""
+    return jsonify({
+        'status': 'operational',
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.0',
+        'uptime': '24h',
+        'modules': {
+            'reports': True,
+            'scans': True,
+            'network': True
+        },
+        'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()}
+    })
+
+# ==================== ROUTES SCANS (UNIQUES) ====================
+
+@app.route('/api/scan/types', methods=['GET'])
+def get_scan_types():
+    """Types de scans disponibles"""
+    return jsonify({
+        'scan_types': {
+            'nmap': {
+                'name': 'Nmap Network Scanner',
+                'description': 'Scanner réseau pour découverte d\'hôtes et ports',
+                'options': ['basic', 'comprehensive', 'stealth']
+            },
+            'nikto': {
+                'name': 'Nikto Web Scanner',
+                'description': 'Scanner de vulnérabilités web',
+                'options': ['fast', 'comprehensive']
+            }
+        }
+    })
+
 @app.route('/api/scan/nmap', methods=['POST'])
 def scan_nmap():
-    """Scan Nmap simulé - VERSION CORRIGÉE"""
+    """Scan Nmap simulé - VERSION CORRIGÉE UNIQUE"""
     try:
         data = request.get_json() or {}
         target = data.get('target', '127.0.0.1')
@@ -317,7 +602,7 @@ def scan_nmap():
 
 @app.route('/api/scan/nikto', methods=['POST'])
 def scan_nikto():
-    """Scan Nikto simulé - VERSION CORRIGÉE"""
+    """Scan Nikto simulé - VERSION CORRIGÉE UNIQUE"""
     try:
         data = request.get_json() or {}
         target = data.get('target', 'http://127.0.0.1')
@@ -390,221 +675,6 @@ def scan_nikto():
         logger.error(f"❌ Erreur scan nikto: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Correction de la fonction create_test_reports
-def create_test_reports():
-    """Créer quelques rapports de test au démarrage - VERSION CORRIGÉE"""
-    try:
-        ensure_directories()
-        
-        # Données de tâches simulées avec created_at cohérent
-        test_tasks = []
-        for i in range(15):
-            task_date = datetime.now() - timedelta(hours=i*2)
-            task = {
-                'task_id': f'test_task_{i}',
-                'scan_id': f'scan_{i}',
-                'tool': 'nmap' if i % 2 == 0 else 'nikto',
-                'target': f'192.168.1.{i+10}',
-                'status': 'completed' if i < 12 else 'failed',
-                'created_at': task_date.isoformat(),
-                'timestamp': task_date.isoformat(),
-                'vulnerabilities': [f'vuln_{j}' for j in range((i % 4) + 1)]
-            }
-            test_tasks.append(task)
-        
-        # Créer plusieurs rapports avec différentes périodes
-        periods = ['24h', '7_days', '30_days']
-        types = ['comprehensive', 'security_focus', 'network_scan']
-        
-        created_reports = []
-        
-        for i, (period, report_type) in enumerate(zip(periods, types)):
-            try:
-                report_data = create_report_data(test_tasks, report_type, period)
-                report_path, filename = generate_html_report(report_data)
-                
-                created_reports.append({
-                    'filename': filename,
-                    'path': report_path,
-                    'period': period,
-                    'type': report_type
-                })
-                
-                logger.info(f"✅ Rapport de test créé: {filename}")
-            except Exception as e:
-                logger.error(f"❌ Erreur création rapport {i}: {e}")
-        
-        if created_reports:
-            logger.info(f"🎉 {len(created_reports)} rapports de test créés avec succès!")
-        
-        return created_reports
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur création rapports de test: {e}")
-        return []
-
-# ==================== ROUTES DE BASE ====================
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Vérification de l'état de santé de l'API"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '2.0',
-        'message': 'Pacha Toolbox Backend opérationnel',
-        'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()}
-    })
-
-@app.route('/api/status', methods=['GET'])
-def get_status():
-    """Status détaillé du système"""
-    return jsonify({
-        'status': 'operational',
-        'timestamp': datetime.now().isoformat(),
-        'version': '2.0',
-        'uptime': '24h',
-        'modules': {
-            'reports': True,
-            'scans': True,
-            'network': True
-        },
-        'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()}
-    })
-
-# ==================== ROUTES SCANS ====================
-
-@app.route('/api/scan/types', methods=['GET'])
-def get_scan_types():
-    """Types de scans disponibles"""
-    return jsonify({
-        'scan_types': {
-            'nmap': {
-                'name': 'Nmap Network Scanner',
-                'description': 'Scanner réseau pour découverte d\'hôtes et ports',
-                'options': ['basic', 'comprehensive', 'stealth']
-            },
-            'nikto': {
-                'name': 'Nikto Web Scanner',
-                'description': 'Scanner de vulnérabilités web',
-                'options': ['fast', 'comprehensive']
-            }
-        }
-    })
-
-@app.route('/api/scan/nmap', methods=['POST'])
-def scan_nmap():
-    """Scan Nmap simulé"""
-    try:
-        data = request.get_json() or {}
-        target = data.get('target', '127.0.0.1')
-        scan_type = data.get('scan_type', 'basic')
-        
-        # Simuler un scan
-        scan_result = create_test_scan_data()
-        scan_result.update({
-            'tool': 'nmap',
-            'target': target,
-            'scan_type': scan_type,
-            'results': {
-                'hosts_discovered': 1 if target == '127.0.0.1' else 0,
-                'ports_open': [22, 80, 443] if scan_type == 'comprehensive' else [80],
-                'services': ['ssh', 'http', 'https'] if scan_type == 'comprehensive' else ['http'],
-                'os_detection': 'Linux 5.x' if scan_type == 'comprehensive' else 'Unknown'
-            }
-        })
-        
-        # Générer un rapport automatiquement
-        try:
-            report_data = create_report_data([scan_result], 'scan_report', '24h')
-            report_path, report_filename = generate_html_report(report_data)
-            
-            scan_result['report_generated'] = True
-            scan_result['report_filename'] = report_filename
-            scan_result['report_url'] = f'/api/reports/download/{report_filename}'
-            
-        except Exception as e:
-            logger.error(f"❌ Erreur génération rapport: {e}")
-            scan_result['report_generated'] = False
-            scan_result['report_error'] = str(e)
-        
-        # Ajouter à l'historique
-        scan_history.insert(0, scan_result)
-        if len(scan_history) > 100:
-            scan_history.pop()
-        
-        return jsonify(scan_result)
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur scan nmap: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/scan/nikto', methods=['POST'])
-def scan_nikto():
-    """Scan Nikto simulé"""
-    try:
-        data = request.get_json() or {}
-        target = data.get('target', 'http://127.0.0.1')
-        scan_type = data.get('scan_type', 'fast')
-        
-        # Simuler des vulnérabilités selon le type de scan
-        if scan_type == 'comprehensive':
-            vulnerabilities = [
-                'Server version disclosure (nginx/1.18.0)',
-                'Missing security headers (X-Frame-Options, CSP)',
-                'Directory traversal potential in /admin/',
-                'XSS vulnerability in search parameter',
-                'Backup files found (.bak, .old extensions)',
-                'Information disclosure in HTTP headers',
-                'Weak authentication mechanism detected'
-            ]
-            risk_level = 'high'
-        else:
-            vulnerabilities = [
-                'Server version disclosure',
-                'Missing X-Frame-Options header'
-            ]
-            risk_level = 'low'
-        
-        scan_result = create_test_scan_data()
-        scan_result.update({
-            'tool': 'nikto',
-            'target': target,
-            'scan_type': scan_type,
-            'results': {
-                'vulnerabilities_found': len(vulnerabilities),
-                'vulnerabilities': vulnerabilities,
-                'risk_level': risk_level,
-                'pages_tested': 156 if scan_type == 'comprehensive' else 45,
-                'plugins_used': 23 if scan_type == 'comprehensive' else 8
-            }
-        })
-        
-        # Générer un rapport automatiquement
-        try:
-            report_data = create_report_data([scan_result], 'vulnerability_report', '24h')
-            report_path, report_filename = generate_html_report(report_data)
-            
-            scan_result['report_generated'] = True
-            scan_result['report_filename'] = report_filename
-            scan_result['report_url'] = f'/api/reports/download/{report_filename}'
-            
-        except Exception as e:
-            logger.error(f"❌ Erreur génération rapport: {e}")
-            scan_result['report_generated'] = False
-            scan_result['report_error'] = str(e)
-        
-        # Ajouter à l'historique
-        scan_history.insert(0, scan_result)
-        if len(scan_history) > 100:
-            scan_history.pop()
-        
-        return jsonify(scan_result)
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur scan nikto: {e}")
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/scans/history', methods=['GET'])
 def get_scan_history():
     """Historique des scans"""
@@ -627,7 +697,7 @@ def get_scan_history():
         logger.error(f"❌ Erreur historique scans: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ==================== ROUTES RAPPORTS ====================
+# ==================== ROUTES RAPPORTS (UNIQUES) ====================
 
 @app.route('/api/reports/test', methods=['GET'])
 def test_reports():
@@ -923,42 +993,6 @@ def cleanup_old_reports():
         logger.error(f"❌ Erreur nettoyage rapports: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/reports/delete/<report_id>', methods=['DELETE'])
-def delete_report(report_id):
-    """Suppression d'un rapport spécifique"""
-    try:
-        ensure_directories()
-        deleted_files = []
-        
-        # Chercher dans tous les répertoires
-        for directory in [REPORTS_CONFIG['reports_dir'], REPORTS_CONFIG['reports_pdf_dir']]:
-            if os.path.exists(directory):
-                for filename in os.listdir(directory):
-                    if report_id in filename and filename.startswith('report_'):
-                        file_path = os.path.join(directory, filename)
-                        if os.path.isfile(file_path):
-                            try:
-                                os.remove(file_path)
-                                deleted_files.append(filename)
-                                logger.info(f"🗑️ Fichier supprimé: {filename}")
-                            except Exception as e:
-                                logger.error(f"❌ Erreur suppression {filename}: {e}")
-        
-        if not deleted_files:
-            return jsonify({
-                'error': f'Aucun rapport trouvé avec l\'ID: {report_id}'
-            }), 404
-        
-        return jsonify({
-            'message': f'Rapport supprimé avec succès: {report_id}',
-            'deleted_files': deleted_files,
-            'total_deleted': len(deleted_files)
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Erreur suppression rapport {report_id}: {e}")
-        return jsonify({'error': str(e)}), 500
-
 # ==================== ROUTES RÉSEAU ====================
 
 @app.route('/api/network/interfaces', methods=['GET'])
@@ -1034,19 +1068,22 @@ def internal_error(error):
 # ==================== CRÉATION DE RAPPORTS DE TEST ====================
 
 def create_test_reports():
-    """Créer quelques rapports de test au démarrage"""
+    """Créer quelques rapports de test au démarrage - VERSION CORRIGÉE"""
     try:
         ensure_directories()
         
-        # Données de tâches simulées
+        # Données de tâches simulées avec created_at cohérent
         test_tasks = []
         for i in range(15):
+            task_date = datetime.now() - timedelta(hours=i*2)
             task = {
                 'task_id': f'test_task_{i}',
+                'scan_id': f'scan_{i}',
                 'tool': 'nmap' if i % 2 == 0 else 'nikto',
                 'target': f'192.168.1.{i+10}',
                 'status': 'completed' if i < 12 else 'failed',
-                'created_at': (datetime.now() - timedelta(hours=i*2)).isoformat(),
+                'created_at': task_date.isoformat(),
+                'timestamp': task_date.isoformat(),
                 'vulnerabilities': [f'vuln_{j}' for j in range((i % 4) + 1)]
             }
             test_tasks.append(task)
