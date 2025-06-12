@@ -1,585 +1,767 @@
+# backend/app/routes/reports.py
 from flask import Blueprint, request, jsonify, send_file
 import os
 import json
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 import logging
-from pathlib import Path
+from jinja2 import Template
+import base64
 
 reports_bp = Blueprint("reports", __name__)
 logger = logging.getLogger(__name__)
 
-REPORTS_DIR = "/app/reports"
+# Configuration des rapports
+REPORTS_CONFIG = {
+    'formats': ['json', 'html', 'txt', 'csv'],
+    'templates_dir': '/app/templates',
+    'reports_dir': '/app/reports',
+    'retention_days': 30
+}
+
+# Créer le répertoire des templates s'il n'existe pas
+os.makedirs(REPORTS_CONFIG['templates_dir'], exist_ok=True)
+
+def create_html_template():
+    """Création du template HTML pour les rapports"""
+    html_template = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapport Pacha Toolbox - {{ report_data.title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .section {
+            background: white;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .section h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .summary-card h3 {
+            color: #4a5568;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .summary-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .task-item {
+            background: #f8fafc;
+            border-left: 4px solid #e2e8f0;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .task-item.completed {
+            border-left-color: #10b981;
+        }
+        
+        .task-item.failed {
+            border-left-color: #ef4444;
+        }
+        
+        .task-item.running {
+            border-left-color: #3b82f6;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .task-type {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-completed {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+        
+        .status-failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+        
+        .status-running {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+        
+        .vulnerabilities {
+            margin-top: 1rem;
+        }
+        
+        .vuln-item {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 5px;
+        }
+        
+        .vuln-high {
+            border-left: 4px solid #dc2626;
+        }
+        
+        .vuln-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .vuln-low {
+            border-left: 4px solid #10b981;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 2rem;
+        }
+        
+        .metadata {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+        
+        @media print {
+            body { background: white; }
+            .header { background: #667eea !important; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ {{ report_data.title }}</h1>
+            <div class="subtitle">{{ report_data.description }}</div>
+            <div class="metadata">
+                <strong>Généré le:</strong> {{ report_data.generated_at }}<br>
+                <strong>Période:</strong> {{ report_data.period }}<br>
+                <strong>Type:</strong> {{ report_data.type }}
+            </div>
+        </div>
+
+        <!-- Résumé exécutif -->
+        <div class="section">
+            <h2>📊 Résumé Exécutif</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Tâches Totales</h3>
+                    <div class="number">{{ report_data.summary.total_tasks }}</div>
+                </div>
+                <div class="task-details">
+                    <p><strong>Cible:</strong> {{ task.target }}</p>
+                    <p><strong>Créé:</strong> {{ task.created_at }}</p>
+                    {% if task.completed_at %}
+                    <p><strong>Terminé:</strong> {{ task.completed_at }}</p>
+                    {% endif %}
+                    {% if task.error %}
+                    <p><strong>Erreur:</strong> <span style="color: #dc2626;">{{ task.error }}</span></p>
+                    {% endif %}
+                    {% if task.vulnerabilities %}
+                    <div class="vulnerabilities">
+                        <h4>Vulnérabilités trouvées:</h4>
+                        {% for vuln in task.vulnerabilities %}
+                        <div class="vuln-item vuln-{{ vuln.severity }}">
+                            <strong>{{ vuln.title }}</strong><br>
+                            {{ vuln.description }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Recommandations -->
+        <div class="section">
+            <h2>💡 Recommandations</h2>
+            {% for recommendation in report_data.recommendations %}
+            <div class="vuln-item vuln-{{ recommendation.priority }}">
+                <strong>{{ recommendation.title }}</strong><br>
+                {{ recommendation.description }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="footer">
+            <p>Rapport généré par Pacha Toolbox v2.0</p>
+            <p>© 2025 - Tous droits réservés</p>
+        </div>
+    </div>
+</body>
+</html>
+    """
+    
+    template_path = os.path.join(REPORTS_CONFIG['templates_dir'], 'report_template.html')
+    with open(template_path, 'w', encoding='utf-8') as f:
+        f.write(html_template)
+    
+    return template_path
+
+def get_all_tasks():
+    """Récupération de toutes les tâches depuis les différents modules"""
+    all_tasks = []
+    
+    # Import des tâches des différents modules
+    try:
+        from app.routes.scan import active_tasks as scan_tasks
+        all_tasks.extend(scan_tasks.values())
+    except ImportError:
+        logger.warning("Module scan non disponible pour les rapports")
+    
+    try:
+        from app.routes.reconnaissance import recon_tasks
+        all_tasks.extend(recon_tasks.values())
+    except ImportError:
+        logger.warning("Module reconnaissance non disponible pour les rapports")
+    
+    try:
+        from app.routes.exploitation import exploit_tasks
+        all_tasks.extend(exploit_tasks.values())
+    except ImportError:
+        logger.warning("Module exploitation non disponible pour les rapports")
+    
+    return all_tasks
+
+def analyze_tasks_for_report(tasks):
+    """Analyse des tâches pour génération de rapport"""
+    analysis = {
+        'total_tasks': len(tasks),
+        'completed_tasks': 0,
+        'failed_tasks': 0,
+        'running_tasks': 0,
+        'total_vulnerabilities': 0,
+        'risk_score': 0,
+        'task_types': {},
+        'vulnerabilities_by_severity': {'high': 0, 'medium': 0, 'low': 0}
+    }
+    
+    for task in tasks:
+        # Comptage par statut
+        if task['status'] == 'completed':
+            analysis['completed_tasks'] += 1
+        elif task['status'] == 'failed':
+            analysis['failed_tasks'] += 1
+        elif task['status'] == 'running':
+            analysis['running_tasks'] += 1
+        
+        # Comptage par type
+        task_type = task.get('type', 'unknown')
+        analysis['task_types'][task_type] = analysis['task_types'].get(task_type, 0) + 1
+        
+        # Analyse des vulnérabilités
+        if task.get('result'):
+            result = task['result']
+            
+            # Scan de vulnérabilités
+            if 'vulnerabilities_found' in result:
+                analysis['total_vulnerabilities'] += result['vulnerabilities_found']
+                analysis['risk_score'] += result['vulnerabilities_found'] * 2
+            
+            # Ports ouverts
+            if 'open_ports' in result:
+                open_ports_count = len(result['open_ports']) if isinstance(result['open_ports'], list) else result.get('open_count', 0)
+                analysis['risk_score'] += open_ports_count
+            
+            # Analyse des risques spécifiques
+            if 'risk_analysis' in result:
+                risk_analysis = result['risk_analysis']
+                if isinstance(risk_analysis, dict):
+                    analysis['vulnerabilities_by_severity']['high'] += len(risk_analysis.get('high_risk', []))
+                    analysis['vulnerabilities_by_severity']['medium'] += len(risk_analysis.get('medium_risk', []))
+                    analysis['vulnerabilities_by_severity']['low'] += len(risk_analysis.get('low_risk', []))
+    
+    return analysis
+
+def generate_recommendations(analysis, tasks):
+    """Génération de recommandations basées sur l'analyse"""
+    recommendations = []
+    
+    # Recommandations basées sur les vulnérabilités
+    if analysis['vulnerabilities_by_severity']['high'] > 0:
+        recommendations.append({
+            'title': 'Vulnérabilités Critiques Détectées',
+            'description': f"Corrigez immédiatement les {analysis['vulnerabilities_by_severity']['high']} vulnérabilités à haut risque identifiées.",
+            'priority': 'high'
+        })
+    
+    if analysis['total_vulnerabilities'] > 10:
+        recommendations.append({
+            'title': 'Révision de la Sécurité Globale',
+            'description': f"Avec {analysis['total_vulnerabilities']} vulnérabilités détectées, une révision complète de la sécurité est recommandée.",
+            'priority': 'high'
+        })
+    
+    # Recommandations basées sur les ports ouverts
+    open_ports_total = sum(len(task.get('result', {}).get('open_ports', [])) for task in tasks if task.get('result'))
+    if open_ports_total > 20:
+        recommendations.append({
+            'title': 'Réduction de la Surface d\'Attaque',
+            'description': f"Fermez les ports non essentiels parmi les {open_ports_total} ports ouverts détectés.",
+            'priority': 'medium'
+        })
+    
+    # Recommandations basées sur les échecs
+    if analysis['failed_tasks'] > analysis['completed_tasks'] * 0.3:
+        recommendations.append({
+            'title': 'Amélioration de la Configuration',
+            'description': "Taux d'échec élevé détecté. Vérifiez la configuration des outils et la connectivité réseau.",
+            'priority': 'medium'
+        })
+    
+    # Recommandations générales
+    recommendations.append({
+        'title': 'Tests Réguliers',
+        'description': "Programmez des tests d'intrusion réguliers pour maintenir un niveau de sécurité optimal.",
+        'priority': 'low'
+    })
+    
+    return recommendations
+
+def create_report_data(tasks, report_type="comprehensive", period="7_days"):
+    """Création des données structurées pour le rapport"""
+    analysis = analyze_tasks_for_report(tasks)
+    recommendations = generate_recommendations(analysis, tasks)
+    
+    # Filtrage des tâches par période
+    if period == "24_hours":
+        cutoff_date = datetime.now() - timedelta(hours=24)
+        period_label = "Dernières 24 heures"
+    elif period == "7_days":
+        cutoff_date = datetime.now() - timedelta(days=7)
+        period_label = "7 derniers jours"
+    elif period == "30_days":
+        cutoff_date = datetime.now() - timedelta(days=30)
+        period_label = "30 derniers jours"
+    else:
+        cutoff_date = datetime.now() - timedelta(days=365)
+        period_label = "Toutes les données"
+    
+    # Filtrage des tâches
+    filtered_tasks = []
+    for task in tasks:
+        try:
+            task_date = datetime.fromisoformat(task['created_at'].replace('Z', '+00:00'))
+            if task_date >= cutoff_date:
+                # Préparation des données de vulnérabilités pour le template
+                task_copy = task.copy()
+                task_copy['vulnerabilities'] = []
+                
+                if task.get('result') and 'risk_analysis' in task['result']:
+                    risk_analysis = task['result']['risk_analysis']
+                    if isinstance(risk_analysis, dict):
+                        for vuln in risk_analysis.get('high_risk', []):
+                            task_copy['vulnerabilities'].append({
+                                'title': 'Vulnérabilité Haute',
+                                'description': vuln,
+                                'severity': 'high'
+                            })
+                        for vuln in risk_analysis.get('medium_risk', []):
+                            task_copy['vulnerabilities'].append({
+                                'title': 'Vulnérabilité Moyenne',
+                                'description': vuln,
+                                'severity': 'medium'
+                            })
+                
+                # Ajout de la cible formatée
+                task_copy['target'] = task.get('data', {}).get('target', 'N/A')
+                task_copy['completed_at'] = task.get('updated_at', '')
+                
+                filtered_tasks.append(task_copy)
+        except:
+            # Si la date n'est pas parsable, on inclut la tâche
+            filtered_tasks.append(task)
+    
+    # Recalcul de l'analyse pour les tâches filtrées
+    filtered_analysis = analyze_tasks_for_report(filtered_tasks)
+    
+    report_data = {
+        'title': f'Rapport de Tests d\'Intrusion - {report_type.title()}',
+        'description': f'Analyse complète des tests d\'intrusion effectués',
+        'generated_at': datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+        'period': period_label,
+        'type': report_type,
+        'summary': filtered_analysis,
+        'tasks': filtered_tasks,
+        'recommendations': recommendations,
+        'metadata': {
+            'total_tasks_analyzed': len(filtered_tasks),
+            'report_id': str(uuid.uuid4()),
+            'version': '2.0'
+        }
+    }
+    
+    return report_data
+
+def generate_html_report(report_data):
+    """Génération d'un rapport HTML"""
+    template_path = create_html_template()
+    
+    with open(template_path, 'r', encoding='utf-8') as f:
+        template_content = f.read()
+    
+    template = Template(template_content)
+    html_content = template.render(report_data=report_data)
+    
+    # Sauvegarde du rapport
+    report_filename = f"report_{report_data['metadata']['report_id']}.html"
+    report_path = os.path.join(REPORTS_CONFIG['reports_dir'], report_filename)
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return report_path, report_filename
+
+def generate_json_report(report_data):
+    """Génération d'un rapport JSON"""
+    report_filename = f"report_{report_data['metadata']['report_id']}.json"
+    report_path = os.path.join(REPORTS_CONFIG['reports_dir'], report_filename)
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(report_data, f, indent=2, ensure_ascii=False, default=str)
+    
+    return report_path, report_filename
+
+def generate_txt_report(report_data):
+    """Génération d'un rapport texte"""
+    report_content = f"""
+RAPPORT DE TESTS D'INTRUSION - PACHA TOOLBOX
+============================================
+
+Titre: {report_data['title']}
+Généré le: {report_data['generated_at']}
+Période: {report_data['period']}
+Type: {report_data['type']}
+
+RÉSUMÉ EXÉCUTIF
+===============
+- Tâches totales: {report_data['summary']['total_tasks']}
+- Tâches complétées: {report_data['summary']['completed_tasks']}
+- Tâches échouées: {report_data['summary']['failed_tasks']}
+- Vulnérabilités détectées: {report_data['summary']['total_vulnerabilities']}
+- Score de risque: {report_data['summary']['risk_score']}
+
+RÉPARTITION PAR SÉVÉRITÉ
+========================
+- Vulnérabilités hautes: {report_data['summary']['vulnerabilities_by_severity']['high']}
+- Vulnérabilités moyennes: {report_data['summary']['vulnerabilities_by_severity']['medium']}
+- Vulnérabilités basses: {report_data['summary']['vulnerabilities_by_severity']['low']}
+
+DÉTAILS DES TÂCHES
+==================
+"""
+    
+    for i, task in enumerate(report_data['tasks'], 1):
+        report_content += f"""
+Tâche {i}: {task['type']}
+-------------------------
+- Statut: {task['status']}
+- Cible: {task.get('target', 'N/A')}
+- Créé: {task['created_at']}
+"""
+        if task.get('error'):
+            report_content += f"- Erreur: {task['error']}\n"
+        
+        if task.get('vulnerabilities'):
+            report_content += f"- Vulnérabilités trouvées: {len(task['vulnerabilities'])}\n"
+    
+    report_content += f"""
+
+RECOMMANDATIONS
+===============
+"""
+    
+    for i, rec in enumerate(report_data['recommendations'], 1):
+        report_content += f"""
+{i}. {rec['title']} (Priorité: {rec['priority']})
+   {rec['description']}
+"""
+    
+    report_content += f"""
+
+---
+Rapport généré par Pacha Toolbox v2.0
+ID du rapport: {report_data['metadata']['report_id']}
+"""
+    
+    report_filename = f"report_{report_data['metadata']['report_id']}.txt"
+    report_path = os.path.join(REPORTS_CONFIG['reports_dir'], report_filename)
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(report_content)
+    
+    return report_path, report_filename
+
+# Routes de l'API des rapports
+@reports_bp.route("/test", methods=["GET"])
+def test_reports():
+    """Test du module de rapports"""
+    return jsonify({
+        "message": "Module rapports fonctionnel !",
+        "version": "1.0",
+        "available_endpoints": [
+            "/api/reports/generate",
+            "/api/reports/list",
+            "/api/reports/download/<filename>",
+            "/api/reports/summary",
+            "/api/reports/cleanup"
+        ],
+        "supported_formats": REPORTS_CONFIG['formats']
+    })
+
+@reports_bp.route("/generate", methods=["POST"])
+def generate_report():
+    """Génération d'un nouveau rapport"""
+    try:
+        data = request.get_json() or {}
+        
+        # Paramètres du rapport
+        report_format = data.get('format', 'html').lower()
+        report_type = data.get('type', 'comprehensive')
+        period = data.get('period', '7_days')
+        
+        if report_format not in REPORTS_CONFIG['formats']:
+            return jsonify({
+                "error": f"Format non supporté. Formats disponibles: {REPORTS_CONFIG['formats']}"
+            }), 400
+        
+        # Récupération des tâches
+        all_tasks = get_all_tasks()
+        
+        if not all_tasks:
+            return jsonify({
+                "warning": "Aucune tâche trouvée pour générer le rapport",
+                "message": "Exécutez quelques scans avant de générer un rapport"
+            }), 200
+        
+        # Création des données du rapport
+        report_data = create_report_data(all_tasks, report_type, period)
+        
+        # Génération selon le format
+        if report_format == 'html':
+            report_path, filename = generate_html_report(report_data)
+        elif report_format == 'json':
+            report_path, filename = generate_json_report(report_data)
+        elif report_format == 'txt':
+            report_path, filename = generate_txt_report(report_data)
+        else:
+            return jsonify({"error": f"Format {report_format} pas encore implémenté"}), 400
+        
+        # Informations sur le fichier généré
+        file_size = os.path.getsize(report_path)
+        
+        return jsonify({
+            "message": "Rapport généré avec succès",
+            "report": {
+                "filename": filename,
+                "format": report_format,
+                "size": file_size,
+                "download_url": f"/api/reports/download/{filename}",
+                "report_id": report_data['metadata']['report_id'],
+                "generated_at": report_data['generated_at']
+            },
+            "summary": report_data['summary']
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur génération rapport: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @reports_bp.route("/list", methods=["GET"])
 def list_reports():
-    """Liste tous les rapports disponibles"""
+    """Liste des rapports disponibles"""
     try:
         reports = []
-        reports_path = Path(REPORTS_DIR)
+        reports_dir = REPORTS_CONFIG['reports_dir']
         
-        if not reports_path.exists():
-            os.makedirs(REPORTS_DIR, exist_ok=True)
-            return jsonify({"reports": []})
-        
-        for file_path in reports_path.iterdir():
-            if file_path.is_file():
-                stat = file_path.stat()
-                
-                # Détermination du type de rapport basé sur le nom du fichier
-                report_type = "unknown"
-                if "nmap" in file_path.name:
-                    report_type = "nmap"
-                elif "openvas" in file_path.name:
-                    report_type = "openvas"
-                elif "wireshark" in file_path.name:
-                    report_type = "wireshark"
-                elif "metasploit" in file_path.name:
-                    report_type = "metasploit"
-                elif "masscan" in file_path.name:
-                    report_type = "masscan"
-                
-                reports.append({
-                    "filename": file_path.name,
-                    "size": stat.st_size,
-                    "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "type": report_type,
-                    "download_url": f"/api/download/{file_path.name}"
-                })
+        if os.path.exists(reports_dir):
+            for filename in os.listdir(reports_dir):
+                if filename.startswith('report_') and any(filename.endswith(f'.{fmt}') for fmt in REPORTS_CONFIG['formats']):
+                    file_path = os.path.join(reports_dir, filename)
+                    file_stats = os.stat(file_path)
+                    
+                    reports.append({
+                        'filename': filename,
+                        'size': file_stats.st_size,
+                        'created_at': datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
+                        'modified_at': datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                        'format': filename.split('.')[-1],
+                        'download_url': f"/api/reports/download/{filename}"
+                    })
         
         # Tri par date de création (plus récent en premier)
-        reports.sort(key=lambda x: x["created"], reverse=True)
+        reports.sort(key=lambda x: x['created_at'], reverse=True)
         
         return jsonify({
-            "reports": reports,
-            "total": len(reports),
-            "total_size": sum(r["size"] for r in reports)
+            "total_reports": len(reports),
+            "reports": reports
         })
         
     except Exception as e:
-        logger.error(f"Erreur liste rapports: {str(e)}")
+        logger.error(f"❌ Erreur liste rapports: {e}")
         return jsonify({"error": str(e)}), 500
 
-@reports_bp.route("/delete/<filename>", methods=["DELETE"])
-def delete_report(filename):
-    """Suppression d'un rapport"""
+@reports_bp.route("/download/<filename>", methods=["GET"])
+def download_report(filename):
+    """Téléchargement d'un rapport"""
     try:
-        file_path = os.path.join(REPORTS_DIR, filename)
-        
-        # Vérification de sécurité pour éviter les path traversal
-        if not os.path.commonpath([REPORTS_DIR, file_path]) == REPORTS_DIR:
-            return jsonify({"error": "Nom de fichier invalide"}), 400
+        # Sécurisation du nom de fichier
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.join(REPORTS_CONFIG['reports_dir'], safe_filename)
         
         if not os.path.exists(file_path):
-            return jsonify({"error": "Fichier non trouvé"}), 404
+            return jsonify({"error": "Rapport non trouvé"}), 404
         
-        os.remove(file_path)
+        return send_file(file_path, as_attachment=True, download_name=safe_filename)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur téléchargement rapport: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@reports_bp.route("/summary", methods=["GET"])
+def get_reports_summary():
+    """Résumé des activités pour tableau de bord"""
+    try:
+        all_tasks = get_all_tasks()
+        analysis = analyze_tasks_for_report(all_tasks)
+        
+        # Statistiques par période
+        now = datetime.now()
+        stats_24h = len([t for t in all_tasks if datetime.fromisoformat(t['created_at'].replace('Z', '+00:00')) >= now - timedelta(hours=24)])
+        stats_7d = len([t for t in all_tasks if datetime.fromisoformat(t['created_at'].replace('Z', '+00:00')) >= now - timedelta(days=7)])
+        stats_30d = len([t for t in all_tasks if datetime.fromisoformat(t['created_at'].replace('Z', '+00:00')) >= now - timedelta(days=30)])
         
         return jsonify({
-            "message": f"Rapport {filename} supprimé avec succès",
-            "filename": filename
+            "global_analysis": analysis,
+            "period_stats": {
+                "last_24h": stats_24h,
+                "last_7d": stats_7d,
+                "last_30d": stats_30d
+            },
+            "recent_activity": all_tasks[-5:] if all_tasks else []
         })
         
     except Exception as e:
-        logger.error(f"Erreur suppression rapport: {str(e)}")
+        logger.error(f"❌ Erreur résumé rapports: {e}")
         return jsonify({"error": str(e)}), 500
-
-@reports_bp.route("/analyze/<filename>", methods=["GET"])
-def analyze_report(filename):
-    """Analyse d'un rapport existant"""
-    try:
-        file_path = os.path.join(REPORTS_DIR, filename)
-        
-        # Vérification de sécurité
-        if not os.path.commonpath([REPORTS_DIR, file_path]) == REPORTS_DIR:
-            return jsonify({"error": "Nom de fichier invalide"}), 400
-        
-        if not os.path.exists(file_path):
-            return jsonify({"error": "Fichier non trouvé"}), 404
-        
-        # Analyse basée sur le type de fichier
-        analysis = {}
-        
-        if filename.endswith('.xml'):
-            analysis = analyze_xml_report(file_path)
-        elif filename.endswith('.pcap'):
-            analysis = analyze_pcap_report(file_path)
-        elif filename.endswith('.txt'):
-            analysis = analyze_text_report(file_path)
-        else:
-            return jsonify({"error": "Type de fichier non supporté pour l'analyse"}), 400
-        
-        return jsonify({
-            "filename": filename,
-            "analysis": analysis,
-            "analyzed_at": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Erreur analyse rapport: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-def analyze_xml_report(file_path):
-    """Analyse d'un rapport XML (Nmap/OpenVAS)"""
-    try:
-        import xml.etree.ElementTree as ET
-        
-        tree = ET.parse(file_path)
-        root = tree.getroot()
-        
-        analysis = {
-            "file_type": "xml",
-            "root_element": root.tag,
-            "total_elements": len(list(root.iter())),
-            "attributes": dict(root.attrib)
-        }
-        
-        # Analyse spécifique Nmap
-        if root.tag == "nmaprun":
-            analysis.update(analyze_nmap_xml(root))
-        
-        # Analyse spécifique OpenVAS
-        elif "report" in root.tag.lower():
-            analysis.update(analyze_openvas_xml(root))
-        
-        return analysis
-        
-    except Exception as e:
-        return {"error": f"Erreur analyse XML: {str(e)}"}
-
-def analyze_nmap_xml(root):
-    """Analyse spécifique d'un rapport Nmap XML"""
-    analysis = {
-        "scan_type": "nmap",
-        "hosts": [],
-        "total_hosts": 0,
-        "hosts_up": 0,
-        "total_ports": 0,
-        "open_ports": 0,
-        "services": {},
-        "os_info": []
-    }
-    
-    try:
-        # Informations générales du scan
-        analysis["scanner"] = root.get("scanner", "nmap")
-        analysis["version"] = root.get("version", "unknown")
-        analysis["start_time"] = root.get("startstr", "unknown")
-        
-        # Analyse des hôtes
-        for host in root.findall(".//host"):
-            host_info = {"addresses": [], "ports": [], "status": "unknown"}
-            
-            # Statut de l'hôte
-            status = host.find("status")
-            if status is not None:
-                host_info["status"] = status.get("state", "unknown")
-                if host_info["status"] == "up":
-                    analysis["hosts_up"] += 1
-            
-            # Adresses IP
-            for address in host.findall(".//address"):
-                host_info["addresses"].append({
-                    "addr": address.get("addr"),
-                    "addrtype": address.get("addrtype")
-                })
-            
-            # Ports
-            for port in host.findall(".//port"):
-                port_info = {
-                    "portid": port.get("portid"),
-                    "protocol": port.get("protocol"),
-                    "state": "unknown",
-                    "service": {}
-                }
-                
-                # État du port
-                state = port.find("state")
-                if state is not None:
-                    port_info["state"] = state.get("state")
-                    if port_info["state"] == "open":
-                        analysis["open_ports"] += 1
-                
-                # Service
-                service = port.find("service")
-                if service is not None:
-                    service_name = service.get("name", "unknown")
-                    port_info["service"] = {
-                        "name": service_name,
-                        "product": service.get("product", ""),
-                        "version": service.get("version", "")
-                    }
-                    
-                    # Comptage des services
-                    if service_name in analysis["services"]:
-                        analysis["services"][service_name] += 1
-                    else:
-                        analysis["services"][service_name] = 1
-                
-                host_info["ports"].append(port_info)
-                analysis["total_ports"] += 1
-            
-            # Détection d'OS
-            for osmatch in host.findall(".//osmatch"):
-                analysis["os_info"].append({
-                    "name": osmatch.get("name", "unknown"),
-                    "accuracy": osmatch.get("accuracy", "0")
-                })
-            
-            analysis["hosts"].append(host_info)
-            analysis["total_hosts"] += 1
-        
-        return analysis
-        
-    except Exception as e:
-        return {"error": f"Erreur analyse Nmap: {str(e)}"}
-
-def analyze_openvas_xml(root):
-    """Analyse spécifique d'un rapport OpenVAS XML"""
-    analysis = {
-        "scan_type": "openvas",
-        "vulnerabilities": [],
-        "severity_counts": {"High": 0, "Medium": 0, "Low": 0, "Log": 0},
-        "total_vulnerabilities": 0,
-        "hosts_scanned": [],
-        "scan_info": {}
-    }
-    
-    try:
-        # Recherche des résultats de vulnérabilités
-        for result in root.findall(".//result"):
-            vuln = {
-                "name": "",
-                "description": "",
-                "severity": "Log",
-                "host": "",
-                "port": "",
-                "threat": "Log"
-            }
-            
-            # Nom de la vulnérabilité
-            name_elem = result.find(".//name")
-            if name_elem is not None:
-                vuln["name"] = name_elem.text or ""
-            
-            # Description
-            desc_elem = result.find(".//description")
-            if desc_elem is not None:
-                vuln["description"] = desc_elem.text or ""
-            
-            # Sévérité/Threat
-            threat_elem = result.find(".//threat")
-            if threat_elem is not None:
-                vuln["threat"] = threat_elem.text or "Log"
-                vuln["severity"] = vuln["threat"]
-            
-            # Hôte
-            host_elem = result.find(".//host")
-            if host_elem is not None:
-                vuln["host"] = host_elem.text or ""
-                if vuln["host"] and vuln["host"] not in analysis["hosts_scanned"]:
-                    analysis["hosts_scanned"].append(vuln["host"])
-            
-            # Port
-            port_elem = result.find(".//port")
-            if port_elem is not None:
-                vuln["port"] = port_elem.text or ""
-            
-            analysis["vulnerabilities"].append(vuln)
-            analysis["total_vulnerabilities"] += 1
-            
-            # Comptage par sévérité
-            severity = vuln["severity"]
-            if severity in analysis["severity_counts"]:
-                analysis["severity_counts"][severity] += 1
-        
-        return analysis
-        
-    except Exception as e:
-        return {"error": f"Erreur analyse OpenVAS: {str(e)}"}
-
-def analyze_pcap_report(file_path):
-    """Analyse d'un fichier PCAP"""
-    try:
-        import subprocess
-        
-        analysis = {
-            "file_type": "pcap",
-            "packet_count": 0,
-            "file_size": os.path.getsize(file_path),
-            "protocols": {},
-            "conversations": [],
-            "duration": "unknown"
-        }
-        
-        # Utilisation de capinfos pour les statistiques de base
-        try:
-            result = subprocess.run(
-                ["capinfos", file_path],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if "Number of packets" in line:
-                        analysis["packet_count"] = int(line.split(':')[1].strip())
-                    elif "Capture duration" in line:
-                        analysis["duration"] = line.split(':')[1].strip()
-        except:
-            pass
-        
-        # Utilisation de tshark pour l'analyse des protocoles
-        try:
-            result = subprocess.run(
-                ["tshark", "-r", file_path, "-q", "-z", "io,phs"],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            if result.returncode == 0:
-                # Parsing simple de la hiérarchie des protocoles
-                for line in result.stdout.split('\n'):
-                    if 'frames:' in line or 'bytes:' in line:
-                        parts = line.strip().split()
-                        if len(parts) >= 2:
-                            protocol = parts[0]
-                            if protocol not in ['Protocol', '===']:
-                                analysis["protocols"][protocol] = line.strip()
-        except:
-            pass
-        
-        return analysis
-        
-    except Exception as e:
-        return {"error": f"Erreur analyse PCAP: {str(e)}"}
-
-def analyze_text_report(file_path):
-    """Analyse d'un rapport texte"""
-    try:
-        analysis = {
-            "file_type": "text",
-            "line_count": 0,
-            "word_count": 0,
-            "character_count": 0,
-            "keywords": {},
-            "summary": ""
-        }
-        
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-            lines = content.split('\n')
-            words = content.split()
-            
-            analysis["line_count"] = len(lines)
-            analysis["word_count"] = len(words)
-            analysis["character_count"] = len(content)
-            
-            # Recherche de mots-clés courants dans les rapports de sécurité
-            security_keywords = [
-                'vulnerability', 'exploit', 'attack', 'malware', 'threat',
-                'security', 'risk', 'critical', 'high', 'medium', 'low',
-                'port', 'service', 'open', 'closed', 'filtered',
-                'scan', 'target', 'host', 'network'
-            ]
-            
-            content_lower = content.lower()
-            for keyword in security_keywords:
-                count = content_lower.count(keyword)
-                if count > 0:
-                    analysis["keywords"][keyword] = count
-            
-            # Résumé basique (premières lignes non vides)
-            summary_lines = []
-            for line in lines[:10]:
-                line = line.strip()
-                if line and not line.startswith('#') and not line.startswith('='):
-                    summary_lines.append(line)
-                    if len(summary_lines) >= 3:
-                        break
-            
-            analysis["summary"] = ' '.join(summary_lines)[:200] + "..." if summary_lines else "Aucun résumé disponible"
-        
-        return analysis
-        
-    except Exception as e:
-        return {"error": f"Erreur analyse texte: {str(e)}"}
 
 @reports_bp.route("/cleanup", methods=["POST"])
 def cleanup_old_reports():
     """Nettoyage des anciens rapports"""
     try:
         data = request.get_json() or {}
-        days_old = data.get("days_old", 30)  # Par défaut, supprimer les fichiers de plus de 30 jours
+        retention_days = data.get('retention_days', REPORTS_CONFIG['retention_days'])
         
-        if days_old < 1:
-            return jsonify({"error": "La période doit être d'au moins 1 jour"}), 400
-        
-        reports_path = Path(REPORTS_DIR)
-        cutoff_time = datetime.now().timestamp() - (days_old * 24 * 60 * 60)
+        reports_dir = REPORTS_CONFIG['reports_dir']
+        cutoff_date = datetime.now() - timedelta(days=retention_days)
         
         deleted_files = []
-        total_size_freed = 0
         
-        for file_path in reports_path.iterdir():
-            if file_path.is_file() and file_path.stat().st_mtime < cutoff_time:
-                file_size = file_path.stat().st_size
-                file_path.unlink()
-                deleted_files.append({
-                    "filename": file_path.name,
-                    "size": file_size
-                })
-                total_size_freed += file_size
+        if os.path.exists(reports_dir):
+            for filename in os.listdir(reports_dir):
+                file_path = os.path.join(reports_dir, filename)
+                if os.path.isfile(file_path):
+                    file_time = datetime.fromtimestamp(os.path.getctime(file_path))
+                    if file_time < cutoff_date:
+                        os.remove(file_path)
+                        deleted_files.append(filename)
         
         return jsonify({
-            "message": f"Nettoyage terminé: {len(deleted_files)} fichiers supprimés",
-            "deleted_files": deleted_files,
-            "total_files_deleted": len(deleted_files),
-            "total_size_freed": total_size_freed,
-            "days_old": days_old
+            "message": f"Nettoyage terminé",
+            "deleted_files": len(deleted_files),
+            "files": deleted_files,
+            "retention_days": retention_days
         })
         
     except Exception as e:
-        logger.error(f"Erreur nettoyage rapports: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@reports_bp.route("/export", methods=["POST"])
-def export_reports():
-    """Export de plusieurs rapports dans une archive"""
-    try:
-        data = request.get_json()
-        filenames = data.get("filenames", [])
-        
-        if not filenames:
-            return jsonify({"error": "Aucun fichier spécifié pour l'export"}), 400
-        
-        import zipfile
-        import tempfile
-        
-        # Création d'un fichier ZIP temporaire
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"pacha_reports_export_{timestamp}.zip"
-        zip_path = os.path.join(REPORTS_DIR, zip_filename)
-        
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for filename in filenames:
-                file_path = os.path.join(REPORTS_DIR, filename)
-                
-                # Vérification de sécurité
-                if not os.path.commonpath([REPORTS_DIR, file_path]) == REPORTS_DIR:
-                    continue
-                
-                if os.path.exists(file_path):
-                    zipf.write(file_path, filename)
-        
-        if os.path.exists(zip_path):
-            return jsonify({
-                "export_file": {
-                    "filename": zip_filename,
-                    "size": os.path.getsize(zip_path),
-                    "download_url": f"/api/download/{zip_filename}"
-                },
-                "exported_files": filenames,
-                "created_at": datetime.now().isoformat()
-            })
-        else:
-            return jsonify({"error": "Échec de la création de l'archive"}), 500
-        
-    except Exception as e:
-        logger.error(f"Erreur export rapports: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@reports_bp.route("/stats", methods=["GET"])
-def get_reports_stats():
-    """Statistiques globales des rapports"""
-    try:
-        reports_path = Path(REPORTS_DIR)
-        
-        if not reports_path.exists():
-            return jsonify({
-                "total_reports": 0,
-                "total_size": 0,
-                "by_type": {},
-                "recent_activity": []
-            })
-        
-        stats = {
-            "total_reports": 0,
-            "total_size": 0,
-            "by_type": {},
-            "recent_activity": [],
-            "oldest_report": None,
-            "newest_report": None
-        }
-        
-        files_info = []
-        
-        for file_path in reports_path.iterdir():
-            if file_path.is_file():
-                stat = file_path.stat()
-                file_info = {
-                    "name": file_path.name,
-                    "size": stat.st_size,
-                    "created": stat.st_ctime,
-                    "modified": stat.st_mtime
-                }
-                
-                # Détermination du type
-                file_type = "other"
-                name_lower = file_path.name.lower()
-                if "nmap" in name_lower:
-                    file_type = "nmap"
-                elif "openvas" in name_lower:
-                    file_type = "openvas"
-                elif "wireshark" in name_lower or "pcap" in name_lower:
-                    file_type = "wireshark"
-                elif "metasploit" in name_lower:
-                    file_type = "metasploit"
-                elif "masscan" in name_lower:
-                    file_type = "masscan"
-                
-                file_info["type"] = file_type
-                files_info.append(file_info)
-                
-                # Mise à jour des statistiques
-                stats["total_reports"] += 1
-                stats["total_size"] += stat.st_size
-                
-                if file_type in stats["by_type"]:
-                    stats["by_type"][file_type]["count"] += 1
-                    stats["by_type"][file_type]["size"] += stat.st_size
-                else:
-                    stats["by_type"][file_type] = {"count": 1, "size": stat.st_size}
-        
-        # Tri par date de création
-        files_info.sort(key=lambda x: x["created"], reverse=True)
-        
-        # Activité récente (derniers 5 fichiers)
-        stats["recent_activity"] = [
-            {
-                "filename": f["name"],
-                "type": f["type"],
-                "size": f["size"],
-                "created": datetime.fromtimestamp(f["created"]).isoformat()
-            }
-            for f in files_info[:5]
-        ]
-        
-        # Plus ancien et plus récent
-        if files_info:
-            stats["newest_report"] = {
-                "filename": files_info[0]["name"],
-                "created": datetime.fromtimestamp(files_info[0]["created"]).isoformat()
-            }
-            stats["oldest_report"] = {
-                "filename": files_info[-1]["name"],
-                "created": datetime.fromtimestamp(files_info[-1]["created"]).isoformat()
-            }
-        
-        return jsonify(stats)
-        
-    except Exception as e:
-        logger.error(f"Erreur statistiques rapports: {str(e)}")
+        logger.error(f"❌ Erreur nettoyage rapports: {e}")
         return jsonify({"error": str(e)}), 500

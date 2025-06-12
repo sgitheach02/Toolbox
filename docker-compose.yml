@@ -1,74 +1,208 @@
-version: "3.8"
+# docker-compose.yml - Déploiement complet Pacha Toolbox
+version: '3.8'
 
 services:
-  # Backend API principal
+  # Backend API Flask
   backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
+    container_name: pacha-backend
     ports:
       - "5000:5000"
-    volumes:
-      - ./data:/app/data
-      - ./reports:/app/reports
-      - ./logs:/app/logs
-    networks:
-      - security-net
     environment:
-      - FLASK_ENV=development
-      - FLASK_DEBUG=1
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - DATABASE_URL=postgresql://pacha:pacha123@postgres:5432/pacha_toolbox
       - REDIS_URL=redis://redis:6379/0
-      - TARGET_HOST=printnightmare.thm
+      - SECRET_KEY=your-secret-key-change-in-production
+    volumes:
+      - ./backend:/app
+      - reports_data:/app/reports
+      - logs_data:/app/logs
     depends_on:
+      - postgres
       - redis
+    networks:
+      - pacha-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Frontend React
   frontend:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: pacha-frontend
     ports:
       - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     networks:
-      - security-net
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
+      - pacha-network
     restart: unless-stopped
 
-  # Redis pour les tâches
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: pacha-postgres
+    environment:
+      - POSTGRES_DB=pacha_toolbox
+      - POSTGRES_USER=pacha
+      - POSTGRES_PASSWORD=pacha123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacha -d pacha_toolbox"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis pour cache et queue
   redis:
     image: redis:7-alpine
+    container_name: pacha-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
-      - security-net
+      - pacha-network
     restart: unless-stopped
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Cible Print Nightmare (simulation)
-  printnightmare:
-    image: nginx:alpine
-    ports:
-      - "445:80"
-      - "135:80"
-      - "139:80"
+  # Worker Celery pour tâches asynchrones
+  celery-worker:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pacha-celery-worker
+    command: celery -A app.celery worker --loglevel=info
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://pacha:pacha123@postgres:5432/pacha_toolbox
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+    depends_on:
+      - postgres
+      - redis
     networks:
-      security-net:
-        aliases:
-          - printnightmare.thm
+      - pacha-network
     restart: unless-stopped
-    # Simulation basique avec nginx
 
-# Configuration réseau
+  # Monitoring avec Flower
+  flower:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pacha-flower
+    command: celery -A app.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - pacha-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: pacha-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - reports_data:/var/www/reports
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - pacha-network
+    restart: unless-stopped
+
+  # Surveillance avec Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pacha-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - pacha-network
+    restart: unless-stopped
+
+  # Tableaux de bord avec Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pacha-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - pacha-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  reports_data:
+    driver: local
+  logs_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
 networks:
-  security-net:
+  pacha-network:
     driver: bridge
     ipam:
-      driver: default
       config:
         - subnet: 172.20.0.0/16

@@ -1,12 +1,11 @@
+# frontend/Dockerfile
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copie des fichiers de configuration
-COPY package.json ./
-
 # Installation des dépendances
-RUN npm install
+COPY package*.json ./
+RUN npm ci --only=production
 
 # Copie du code source
 COPY . .
@@ -14,10 +13,11 @@ COPY . .
 # Build de l'application
 RUN npm run build
 
-# Installation de serve pour servir les fichiers statiques
-RUN npm install -g serve
+# Serveur de production
+FROM nginx:alpine
+COPY --from=0 /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 3000
 
-# Servir l'application
-CMD ["serve", "-s", "build", "-l", "3000"]
+CMD ["nginx", "-g", "daemon off;"]

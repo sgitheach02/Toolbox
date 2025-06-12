@@ -1,72 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Configuration API avec détection automatique
+// Configuration API avec détection d'environnement
 const getApiUrl = () => {
-  // Détection de l'environnement
+  // En développement
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:5000/api';
   }
-  // Pour Docker ou autres environnements
+  // En production/Docker
   return `${window.location.protocol}//${window.location.hostname}:5000/api`;
 };
 
 const API_URL = getApiUrl();
-const BACKEND_URL = API_URL.replace('/api', '');
+console.log('🔧 Configuration API:', API_URL);
 
-console.log('🔧 API URL:', API_URL);
+// Classe pour gérer les appels API avec retry et gestion d'erreurs
+class ApiClient {
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl;
+    this.retryCount = 3;
+    this.retryDelay = 1000;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      ...options
+    };
+
+    console.log(`🌐 Requête: ${options.method || 'GET'} ${url}`);
+
+    for (let attempt = 1; attempt <= this.retryCount; attempt++) {
+      try {
+        const response = await fetch(url, defaultOptions);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log(`✅ Réponse reçue (tentative ${attempt}):`, data);
+        return data;
+
+      } catch (error) {
+        console.error(`❌ Erreur tentative ${attempt}/${this.retryCount}:`, error);
+        
+        if (attempt === this.retryCount) {
+          throw error;
+        }
+        
+        // Attente avant retry
+        await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
+      }
+    }
+  }
+
+  // Méthodes utilitaires
+  async get(endpoint) {
+    return this.request(endpoint, { method: 'GET' });
+  }
+
+  async post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+}
+
+// Instance API globale
+const apiClient = new ApiClient(API_URL);
 
 function App() {
-  const [activeTab, setActiveTab] = useState('scan');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [apiStatus, setApiStatus] = useState('checking');
   const [logs, setLogs] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Test de connectivité API amélioré
+  // Test de connectivité au démarrage et périodique
   useEffect(() => {
     testApiConnection();
-    // Test périodique toutes les 30s
     const interval = setInterval(testApiConnection, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const testApiConnection = async () => {
-    try {
-      console.log('🧪 Test API:', `${API_URL}/health`);
-      
-      // Essai avec fetch simple d'abord
-      const response = await fetch(`${API_URL}/health`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        mode: 'cors'
-      });
-      
-      console.log('📡 Response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ API Data:', data);
-        setApiStatus('connected');
-        addLog('✅ API connectée', 'success');
-      } else {
-        console.log('❌ Response not OK:', response.status);
-        setApiStatus('error');
-        addLog(`❌ API erreur ${response.status}`, 'error');
-      }
-    } catch (error) {
-      console.error('❌ API Error:', error);
-      setApiStatus('disconnected');
-      
-      // Test de connectivité alternative
-      try {
-        const pingResponse = await fetch(`${BACKEND_URL}/`, { mode: 'no-cors' });
-        addLog('⚠️ API accessible mais CORS bloqué', 'warning');
-      } catch (pingError) {
-        addLog(`❌ API totalement inaccessible`, 'error');
-      }
+  // Polling des tâches actives
+  useEffect(() => {
+    if (apiStatus === 'connected') {
+      const interval = setInterval(updateTasks, 5000);
+      return () => clearInterval(interval);
     }
-  };
+  }, [apiStatus]);
 
   const addLog = (message, type = 'info') => {
     const log = {
@@ -76,380 +109,345 @@ function App() {
       timestamp: new Date().toLocaleTimeString('fr-FR'),
       date: new Date().toLocaleDateString('fr-FR')
     };
-    setLogs(prev => [log, ...prev.slice(0, 29)]);
+    setLogs(prev => [log, ...prev.slice(0, 49)]); // Garde les 50 derniers logs
   };
 
-  return (
-    <div className="app">
-      <header className="header">
-        <div className="header-title">
-          <span className="shield">🛡️</span>
-          <h1>Pacha Toolbox v2.0</h1>
-          <span className="subtitle">Pentest Security Suite</span>
-        </div>
-        <div className="status-bar">
-          <span className="target">🎯 Cible: printnightmare.thm</span>
-          <span className={`api-status ${apiStatus}`}>
-            {apiStatus === 'connected' && '🟢 API Online'}
-            {apiStatus === 'disconnected' && '🔴 API Offline'}
-            {apiStatus === 'checking' && '🟡 Checking...'}
-            {apiStatus === 'error' && '🟠 API Error'}
-          </span>
-        </div>
-      </header>
-
-      <nav className="navigation">
-        {[
-          { id: 'scan', label: 'Scanner', icon: '🔍' },
-          { id: 'exploit', label: 'Exploit', icon: '💥' },
-          { id: 'capture', label: 'Capture', icon: '📡' },
-          { id: 'reports', label: 'Rapports', icon: '📊' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            className={`nav-button ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="nav-icon">{tab.icon}</span>
-            <span className="nav-label">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <div className="main-container">
-        <main className="main-content">
-          {activeTab === 'scan' && <ScanPanel addLog={addLog} />}
-          {activeTab === 'exploit' && <ExploitPanel addLog={addLog} />}
-          {activeTab === 'capture' && <CapturePanel addLog={addLog} />}
-          {activeTab === 'reports' && <ReportsPanel addLog={addLog} />}
-        </main>
-
-        <aside className="logs-panel">
-          <div className="logs-header">
-            <h3>📋 Logs en temps réel</h3>
-            <button 
-              className="clear-logs" 
-              onClick={() => setLogs([])}
-              title="Vider les logs"
-            >
-              🗑️
-            </button>
-          </div>
-          <div className="logs-container">
-            {logs.map(log => (
-              <div key={log.id} className={`log-entry log-${log.type}`}>
-                <div className="log-header">
-                  <span className="log-time">{log.timestamp}</span>
-                  <span className="log-type">{getLogIcon(log.type)}</span>
-                </div>
-                <div className="log-message">{log.message}</div>
-              </div>
-            ))}
-            {logs.length === 0 && (
-              <div className="no-logs">
-                <div className="no-logs-icon">📝</div>
-                <div>Aucune activité récente</div>
-              </div>
-            )}
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-function getLogIcon(type) {
-  switch(type) {
-    case 'success': return '✅';
-    case 'error': return '❌';
-    case 'warning': return '⚠️';
-    case 'info': return 'ℹ️';
-    default: return '📝';
-  }
-}
-
-// Composant Scan avec versioning intelligent
-function ScanPanel({ addLog }) {
-  const [target, setTarget] = useState('127.0.0.1');
-  const [scanning, setScanning] = useState(false);
-  const [scanType, setScanType] = useState('basic');
-
-  const scanProfiles = {
-    basic: { name: 'Basic Scan', args: '-sn', icon: '🏃' },
-    version: { name: 'Version Detection', args: '-sV', icon: '🔬' },
-    stealth: { name: 'Stealth Scan', args: '-sS -T2', icon: '🥷' },
-    aggressive: { name: 'Aggressive Scan', args: '-A -T4', icon: '⚡' },
-    printnightmare: { name: 'Print Nightmare', args: '-p 135,139,445,3389 -sV --script smb-vuln*', icon: '🖨️' },
-    os: { name: 'OS Detection', args: '-O -sV', icon: '💻' },
-    ports: { name: 'Port Scan', args: '-p 1-65535 -sS', icon: '🔌' }
+  const testApiConnection = async () => {
+    try {
+      setApiStatus('checking');
+      const response = await apiClient.get('/health');
+      setApiStatus('connected');
+      addLog('✅ API connectée avec succès', 'success');
+      console.log('✅ API Health:', response);
+    } catch (error) {
+      setApiStatus('disconnected');
+      addLog(`❌ API déconnectée: ${error.message}`, 'error');
+      console.error('❌ Erreur API:', error);
+    }
   };
 
-  const startNmapScan = async () => {
-    if (scanning) return;
-    
-    setScanning(true);
-    const profile = scanProfiles[scanType];
-    addLog(`🔍 Lancement ${profile.name} sur ${target}`, 'info');
+  const updateTasks = async () => {
+    try {
+      const response = await apiClient.get('/scan/tasks');
+      setTasks(response.tasks || []);
+    } catch (error) {
+      console.error('⚠️ Erreur récupération tâches:', error);
+    }
+  };
+
+  const startNmapScan = async (target, args = '-sV') => {
+    if (!target.trim()) {
+      addLog('❌ Veuillez spécifier une cible', 'error');
+      return;
+    }
 
     try {
-      const response = await fetch(`${API_URL}/scan/nmap`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          target: target.trim(), 
-          args: profile.args,
-          scan_name: `Scan_nmap_${scanType}`,
-          scan_type: scanType
-        })
+      setLoading(true);
+      addLog(`🔍 Démarrage scan Nmap: ${target}`, 'info');
+      
+      const response = await apiClient.post('/scan/nmap', {
+        target: target.trim(),
+        args: args.trim()
       });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        addLog(`✅ ${profile.name} lancé - ID: ${data.scan_id || 'N/A'}`, 'success');
-        addLog(`📄 Rapport disponible sous: ${data.scan_name || 'N/A'}`, 'info');
-      } else {
-        addLog(`❌ Erreur scan: ${data.error || 'Erreur inconnue'}`, 'error');
-      }
+      addLog(`✅ Scan démarré: ${response.task_id}`, 'success');
+      updateTasks(); // Mise à jour immédiate
     } catch (error) {
-      addLog(`❌ Erreur réseau: ${error.message}`, 'error');
-      console.error('Scan error:', error);
+      addLog(`❌ Erreur scan Nmap: ${error.message}`, 'error');
+    } finally {
+      setLoading(false);
     }
-    
-    setScanning(false);
   };
 
-  return (
-    <div className="panel">
-      <h2>🔍 Scanner de Réseau</h2>
-      
-      <div className="form-group">
-        <label>🎯 Cible :</label>
-        <input
-          type="text"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder="127.0.0.1, printnightmare.thm, 192.168.1.0/24"
-        />
-      </div>
+  const startMasscanScan = async (target, ports = '1-1000', rate = '1000') => {
+    if (!target.trim()) {
+      addLog('❌ Veuillez spécifier une cible', 'error');
+      return;
+    }
 
-      <div className="form-group">
-        <label>⚙️ Type de scan :</label>
-        <div className="scan-types">
-          {Object.entries(scanProfiles).map(([key, profile]) => (
-            <label key={key} className="scan-option">
-              <input
-                type="radio"
-                value={key}
-                checked={scanType === key}
-                onChange={(e) => setScanType(e.target.value)}
-              />
-              <span className="scan-label">
-                <span className="scan-icon">{profile.icon}</span>
-                <span className="scan-name">{profile.name}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
+    try {
+      setLoading(true);
+      addLog(`🚀 Démarrage scan Masscan: ${target}`, 'info');
       
-      <div className="button-group">
-        <button 
-          className="btn btn-primary" 
-          onClick={startNmapScan}
-          disabled={scanning || !target.trim()}
-        >
-          {scanning ? (
-            <>⏳ Scan en cours...</>
-          ) : (
-            <>🚀 Lancer {scanProfiles[scanType].name}</>
-          )}
-        </button>
-      </div>
+      const response = await apiClient.post('/scan/masscan', {
+        target: target.trim(),
+        ports: ports.trim(),
+        rate: rate.trim()
+      });
 
-      <div className="scan-preview">
-        <h4>📋 Commande à exécuter :</h4>
-        <code>nmap {scanProfiles[scanType].args} {target}</code>
-      </div>
+      addLog(`✅ Scan démarré: ${response.task_id}`, 'success');
+      updateTasks();
+    } catch (error) {
+      addLog(`❌ Erreur scan Masscan: ${error.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTaskDetails = async (taskId) => {
+    try {
+      const response = await apiClient.get(`/scan/status/${taskId}`);
+      return response;
+    } catch (error) {
+      console.error('Erreur récupération détails tâche:', error);
+      return null;
+    }
+  };
+
+  // Composants de l'interface
+  const StatusIndicator = () => (
+    <div className={`status-indicator ${apiStatus}`}>
+      <div className="status-dot"></div>
+      <span>
+        {apiStatus === 'connected' && '✅ API Connectée'}
+        {apiStatus === 'disconnected' && '❌ API Déconnectée'}
+        {apiStatus === 'checking' && '🔄 Vérification...'}
+      </span>
+      <button onClick={testApiConnection} className="test-btn">
+        Test
+      </button>
     </div>
   );
-}
 
-// Composant Reports avec boutons PDF/HTML
-function ReportsPanel({ addLog }) {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const loadReports = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/reports/list`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setReports(data.reports || []);
-        addLog(`📊 ${data.reports?.length || 0} rapports trouvés`, 'success');
-      } else {
-        addLog(`❌ Erreur chargement rapports`, 'error');
-      }
-    } catch (error) {
-      addLog(`❌ Erreur réseau: ${error.message}`, 'error');
-    }
-    setLoading(false);
-  };
-
-  const downloadReport = (filename, format = 'original') => {
-    let url;
-    
-    if (format === 'pdf') {
-      // Conversion PDF côté backend
-      url = `${BACKEND_URL}/api/reports/export/${filename}?format=pdf`;
-      addLog(`📄 Génération PDF: ${filename}`, 'info');
-    } else {
-      // Téléchargement direct
-      url = `${BACKEND_URL}/api/download/${filename}`;
-      addLog(`📥 Téléchargement: ${filename}`, 'info');
-    }
-    
-    window.open(url, '_blank');
-  };
-
-  const getReportType = (filename) => {
-    if (filename.includes('nmap')) return { icon: '🔍', type: 'Nmap Scan' };
-    if (filename.includes('masscan')) return { icon: '⚡', type: 'Masscan' };
-    if (filename.includes('openvas')) return { icon: '🛡️', type: 'OpenVAS' };
-    if (filename.includes('capture')) return { icon: '📡', type: 'Capture' };
-    return { icon: '📄', type: 'Rapport' };
-  };
-
-  useEffect(() => {
-    loadReports();
-  }, []);
-
-  return (
-    <div className="panel">
-      <h2>📊 Rapports Générés</h2>
-      
-      <div className="button-group">
-        <button 
-          className="btn btn-secondary" 
-          onClick={loadReports}
-          disabled={loading}
-        >
-          {loading ? '⏳ Chargement...' : '🔄 Actualiser'}
-        </button>
-      </div>
-      
-      <div className="reports-list">
-        {reports.length === 0 ? (
-          <div className="no-reports">
-            <div className="no-reports-icon">📄</div>
-            <div>Aucun rapport généré</div>
-            <small>Lancez un scan pour créer des rapports</small>
+  const LogsPanel = () => (
+    <div className="logs-panel">
+      <h3>Logs d'activité</h3>
+      <div className="logs-container">
+        {logs.map(log => (
+          <div key={log.id} className={`log-entry ${log.type}`}>
+            <span className="log-time">{log.timestamp}</span>
+            <span className="log-message">{log.message}</span>
           </div>
-        ) : (
-          reports.map((report, i) => {
-            const reportType = getReportType(report.filename);
-            const isHtml = report.filename.endsWith('.html');
-            
-            return (
-              <div key={i} className="report-item">
-                <div className="report-info">
-                  <div className="report-header">
-                    <span className="report-icon">{reportType.icon}</span>
-                    <span className="report-type">{reportType.type}</span>
-                  </div>
-                  <span className="report-name">{report.filename}</span>
-                  <span className="report-size">{formatFileSize(report.size)}</span>
-                </div>
-                <div className="report-actions">
-                  <button 
-                    className="btn btn-small"
-                    onClick={() => downloadReport(report.filename)}
-                    title="Télécharger le fichier original"
-                  >
-                    📥 Original
-                  </button>
-                  {isHtml && (
-                    <button 
-                      className="btn btn-small btn-pdf"
-                      onClick={() => downloadReport(report.filename, 'pdf')}
-                      title="Convertir en PDF"
-                    >
-                      📄 PDF
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
+        ))}
+        {logs.length === 0 && (
+          <div className="log-entry info">
+            <span className="log-message">Aucun log pour le moment</span>
+          </div>
         )}
       </div>
     </div>
   );
-}
 
-// Composants Capture et Exploit (simplifiés)
-function CapturePanel({ addLog }) {
-  const [capturing, setCapturing] = useState(false);
-  const [duration, setDuration] = useState(60);
+  const ScanModule = () => {
+    const [nmapTarget, setNmapTarget] = useState('');
+    const [nmapArgs, setNmapArgs] = useState('-sV');
+    const [masscanTarget, setMasscanTarget] = useState('');
+    const [masscanPorts, setMasscanPorts] = useState('1-1000');
+    const [masscanRate, setMasscanRate] = useState('1000');
 
-  const startCapture = async () => {
-    setCapturing(true);
-    addLog(`📡 Démarrage capture tcpdump (${duration}s)`, 'info');
-    
-    setTimeout(() => {
-      setCapturing(false);
-      addLog(`🏁 Capture terminée`, 'success');
-    }, duration * 1000);
+    return (
+      <div className="scan-module">
+        <h2>🔍 Module de Scan</h2>
+        
+        <div className="scan-section">
+          <h3>Nmap Scanner</h3>
+          <div className="scan-form">
+            <input
+              type="text"
+              placeholder="Cible (ex: 192.168.1.1, localhost)"
+              value={nmapTarget}
+              onChange={(e) => setNmapTarget(e.target.value)}
+              className="scan-input"
+            />
+            <input
+              type="text"
+              placeholder="Arguments Nmap (ex: -sV -sC)"
+              value={nmapArgs}
+              onChange={(e) => setNmapArgs(e.target.value)}
+              className="scan-input"
+            />
+            <button
+              onClick={() => startNmapScan(nmapTarget, nmapArgs)}
+              disabled={loading || apiStatus !== 'connected'}
+              className="scan-button"
+            >
+              {loading ? '🔄 Démarrage...' : '🚀 Lancer Nmap'}
+            </button>
+          </div>
+        </div>
+
+        <div className="scan-section">
+          <h3>Masscan Scanner</h3>
+          <div className="scan-form">
+            <input
+              type="text"
+              placeholder="Cible"
+              value={masscanTarget}
+              onChange={(e) => setMasscanTarget(e.target.value)}
+              className="scan-input"
+            />
+            <input
+              type="text"
+              placeholder="Ports (ex: 1-1000)"
+              value={masscanPorts}
+              onChange={(e) => setMasscanPorts(e.target.value)}
+              className="scan-input"
+            />
+            <input
+              type="text"
+              placeholder="Rate (ex: 1000)"
+              value={masscanRate}
+              onChange={(e) => setMasscanRate(e.target.value)}
+              className="scan-input"
+            />
+            <button
+              onClick={() => startMasscanScan(masscanTarget, masscanPorts, masscanRate)}
+              disabled={loading || apiStatus !== 'connected'}
+              className="scan-button"
+            >
+              {loading ? '🔄 Démarrage...' : '🚀 Lancer Masscan'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const TasksPanel = () => (
+    <div className="tasks-panel">
+      <h3>Tâches Actives ({tasks.length})</h3>
+      <div className="tasks-container">
+        {tasks.map(task => (
+          <div key={task.id} className={`task-item ${task.status}`}>
+            <div className="task-header">
+              <span className="task-type">{task.type}</span>
+              <span className={`task-status ${task.status}`}>
+                {task.status === 'running' && '🔄'}
+                {task.status === 'completed' && '✅'}
+                {task.status === 'failed' && '❌'}
+                {task.status === 'created' && '📝'}
+                {task.status}
+              </span>
+            </div>
+            <div className="task-details">
+              <p><strong>Cible:</strong> {task.data?.target}</p>
+              <p><strong>Créé:</strong> {new Date(task.created_at).toLocaleString('fr-FR')}</p>
+              {task.updated_at && (
+                <p><strong>Mis à jour:</strong> {new Date(task.updated_at).toLocaleString('fr-FR')}</p>
+              )}
+              {task.result && (
+                <div className="task-result">
+                  <p><strong>Résultat:</strong></p>
+                  <p>Ports ouverts: {task.result.open_ports?.length || 0}</p>
+                  {task.result.report_file && (
+                    <a href={`${API_URL}/download/${task.result.report_file.split('/').pop()}`} 
+                       target="_blank" rel="noopener noreferrer">
+                      📄 Télécharger le rapport
+                    </a>
+                  )}
+                </div>
+              )}
+              {task.error && (
+                <div className="task-error">
+                  <p><strong>Erreur:</strong> {task.error}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {tasks.length === 0 && (
+          <div className="no-tasks">
+            <p>Aucune tâche active</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const Dashboard = () => (
+    <div className="dashboard">
+      <h2>📊 Dashboard</h2>
+      <div className="dashboard-stats">
+        <div className="stat-card">
+          <h3>Statut API</h3>
+          <StatusIndicator />
+        </div>
+        <div className="stat-card">
+          <h3>Tâches Actives</h3>
+          <div className="stat-number">{tasks.length}</div>
+        </div>
+        <div className="stat-card">
+          <h3>Dernière Activité</h3>
+          <div className="stat-text">
+            {logs.length > 0 ? logs[0].timestamp : 'Aucune'}
+          </div>
+        </div>
+      </div>
+      <div className="dashboard-content">
+        <TasksPanel />
+        <LogsPanel />
+      </div>
+    </div>
+  );
+
+  const TabNavigation = () => (
+    <nav className="tab-navigation">
+      <button
+        className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
+        onClick={() => setActiveTab('dashboard')}
+      >
+        📊 Dashboard
+      </button>
+      <button
+        className={`tab-button ${activeTab === 'scan' ? 'active' : ''}`}
+        onClick={() => setActiveTab('scan')}
+      >
+        🔍 Scan
+      </button>
+      <button
+        className={`tab-button ${activeTab === 'recon' ? 'active' : ''}`}
+        onClick={() => setActiveTab('recon')}
+      >
+        🕵️ Reconnaissance
+      </button>
+      <button
+        className={`tab-button ${activeTab === 'exploit' ? 'active' : ''}`}
+        onClick={() => setActiveTab('exploit')}
+      >
+        💥 Exploitation
+      </button>
+      <button
+        className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+        onClick={() => setActiveTab('reports')}
+      >
+        📊 Rapports
+      </button>
+    </nav>
+  );
+
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'scan':
+        return <ScanModule />;
+      case 'recon':
+        return <div className="module"><h2>🕵️ Module Reconnaissance</h2><p>En développement...</p></div>;
+      case 'exploit':
+        return <div className="module"><h2>💥 Module Exploitation</h2><p>En développement...</p></div>;
+      case 'reports':
+        return <div className="module"><h2>📊 Module Rapports</h2><p>En développement...</p></div>;
+      default:
+        return <Dashboard />;
+    }
   };
 
   return (
-    <div className="panel">
-      <h2>📡 Capture Réseau</h2>
-      <div className="form-group">
-        <label>⏱️ Durée (secondes) :</label>
-        <input
-          type="number"
-          value={duration}
-          onChange={(e) => setDuration(Math.max(10, parseInt(e.target.value) || 60))}
-          min="10"
-          max="300"
-        />
-      </div>
-      <button 
-        className="btn btn-primary" 
-        onClick={startCapture}
-        disabled={capturing}
-      >
-        {capturing ? '⏳ Capture...' : '📡 Démarrer'}
-      </button>
+    <div className="App">
+      <header className="app-header">
+        <h1>🛡️ Pacha Toolbox</h1>
+        <div className="header-info">
+          <StatusIndicator />
+        </div>
+      </header>
+      
+      <TabNavigation />
+      
+      <main className="app-main">
+        {renderActiveTab()}
+      </main>
     </div>
   );
-}
-
-function ExploitPanel({ addLog }) {
-  return (
-    <div className="panel">
-      <h2>💥 Exploitation</h2>
-      <div className="info-card">
-        <h4>🖨️ Print Nightmare (CVE-2021-34527)</h4>
-        <p>Module d'exploitation en développement</p>
-        <button className="btn btn-warning">🚀 Bientôt disponible</button>
-      </div>
-    </div>
-  );
-}
-
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 export default App;

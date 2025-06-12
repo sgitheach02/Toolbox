@@ -1,51 +1,69 @@
 FROM python:3.11-slim
 
-# Variables d'environnement
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app
-
-# Installation des outils essentiels seulement
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Installation des outils de sécurité
+RUN apt-get update && apt-get install -y \
     nmap \
+    masscan \
+    nikto \
+    dirb \
+    sqlmap \
     curl \
     wget \
-    netcat-openbsd \
-    procps \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Répertoire de travail
 WORKDIR /app
 
 # Installation des dépendances Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Création des répertoires
-RUN mkdir -p /app/data /app/reports /app/logs && \
-    chmod 755 /app/data /app/reports /app/logs
-
-# Copie du code source
+# Copie du code
 COPY . .
 
-# Wordlists basiques intégrées
-RUN mkdir -p /usr/share/wordlists && \
-    echo -e "password\nadmin\n123456\npassword123\nP@ssw0rd\nadministrator\nroot\nguest\nservice" > /usr/share/wordlists/common.txt && \
-    cp /usr/share/wordlists/common.txt /usr/share/wordlists/rockyou.txt
+# Création des répertoires nécessaires
+RUN mkdir -p /app/reports /app/logs /app/data
 
-# Script de santé simple
-RUN echo '#!/bin/bash\ncurl -f http://localhost:5000/api/health || exit 1' > /healthcheck.sh && \
-    chmod +x /healthcheck.sh
+# Variables d'environnement
+ENV PYTHONPATH=/app
+ENV FLASK_APP=main.py
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD /healthcheck.sh
-
-# Port
+# Exposition du port
 EXPOSE 5000
 
-# Démarrage
-CMD ["python", "-m", "app.main"]
+# Commande de démarrage
+CMD ["python", "main.py"]
+
+# backend/Dockerfile.dev
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \
+    nmap \
+    masscan \
+    nikto \
+    dirb \
+    sqlmap \
+    curl \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Installation des outils de développement
+RUN pip install flask-cors python-dotenv
+
+COPY . .
+
+RUN mkdir -p /app/reports /app/logs /app/data
+
+ENV PYTHONPATH=/app
+ENV FLASK_ENV=development
+ENV FLASK_DEBUG=true
+
+EXPOSE 5000
+
+CMD ["python", "main.py"]

@@ -5,107 +5,114 @@ import logging
 from datetime import datetime
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
+# Création de l'app Flask
 app = Flask(__name__)
 
-# CORS ULTRA PERMISSIF - Pour éliminer tout problème CORS
+# Configuration CORS ultra-permissive pour le développement
 CORS(app, 
-     origins="*",
-     methods="*", 
-     allow_headers="*",
-     supports_credentials=False,
-     send_wildcard=True)
+     origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+     supports_credentials=True)
 
-# Middleware pour debug et CORS manuel
+# Création des répertoires nécessaires
+directories = ['/app/reports', '/app/data', '/app/logs', '/app/temp']
+for directory in directories:
+    os.makedirs(directory, exist_ok=True)
+    logger.info(f"📁 Répertoire créé/vérifié: {directory}")
+
+# Middleware pour logging et CORS
 @app.before_request
 def before_request():
     logger.info(f"🌐 {request.method} {request.url} from {request.remote_addr}")
     
-    # CORS préflight
+    # Gestion des requêtes OPTIONS (preflight CORS)
     if request.method == "OPTIONS":
         logger.info("🔄 Requête OPTIONS (preflight)")
         response = jsonify({'status': 'preflight ok'})
         response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Methods", "*")
-        response.headers.add("Access-Control-Allow-Headers", "*")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,Accept")
         response.headers.add("Access-Control-Max-Age", "3600")
         return response
 
 @app.after_request
 def after_request(response):
-    # Headers CORS pour toutes les réponses
+    """Headers CORS pour toutes les réponses"""
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept')
     response.headers.add('Access-Control-Max-Age', '3600')
     return response
 
-# Création des répertoires
-os.makedirs('/app/reports', exist_ok=True)
-os.makedirs('/app/data', exist_ok=True)
-os.makedirs('/app/logs', exist_ok=True)
-
-# Import et enregistrement des routes avec gestion d'erreurs
 def register_routes():
-    """Enregistrement sécurisé des routes"""
-    try:
-        from app.routes.scan import scan_bp
-        app.register_blueprint(scan_bp, url_prefix="/api/scan")
-        logger.info("✅ Routes scan chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes scan: {e}")
-
-    try:
-        from app.routes.dashboard import dashboard_bp
-        app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
-        logger.info("✅ Routes dashboard chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes dashboard: {e}")
-
-    try:
-        from app.routes.reports import reports_bp
-        app.register_blueprint(reports_bp, url_prefix="/api/reports")
-        logger.info("✅ Routes reports chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes reports: {e}")
-
-    try:
-        from app.routes.reconnaissance import recon_bp
-        app.register_blueprint(recon_bp, url_prefix="/api/recon")
-        logger.info("✅ Routes reconnaissance chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes reconnaissance: {e}")
-
-    try:
-        from app.routes.exploitation import exploit_bp
-        app.register_blueprint(exploit_bp, url_prefix="/api/exploit")
-        logger.info("✅ Routes exploitation chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes exploitation: {e}")
-
-    try:
-        from app.routes.network import network_bp
-        app.register_blueprint(network_bp, url_prefix="/api/network")
-        logger.info("✅ Routes network chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes network: {e}")
-
-    try:
-        from app.routes.bruteforce import bruteforce_bp
-        app.register_blueprint(bruteforce_bp, url_prefix="/api/bruteforce")
-        logger.info("✅ Routes bruteforce chargées")
-    except Exception as e:
-        logger.error(f"❌ Erreur routes bruteforce: {e}")
+    """Enregistrement sécurisé de toutes les routes"""
+    routes_registered = []
+    
+    # Routes principales
+    route_configs = [
+        ('app.routes.scan', 'scan_bp', '/api/scan'),
+        ('app.routes.dashboard', 'dashboard_bp', '/api/dashboard'),
+        ('app.routes.reports', 'reports_bp', '/api/reports'),
+        ('app.routes.reconnaissance', 'recon_bp', '/api/recon'),
+        ('app.routes.exploitation', 'exploit_bp', '/api/exploit'),
+        ('app.routes.network', 'network_bp', '/api/network'),
+        ('app.routes.bruteforce', 'bruteforce_bp', '/api/bruteforce'),
+        ('app.routes.openvas', 'openvas_bp', '/api/openvas'),
+    ]
+    
+    for module_name, blueprint_name, url_prefix in route_configs:
+        try:
+            module = __import__(module_name, fromlist=[blueprint_name])
+            blueprint = getattr(module, blueprint_name)
+            app.register_blueprint(blueprint, url_prefix=url_prefix)
+            routes_registered.append(f"✅ {blueprint_name} -> {url_prefix}")
+            logger.info(f"✅ Route chargée: {blueprint_name} -> {url_prefix}")
+        except ImportError as e:
+            logger.warning(f"⚠️ Module non trouvé: {module_name} - {e}")
+        except AttributeError as e:
+            logger.warning(f"⚠️ Blueprint non trouvé: {blueprint_name} - {e}")
+        except Exception as e:
+            logger.error(f"❌ Erreur chargement {module_name}: {e}")
+    
+    logger.info(f"📋 Routes enregistrées: {len(routes_registered)}")
+    return routes_registered
 
 # Chargement des routes
 logger.info("🔧 Chargement des routes...")
-register_routes()
+registered_routes = register_routes()
+
+# Routes de base
+@app.route('/', methods=['GET'])
+def root():
+    """Route racine pour debug"""
+    return jsonify({
+        'message': 'Pacha Toolbox API v2.0',
+        'status': 'running',
+        'timestamp': datetime.now().isoformat(),
+        'routes_loaded': len(registered_routes),
+        'available_endpoints': [
+            '/api/health',
+            '/api/test',
+            '/api/scan/*',
+            '/api/recon/*',
+            '/api/exploit/*',
+            '/api/reports/*',
+            '/api/network/*',
+            '/api/bruteforce/*',
+            '/api/openvas/*'
+        ]
+    })
 
 @app.route('/api/health', methods=['GET', 'POST', 'OPTIONS'])
 def health_check():
-    """Test de santé avec méthodes multiples"""
+    """Endpoint de santé avec support multi-méthodes"""
     logger.info("💚 Health check appelé")
     return jsonify({
         'status': 'healthy',
@@ -113,95 +120,114 @@ def health_check():
         'method': request.method,
         'cors_enabled': True,
         'version': '2.0.0',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'routes_loaded': len(registered_routes)
     })
 
 @app.route('/api/test', methods=['GET', 'POST', 'OPTIONS'])
 def test_endpoint():
-    """Endpoint de test simple"""
-    logger.info("🧪 Test endpoint appelé")
+    """Endpoint de test complet"""
+    logger.info(f"🧪 Test endpoint appelé - {request.method}")
     
     data = {
         'message': 'Test endpoint fonctionnel',
         'method': request.method,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'headers': dict(request.headers),
+        'args': dict(request.args)
     }
     
     if request.method == 'POST':
         try:
             json_data = request.get_json()
-            data['received_data'] = json_data
-        except:
-            data['received_data'] = 'No JSON data'
+            data['received_data'] = json_data or 'Pas de données JSON'
+        except Exception as e:
+            data['json_error'] = str(e)
     
     return jsonify(data)
 
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Status complet de l'API"""
+    return jsonify({
+        'api_version': '2.0.0',
+        'status': 'operational',
+        'routes_loaded': registered_routes,
+        'directories': {
+            'reports': os.path.exists('/app/reports'),
+            'data': os.path.exists('/app/data'),
+            'logs': os.path.exists('/app/logs'),
+            'temp': os.path.exists('/app/temp')
+        },
+        'timestamp': datetime.now().isoformat()
+    })
+
 @app.route('/api/download/<filename>')
 def download_file(filename):
-    """Téléchargement des rapports"""
+    """Téléchargement sécurisé des fichiers"""
     try:
+        # Sécurisation du nom de fichier
         safe_filename = os.path.basename(filename)
         file_path = os.path.join('/app/reports', safe_filename)
         
-        logger.info(f"📥 Download: {file_path}")
+        logger.info(f"📥 Demande de téléchargement: {file_path}")
         
         if not os.path.exists(file_path):
+            logger.warning(f"❌ Fichier non trouvé: {file_path}")
             return jsonify({'error': 'Fichier non trouvé'}), 404
-            
+        
         return send_file(file_path, as_attachment=True, download_name=safe_filename)
         
     except Exception as e:
-        logger.error(f"❌ Erreur download: {e}")
+        logger.error(f"❌ Erreur téléchargement: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Route racine pour debug
-@app.route('/')
-def root():
-    return jsonify({
-        'message': 'Pacha Toolbox API',
-        'status': 'running',
-        'endpoints': [
-            '/api/health',
-            '/api/test', 
-            '/api/scan/*',
-            '/api/recon/*',
-            '/api/exploit/*',
-            '/api/reports/*'
-        ]
-    })
-
-# Gestion d'erreurs
+# Gestion d'erreurs globale
 @app.errorhandler(404)
 def not_found(error):
     logger.warning(f"❌ 404: {request.url}")
     return jsonify({
         'error': 'Endpoint non trouvé',
         'url': request.url,
-        'method': request.method
+        'method': request.method,
+        'available_endpoints': [
+            '/api/health',
+            '/api/test',
+            '/api/status',
+            '/api/scan/*',
+            '/api/recon/*',
+            '/api/exploit/*'
+        ]
     }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"❌ 500: {error}")
-    return jsonify({'error': 'Erreur interne du serveur'}), 500
+    return jsonify({
+        'error': 'Erreur interne du serveur',
+        'message': str(error)
+    }), 500
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    logger.warning(f"❌ 405: {request.method} not allowed for {request.url}")
+    return jsonify({
+        'error': 'Méthode non autorisée',
+        'method': request.method,
+        'url': request.url
+    }), 405
 
 if __name__ == "__main__":
-    logger.info("🚀 Démarrage Pacha Toolbox Backend")
-    logger.info(f"🌐 CORS: Toutes origines autorisées")
-    logger.info(f"📁 Reports: /app/reports")
+    logger.info("🚀 Démarrage Pacha Toolbox Backend v2.0")
+    logger.info(f"🌐 CORS: Configuration permissive activée")
+    logger.info(f"📁 Répertoires: {directories}")
+    logger.info(f"📋 Routes chargées: {len(registered_routes)}")
     
     # Test de connectivité interne
-    logger.info("🧪 Test des routes importées...")
+    logger.info("🧪 Test des routes internes...")
     with app.test_client() as client:
         response = client.get('/api/health')
         logger.info(f"✅ Health check interne: {response.status_code}")
     
-app.run(host="0.0.0.0", port=5000, debug=True)
-
-try:
-    from app.routes.scan import scan_bp
-    app.register_blueprint(scan_bp, url_prefix="/api/scan")
-    logger.info("✅ Routes scan chargées")
-except Exception as e:
-    logger.error(f"❌ Erreur routes scan: {e}")
-    
+    # Démarrage du serveur
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
