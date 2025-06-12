@@ -189,6 +189,10 @@ def generate_scan_report(scan_data):
             margin: 1rem 0;
             border: 1px solid #00d4ff;
         }}
+        @media print {{
+            body {{ background: white !important; color: black !important; }}
+            .banner {{ background: #00ff88 !important; }}
+        }}
     </style>
 </head>
 <body>

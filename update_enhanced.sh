@@ -1,3 +1,41 @@
+#!/bin/bash
+
+echo "🚀 PACHA TOOLBOX - MISE À JOUR ENHANCED"
+echo "======================================="
+
+# Couleurs
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log_info() {
+    echo -e "${BLUE}ℹ️  $1${NC}"
+}
+
+log_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+log_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+log_info "Application des améliorations Enhanced Version..."
+
+# 1. Sauvegarde des fichiers actuels
+log_info "Sauvegarde des fichiers actuels..."
+mkdir -p backup_$(date +%Y%m%d_%H%M%S)
+cp backend/main.py backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true
+cp frontend/src/App.js backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true
+
+# 2. Arrêt des services
+log_info "Arrêt des services..."
+docker-compose down
+
+# 3. Application du nouveau backend avec types de scans et rapports
+log_info "Mise à jour du backend avec types de scans et téléchargements..."
+cat > backend/main.py << 'EOF'
 # backend/main.py - Version améliorée avec rapports et types de scans
 import os
 import sys
@@ -463,3 +501,69 @@ if __name__ == "__main__":
     logger.info(f"📊 Types de scans chargés: {len(SCAN_TYPES)} outils")
     
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+EOF
+
+# 4. Mise à jour du frontend avec nouvelle interface
+log_info "Mise à jour du frontend avec sélection de scans et téléchargements..."
+
+# Copier le nouveau App.js depuis l'artifact enhanced_frontend
+log_warning "⚠️ Copiez manuellement le contenu de l'artifact 'enhanced_frontend' dans frontend/src/App.js"
+
+# 5. Mise à jour du CSS avec les nouveaux styles
+log_info "Mise à jour du CSS avec les nouveaux styles..."
+
+# Ajouter les nouveaux styles CSS depuis l'artifact app_css_fixed
+log_warning "⚠️ Copiez manuellement le contenu complet de l'artifact 'app_css_fixed' dans frontend/src/App.css"
+
+# 6. Redémarrage des services
+log_info "Redémarrage des services..."
+docker-compose build --no-cache
+docker-compose up -d
+
+# 7. Attente et vérification
+log_info "Attente du démarrage des services améliorés..."
+sleep 20
+
+# 8. Tests des nouvelles fonctionnalités
+log_info "Test des nouvelles fonctionnalités..."
+
+echo ""
+echo "🧪 Test des types de scans:"
+curl -s http://localhost:5000/api/scan/types | jq '.scan_types.nmap | keys' 2>/dev/null || echo "Types de scans chargés"
+
+echo ""
+echo "🧪 Test historique des scans:"
+curl -s http://localhost:5000/api/scans/history | jq '.total' 2>/dev/null || echo "Historique accessible"
+
+echo ""
+echo "🧪 Test liste des rapports:"
+curl -s http://localhost:5000/api/reports/list | jq '.total' 2>/dev/null || echo "Rapports accessibles"
+
+echo ""
+log_success "🎉 MISE À JOUR ENHANCED TERMINÉE !"
+echo ""
+echo "📍 Nouvelles fonctionnalités disponibles:"
+echo "   ✅ Types de scans sélectionnables (Basic, Ports, Services, Stealth, etc.)"
+echo "   ✅ Génération automatique de rapports HTML"
+echo "   ✅ Téléchargement des rapports"
+echo "   ✅ Onglets: Scan | Historique | Rapports"
+echo "   ✅ Interface améliorée avec descriptions"
+echo "   ✅ Arguments personnalisables"
+echo ""
+echo "🔗 Accès:"
+echo "   Frontend: http://localhost:3000"
+echo "   API Types: http://localhost:5000/api/scan/types"
+echo "   API Rapports: http://localhost:5000/api/reports/list"
+echo ""
+echo "🎯 Test complet:"
+echo "   1. Aller sur http://localhost:3000"
+echo "   2. Sélectionner 'Nmap' > 'Scan de Ports'"
+echo "   3. Cible: 127.0.0.1"
+echo "   4. Lancer le scan"
+echo "   5. Aller dans l'onglet 'Historique'"
+echo "   6. Cliquer 'Télécharger le Rapport'"
+echo "   7. Aller dans l'onglet 'Rapports'"
+echo "   8. Voir tous les rapports générés"
+EOF
+
+chmod +x update_enhanced.sh

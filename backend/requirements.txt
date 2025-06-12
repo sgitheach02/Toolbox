@@ -1,22 +1,7 @@
-# requirements.txt - Version minimale pour démarrage rapide
-
-# Flask essentiels
+# Requirements.txt minimal fonctionnel
 Flask==2.3.3
 Flask-CORS==4.0.0
 Werkzeug==2.3.7
-
-# Outils de base
 requests==2.31.0
-python-nmap==0.7.1
-beautifulsoup4==4.12.2
-psutil==5.9.5
-
-# Utilitaires
 python-dateutil==2.8.2
-
-# Optionnels pour développement avancé (à décommenter si besoin)
-# Flask-SQLAlchemy==3.0.5
-# psycopg2-binary==2.9.7
-# celery==5.3.1
-# redis==4.6.0
-# docker==6.1.3
+psutil==5.9.5

@@ -11,15 +11,21 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - FLASK_DEBUG=true
+      - FLASK_DEBUG=1
       - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
     volumes:
-      - ./backend:/app
+      - ./backend:/app:rw
       - reports_data:/app/reports
       - logs_data:/app/logs
     networks:
       - pacha-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Frontend React
   frontend:
@@ -32,48 +38,19 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:5000/api
       - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     volumes:
-      - ./frontend:/app
+      - ./frontend:/app:rw
       - /app/node_modules
     depends_on:
       - backend
     networks:
       - pacha-network
     restart: unless-stopped
-
-  # Base de données PostgreSQL (optionnelle pour l'instant)
-  postgres:
-    image: postgres:15-alpine
-    container_name: pacha-postgres
-    environment:
-      - POSTGRES_DB=pacha_toolbox
-      - POSTGRES_USER=pacha
-      - POSTGRES_PASSWORD=pacha123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - pacha-network
-    restart: unless-stopped
-
-  # Redis pour les tâches async (optionnel)
-  redis:
-    image: redis:7-alpine
-    container_name: pacha-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - pacha-network
-    restart: unless-stopped
+    stdin_open: true
+    tty: true
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
   reports_data:
     driver: local
   logs_data:
@@ -82,3 +59,4 @@ volumes:
 networks:
   pacha-network:
     driver: bridge
+    name: pacha-network
