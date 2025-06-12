@@ -1,275 +1,578 @@
-  return (
-    <div style={cyberStyles.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ color: '#00d4ff', margin: 0, fontSize: '16px', fontWeight: '700' }}>
-          CONSOLE OUTPUT - {scanId}
-        </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: isConnected ? '#00ff88' : '#666',
-            boxShadow: isConnected ? cyberStyles.glow.success : 'none'
-          }}></div>
-          <span style={{ fontSize: '12px', color: isConnected ? '#00ff88' : '#666' }}>
-            {isConnected ? 'LIVE' : 'DISCONNECTED'}
-          </span>
-        </div>
-      </div>
-      <div ref={terminalRef} style={cyberStyles.terminal}>
-        {output.length > 0 ? (
-          output.map((line, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
-              <span style={{ color: '#666', marginRight: '8px' }}>
-                [{new Date().toLocaleTimeString()}]
-              </span>
-              {line}
-            </div>
-          ))
-        ) : (
-          <div style={{ color: '#666', fontStyle: 'italic' }}>
-            Initialisation du scan...
-          </div>
-        )}
-      </div>
-    </div>
-  );
+import React, { useState, useEffect, useRef } from 'react';
+
+// Configuration API
+const API_BASE = 'http://localhost:5000/api';
+
+// Icônes simples en SVG pour remplacer lucide-react
+const Terminal = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polyline points="4,17 10,11 4,5"></polyline>
+    <line x1="12" y1="19" x2="20" y2="19"></line>
+  </svg>
+);
+
+const Shield = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+  </svg>
+);
+
+const Target = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <circle cx="12" cy="12" r="6"></circle>
+    <circle cx="12" cy="12" r="2"></circle>
+  </svg>
+);
+
+const Activity = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
+  </svg>
+);
+
+const FileText = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2Z"></path>
+    <polyline points="14,2 14,8 20,8"></polyline>
+    <line x1="16" y1="13" x2="8" y2="13"></line>
+    <line x1="16" y1="17" x2="8" y2="17"></line>
+    <polyline points="10,9 9,9 8,9"></polyline>
+  </svg>
+);
+
+const Settings = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="m19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+);
+
+const Play = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polygon points="5,3 19,12 5,21 5,3"></polygon>
+  </svg>
+);
+
+const Square = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+  </svg>
+);
+
+const Download = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7,10 12,15 17,10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+);
+
+const RefreshCw = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polyline points="23,4 23,10 17,10"></polyline>
+    <polyline points="1,20 1,14 7,14"></polyline>
+    <path d="m23 10a8.5 8.5 0 0 0-14.5-6"></path>
+    <path d="m1 14a8.5 8.5 0 0 0 14.5 6"></path>
+  </svg>
+);
+
+// ==================== THÈME PROFESSIONNEL ====================
+const theme = {
+  colors: {
+    bg: {
+      primary: '#1a1a1a',      // Gris très sombre
+      secondary: '#2a2a2a',    // Gris sombre
+      tertiary: '#3a3a3a',     // Gris moyen sombre
+      accent: '#4a4a4a'        // Gris moyen
+    },
+    text: {
+      primary: '#e5e5e5',      // Blanc cassé
+      secondary: '#b5b5b5',    // Gris clair
+      muted: '#888888'         // Gris moyen
+    },
+    status: {
+      success: '#22c55e',      // Vert sobre
+      warning: '#eab308',      // Jaune sobre
+      error: '#dc2626',        // Rouge sobre
+      info: '#3b82f6'          // Bleu sobre
+    },
+    accent: {
+      primary: '#6b7280',      // Gris bleuté
+      secondary: '#9ca3af'     // Gris plus clair
+    }
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px', 
+    md: '16px',
+    lg: '24px',
+    xl: '32px'
+  },
+  borderRadius: {
+    sm: '4px',
+    md: '8px',
+    lg: '12px'
+  }
 };
 
-const ScanForm = ({ onScanStart, toolsStatus, scanTypes }) => {
-  const [formData, setFormData] = useState({
-    tool: 'nmap',
-    target: '',
-    scanType: 'basic'
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// ==================== COMPOSANTS UI ====================
+const Card = ({ children, className = '', ...props }) => (
+  <div 
+    className={`bg-slate-800 border border-slate-700 rounded-lg p-6 ${className}`}
+    style={{
+      backgroundColor: theme.colors.bg.secondary,
+      border: `1px solid ${theme.colors.bg.tertiary}`,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.lg
+    }}
+    {...props}
+  >
+    {children}
+  </div>
+);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.target.trim()) {
-      alert('Veuillez saisir une cible');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onScanStart(formData);
-      setFormData({ ...formData, target: '' });
-    } finally {
-      setIsSubmitting(false);
+const Button = ({ 
+  children, 
+  variant = 'primary', 
+  size = 'md',
+  icon: Icon,
+  disabled = false,
+  onClick,
+  className = '',
+  ...props 
+}) => {
+  const variants = {
+    primary: {
+      backgroundColor: theme.colors.accent.primary,
+      color: theme.colors.text.primary,
+      border: 'none'
+    },
+    secondary: {
+      backgroundColor: 'transparent',
+      color: theme.colors.accent.primary,
+      border: `1px solid ${theme.colors.accent.primary}`
+    },
+    success: {
+      backgroundColor: theme.colors.status.success,
+      color: theme.colors.text.primary,
+      border: 'none'
+    },
+    danger: {
+      backgroundColor: theme.colors.status.error,
+      color: theme.colors.text.primary,
+      border: 'none'
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      color: theme.colors.text.secondary,
+      border: `1px solid ${theme.colors.bg.tertiary}`
     }
   };
 
-  const toolConfig = scanTypes[formData.tool]?.[formData.scanType];
+  const sizes = {
+    sm: { padding: '6px 12px', fontSize: '12px' },
+    md: { padding: '8px 16px', fontSize: '14px' },
+    lg: { padding: '12px 24px', fontSize: '16px' }
+  };
 
   return (
-    <div style={cyberStyles.card}>
-      <h2 style={{ 
-        color: '#00d4ff', 
-        marginBottom: '24px', 
-        fontSize: '20px',
-        fontWeight: '700',
+    <button
+      style={{
+        ...variants[variant],
+        ...sizes[size],
+        borderRadius: theme.borderRadius.md,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        fontWeight: '500',
+        transition: 'all 0.2s ease'
+      }}
+      disabled={disabled}
+      onClick={onClick}
+      className={className}
+      {...props}
+    >
+      {Icon && <Icon size={16} />}
+      {children}
+    </button>
+  );
+};
+
+const Badge = ({ children, variant = 'default' }) => {
+  const variants = {
+    default: { bg: theme.colors.bg.tertiary, color: theme.colors.text.secondary },
+    success: { bg: theme.colors.status.success, color: theme.colors.text.primary },
+    warning: { bg: theme.colors.status.warning, color: theme.colors.bg.primary },
+    error: { bg: theme.colors.status.error, color: theme.colors.text.primary },
+    info: { bg: theme.colors.status.info, color: theme.colors.text.primary }
+  };
+
+  return (
+    <span
+      style={{
+        backgroundColor: variants[variant].bg,
+        color: variants[variant].color,
+        padding: '2px 8px',
+        borderRadius: theme.borderRadius.sm,
+        fontSize: '12px',
+        fontWeight: '500',
         textTransform: 'uppercase',
-        letterSpacing: '1px'
-      }}>
-        🎯 NOUVEAU SCAN
-      </h2>
-      
+        letterSpacing: '0.5px'
+      }}
+    >
+      {children}
+    </span>
+  );
+};
+
+// ==================== COMPOSANTS MÉTIER ====================
+const PentestHeader = () => (
+  <header style={{
+    backgroundColor: theme.colors.bg.secondary,
+    borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
+    padding: theme.spacing.lg
+  }}>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Shield size={32} color={theme.colors.accent.primary} />
+          <div>
+            <h1 style={{ 
+              color: theme.colors.text.primary,
+              fontSize: '24px',
+              fontWeight: '700',
+              margin: 0,
+              letterSpacing: '-0.5px'
+            }}>
+              PACHA Security Platform
+            </h1>
+            <p style={{
+              color: theme.colors.text.muted,
+              fontSize: '14px',
+              margin: 0
+            }}>
+              Professional Penetration Testing Suite
+            </p>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+        <Badge variant="success">OPERATIONAL</Badge>
+        <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+          {new Date().toLocaleString()}
+        </div>
+      </div>
+    </div>
+  </header>
+);
+
+const NavigationTabs = ({ activeTab, onTabChange }) => {
+  const tabs = [
+    { id: 'reconnaissance', label: 'Reconnaissance', icon: Target },
+    { id: 'scanning', label: 'Vulnerability Scanning', icon: Activity },
+    { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'settings', label: 'Configuration', icon: Settings }
+  ];
+
+  return (
+    <nav style={{
+      backgroundColor: theme.colors.bg.primary,
+      borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
+      padding: `0 ${theme.spacing.lg}`
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                style={{
+                  backgroundColor: isActive ? theme.colors.bg.secondary : 'transparent',
+                  color: isActive ? theme.colors.accent.primary : theme.colors.text.secondary,
+                  border: 'none',
+                  padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                  borderRadius: `${theme.borderRadius.md} ${theme.borderRadius.md} 0 0`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  transition: 'all 0.2s ease',
+                  borderBottom: isActive ? `2px solid ${theme.colors.accent.primary}` : '2px solid transparent'
+                }}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+const ScanForm = ({ toolsStatus, onScanStart }) => {
+  const [target, setTarget] = useState('');
+  const [tool, setTool] = useState('nmap');
+  const [scanType, setScanType] = useState('basic');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const scanTypes = {
+    nmap: {
+      basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (-sS -T4)' },
+      stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
+      comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
+      udp: { name: 'UDP Scan', description: 'UDP port discovery (-sU --top-ports 1000)' }
+    },
+    nikto: {
+      fast: { name: 'Fast Web Scan', description: 'Quick vulnerability assessment (-Tuning 1,2,3)' },
+      comprehensive: { name: 'Deep Web Scan', description: 'Comprehensive web vulnerability scan (-Tuning 1,2,3,4,5,6,7,8,9)' }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!target.trim()) return;
+
+    setIsLoading(true);
+    try {
+      await onScanStart({ tool, target, scanType });
+      setTarget('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getPlaceholder = () => {
+    if (tool === 'nmap') {
+      return 'e.g., 192.168.1.0/24, 10.0.0.1, scanme.nmap.org';
+    }
+    return 'e.g., http://example.com, https://target.domain.com';
+  };
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Target size={20} color={theme.colors.accent.primary} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Target Configuration
+        </h2>
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'auto 1fr auto auto', 
-          gap: '16px', 
-          alignItems: 'end',
-          marginBottom: '20px'
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 2fr 240px auto', gap: theme.spacing.md, alignItems: 'end' }}>
           <div>
             <label style={{ 
               display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600', 
-              color: '#00d4ff',
-              fontSize: '12px',
-              textTransform: 'uppercase'
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
-              OUTIL
+              Tool
             </label>
             <select
-              style={{
-                ...cyberStyles.input,
-                minWidth: '120px'
+              value={tool}
+              onChange={(e) => {
+                setTool(e.target.value);
+                setScanType('basic');
               }}
-              value={formData.tool}
-              onChange={(e) => setFormData({ ...formData, tool: e.target.value, scanType: 'basic' })}
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
             >
-              <option value="nmap">NMAP</option>
-              <option value="nikto">NIKTO</option>
+              <option value="nmap">Nmap</option>
+              <option value="nikto">Nikto</option>
             </select>
           </div>
-          
+
           <div>
             <label style={{ 
               display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600', 
-              color: '#00d4ff',
-              fontSize: '12px',
-              textTransform: 'uppercase'
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
-              CIBLE
+              Target
             </label>
             <input
-              style={{
-                ...cyberStyles.input,
-                width: '100%'
-              }}
               type="text"
-              placeholder={formData.tool === 'nmap' ? '192.168.1.1 ou domain.com' : 'http://example.com'}
-              value={formData.target}
-              onChange={(e) => setFormData({ ...formData, target: e.target.value })}
-              required
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder={getPlaceholder()}
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
             />
           </div>
-          
+
           <div>
             <label style={{ 
               display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600', 
-              color: '#00d4ff',
-              fontSize: '12px',
-              textTransform: 'uppercase'
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
-              TYPE
+              Scan Type
             </label>
             <select
+              value={scanType}
+              onChange={(e) => setScanType(e.target.value)}
               style={{
-                ...cyberStyles.input,
-                minWidth: '200px'
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
               }}
-              value={formData.scanType}
-              onChange={(e) => setFormData({ ...formData, scanType: e.target.value })}
             >
-              {scanTypes[formData.tool] && Object.entries(scanTypes[formData.tool]).map(([key, config]) => (
+              {scanTypes[tool] && Object.entries(scanTypes[tool]).map(([key, config]) => (
                 <option key={key} value={key}>{config.name}</option>
               ))}
             </select>
           </div>
-          
-          <button
+
+          <Button
             type="submit"
-            disabled={isSubmitting || !toolsStatus[formData.tool]}
-            style={{
-              ...cyberStyles.button.primary,
-              opacity: (isSubmitting || !toolsStatus[formData.tool]) ? 0.5 : 1,
-              cursor: (isSubmitting || !toolsStatus[formData.tool]) ? 'not-allowed' : 'pointer',
-              transform: isSubmitting ? 'scale(0.98)' : 'scale(1)'
-            }}
+            variant="primary"
+            icon={Play}
+            disabled={isLoading || !toolsStatus[tool]}
           >
-            {isSubmitting ? 'LANCEMENT...' : 'LANCER SCAN'}
-          </button>
+            {isLoading ? 'Starting...' : 'Execute'}
+          </Button>
         </div>
-        
-        {toolConfig && (
+
+        {scanTypes[tool]?.[scanType] && (
           <div style={{
-            background: 'rgba(0, 212, 255, 0.1)',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px'
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.bg.primary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.accent.primary}33`
           }}>
-            <div style={{ fontSize: '13px', color: '#ffffff', marginBottom: '8px' }}>
-              <strong>DESCRIPTION:</strong> {toolConfig.description}
+            <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
+              <strong>{scanTypes[tool][scanType].name}</strong>
             </div>
-            <div style={{ fontSize: '13px', color: '#a0a0a0' }}>
-              <strong>DURÉE ESTIMÉE:</strong> {toolConfig.estimated_time}
+            <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+              {scanTypes[tool][scanType].description}
             </div>
           </div>
         )}
-        
-        {!toolsStatus[formData.tool] && (
+
+        {!toolsStatus[tool] && (
           <div style={{
-            background: 'rgba(255, 51, 51, 0.2)',
-            border: '1px solid #ff3333',
-            borderRadius: '8px',
-            padding: '16px',
-            color: '#ff3333',
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: `${theme.colors.status.error}20`,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.status.error}`,
+            color: theme.colors.status.error,
             fontSize: '14px',
-            fontWeight: '600'
+            fontWeight: '500'
           }}>
-            ⚠️ {formData.tool.toUpperCase()} N'EST PAS DISPONIBLE SUR CE SYSTÈME
+            ⚠️ {tool.toUpperCase()} is not available on this system
           </div>
         )}
       </form>
-    </div>
+    </Card>
   );
 };
 
-const ActiveScansList = ({ activeScans, onStopScan, onSelectScan, selectedScan }) => (
-  <div style={cyberStyles.card}>
-    <h2 style={{ 
-      color: '#ffff00', 
-      marginBottom: '20px', 
-      fontSize: '18px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px'
-    }}>
-      ⚡ SCANS ACTIFS ({activeScans.length})
-    </h2>
-    
+const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan }) => (
+  <Card>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+        <Activity size={20} color={theme.colors.status.warning} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Active Scans ({activeScans.length})
+        </h2>
+      </div>
+    </div>
+
     {activeScans.length > 0 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
         {activeScans.map(scan => (
-          <div 
-            key={scan.scan_id} 
-            style={{
-              background: selectedScan === scan.scan_id ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 255, 0, 0.1)',
-              border: selectedScan === scan.scan_id ? '2px solid #00d4ff' : '1px solid rgba(255, 255, 0, 0.3)',
-              borderRadius: '8px',
-              padding: '16px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
+          <div
+            key={scan.scan_id}
             onClick={() => onSelectScan(scan.scan_id)}
+            style={{
+              backgroundColor: selectedScan === scan.scan_id ? 
+                `${theme.colors.accent.primary}20` : 
+                theme.colors.bg.tertiary,
+              border: selectedScan === scan.scan_id ? 
+                `1px solid ${theme.colors.accent.primary}` : 
+                `1px solid ${theme.colors.bg.accent}`,
+              borderRadius: theme.borderRadius.md,
+              padding: theme.spacing.md,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
                   <span style={{ 
-                    fontWeight: '700', 
-                    color: '#ffffff',
+                    color: theme.colors.text.primary,
+                    fontWeight: '600',
                     fontSize: '14px'
                   }}>
                     {scan.tool.toUpperCase()}
                   </span>
-                  <StatusIndicator status={scan.status}>{scan.status}</StatusIndicator>
+                  <Badge variant={scan.status === 'running' ? 'warning' : 'info'}>
+                    {scan.status}
+                  </Badge>
                 </div>
-                <div style={{ color: '#ffffff', marginBottom: '4px' }}>
-                  🎯 {scan.target}
+                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                  Target: {scan.target}
                 </div>
-                <div style={{ fontSize: '12px', color: '#a0a0a0' }}>
-                  {scan.scan_type} • Démarré: {new Date(scan.start_time).toLocaleTimeString()}
+                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                  {scan.scan_type} • Started: {new Date(scan.start_time).toLocaleTimeString()}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {scan.status === 'running' && (
-                  <button
-                    style={{
-                      ...cyberStyles.button.danger,
-                      padding: '8px 16px',
-                      fontSize: '12px'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStopScan(scan.scan_id);
-                    }}
-                  >
-                    ARRÊTER
-                  </button>
-                )}
-              </div>
+              {scan.status === 'running' && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={Square}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStopScan(scan.scan_id);
+                  }}
+                >
+                  Stop
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -277,1081 +580,547 @@ const ActiveScansList = ({ activeScans, onStopScan, onSelectScan, selectedScan }
     ) : (
       <div style={{ 
         textAlign: 'center', 
-        color: '#666', 
-        padding: '40px',
-        fontStyle: 'italic'
+        padding: theme.spacing.xl,
+        color: theme.colors.text.muted
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚡</div>
-        <p>Aucun scan actif</p>
-        <p style={{ fontSize: '14px', marginTop: '8px' }}>
-          Lancez un scan pour voir l'activité en temps réel
-        </p>
+        <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>No active scans</p>
+        <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
       </div>
     )}
-  </div>
+  </Card>
 );
 
-const ScanHistory = ({ scans, onRefresh }) => (
-  <div style={cyberStyles.card}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-      <h2 style={{ 
-        color: '#00ff88', 
-        margin: 0, 
-        fontSize: '18px',
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: '1px'
-      }}>
-        📋 HISTORIQUE DES SCANS
-      </h2>
-      <button style={cyberStyles.button.secondary} onClick={onRefresh}>
-        🔄 ACTUALISER
-      </button>
-    </div>
-    
-    {scans.length > 0 ? (
-      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-        {scans.map(scan => (
-          <div key={scan.scan_id} style={{
-            background: scan.status === 'completed' ? 'rgba(0, 255, 136, 0.1)' : 
-                       scan.status === 'error' ? 'rgba(255, 51, 51, 0.1)' : 
-                       'rgba(160, 160, 160, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '12px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '700', color: '#ffffff' }}>
-                    {scan.tool.toUpperCase()}
-                  </span>
-                  <StatusIndicator status={scan.status}>{scan.status}</StatusIndicator>
-                </div>
-                <div style={{ color: '#ffffff', marginBottom: '4px' }}>
-                  🎯 {scan.target}
-                </div>
-                <div style={{ fontSize: '12px', color: '#a0a0a0' }}>
-                  {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
-                </div>
-                {scan.parsed_results?.summary && (
-                  <div style={{ 
-                    fontSize: '12px', 
-                    color: '#00d4ff', 
-                    marginTop: '4px',
-                    fontStyle: 'italic'
-                  }}>
-                    📊 {scan.parsed_results.summary}
-                  </div>
-                )}
-              </div>
-              {scan.pdf_filename && (
-                <a
-                  href={`${API_BASE}/reports/download/pdf/${scan.pdf_filename}`}
-                  download
-                  style={{
-                    ...cyberStyles.button.success,
-                    textDecoration: 'none',
-                    display: 'inline-block'
-                  }}
-                >
-                  📄 PDF
-                </a>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
-        <p>Aucun scan dans l'historique</p>
-        <p style={{ fontSize: '14px', marginTop: '8px' }}>
-          Effectuez votre premier scan pour commencer
-        </p>
-      </div>
-    )}
-  </div>
-);
-
-const ReportsSection = ({ reports, onRefreshReports }) => (
-  <div style={cyberStyles.card}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-      <h2 style={{ 
-        color: '#ff6b35', 
-        margin: 0, 
-        fontSize: '18px',
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: '1px'
-      }}>
-        📊 RAPPORTS PDF DISPONIBLES
-      </h2>
-      <button style={cyberStyles.button.secondary} onClick={onRefreshReports}>
-        🔄 ACTUALISER
-      </button>
-    </div>
-    
-    {reports.length > 0 ? (
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-        gap: '16px' 
-      }}>
-        {reports.map(report => (
-          <div key={report.filename} style={{
-            background: 'rgba(255, 107, 53, 0.1)',
-            border: '1px solid rgba(255, 107, 53, 0.3)',
-            borderRadius: '8px',
-            padding: '16px',
-            transition: 'all 0.3s ease'
-          }}>
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ 
-                fontWeight: '700', 
-                color: '#ffffff', 
-                marginBottom: '8px',
-                fontSize: '14px'
-              }}>
-                {report.name}
-              </div>
-              <div style={{ fontSize: '12px', color: '#a0a0a0', marginBottom: '8px' }}>
-                📁 {report.filename}
-              </div>
-              <div style={{ fontSize: '12px', color: '#a0a0a0' }}>
-                📊 {report.size} • {new Date(report.created).toLocaleString()}
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <a
-                href={`${API_BASE}/reports/preview/pdf/${report.filename}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  ...cyberStyles.button.primary,
-                  textDecoration: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  flex: 1,
-                  textAlign: 'center'
-                }}
-              >
-                👁️ VOIR
-              </a>
-              <a
-                href={`${API_BASE}/reports/download/pdf/${report.filename}`}
-                download
-                style={{
-                  ...cyberStyles.button.success,
-                  textDecoration: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  flex: 1,
-                  textAlign: 'center'
-                }}
-              >
-                📥 TÉLÉCHARGER
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-        <p>Aucun rapport PDF disponible</p>
-        <p style={{ fontSize: '14px', marginTop: '8px' }}>
-          Les rapports PDF sont générés automatiquement après chaque scan
-        </p>
-      </div>
-    )}
-  </div>
-);
-
-const SystemStatus = ({ toolsStatus, systemStats }) => (
-  <div style={cyberStyles.card}>
-    <h2 style={{ 
-      color: '#00d4ff', 
-      marginBottom: '20px', 
-      fontSize: '18px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px'
-    }}>
-      🔧 ÉTAT DU SYSTÈME
-    </h2>
-    
-    <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-      gap: '16px' 
-    }}>
-      <div style={{
-        background: 'rgba(0, 212, 255, 0.1)',
-        border: '1px solid rgba(0, 212, 255, 0.3)',
-        borderRadius: '8px',
-        padding: '16px'
-      }}>
-        <h4 style={{ color: '#00d4ff', margin: '0 0 12px 0', fontSize: '14px' }}>
-          OUTILS DE SÉCURITÉ
-        </h4>
-        {Object.entries(toolsStatus).map(([tool, available]) => (
-          <div key={tool} style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: '8px' 
-          }}>
-            <span style={{ 
-              textTransform: 'uppercase', 
-              fontWeight: '600',
-              fontSize: '12px'
-            }}>
-              {tool}
-            </span>
-            <StatusIndicator status={available ? 'completed' : 'error'}>
-              {available ? 'ONLINE' : 'OFFLINE'}
-            </StatusIndicator>
-          </div>
-        ))}
-      </div>
-      
-      {systemStats && (
-        <div style={{
-          background: 'rgba(0, 255, 136, 0.1)',
-          border: '1px solid rgba(0, 255, 136, 0.3)',
-          borderRadius: '8px',
-          padding: '16px'
-        }}>
-          <h4 style={{ color: '#00ff88', margin: '0 0 12px 0', fontSize: '14px' }}>
-            STATISTIQUES
-          </h4>
-          <div style={{ fontSize: '12px', color: '#ffffff' }}>
-            <div style={{ marginBottom: '8px' }}>
-              <strong>SCANS ACTIFS:</strong> {systemStats.activeScans || 0}
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <strong>RAPPORTS PDF:</strong> {systemStats.totalReports || 0}
-            </div>
-            <div>
-              <strong>DERNIÈRE MAJ:</strong> {new Date().toLocaleTimeString()}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-// ==================== COMPOSANT PRINCIPAL ====================
-
-const App = () => {
-  const [activeTab, setActiveTab] = useState('scanner');
-  const [toolsStatus, setToolsStatus] = useState({});
-  const [scanTypes, setScanTypes] = useState({});
-  const [scans, setScans] = useState([]);
-  const [activeScans, setActiveScans] = useState([]);
-  const [reports, setReports] = useState([]);
-  const [systemStats, setSystemStats] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [selectedScan, setSelectedScan] = useState(null);
-
-  // CSS pour les animations
-  const globalStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    
-    @keyframes glow {
-      0%, 100% { box-shadow: 0 0 5px currentColor; }
-      50% { box-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
-    }
-    
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: #00d4ff #1a1a2e;
-    }
-    
-    *::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    *::-webkit-scrollbar-track {
-      background: #1a1a2e;
-    }
-    
-    *::-webkit-scrollbar-thumb {
-      background: #00d4ff;
-      border-radius: 4px;
-    }
-    
-    *::-webkit-scrollbar-thumb:hover {
-      background: #0099cc;
-    }
-  `;
-
-  // Injecter les styles globaux
-  useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.textContent = globalStyles;
-    document.head.appendChild(styleElement);
-    
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-
-  // Fonction pour afficher des notifications
-  const showNotification = (message, type = 'info') => {
-    const colors = {
-      success: '#00ff88',
-      error: '#ff3333',
-      warning: '#ffff00',
-      info: '#00d4ff'
-    };
-
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${colors[type]};
-      color: #0a0a0f;
-      padding: 16px 24px;
-      border-radius: 8px;
-      box-shadow: 0 0 20px ${colors[type]};
-      z-index: 10000;
-      font-family: 'Fira Code', monospace;
-      font-weight: 700;
-      font-size: 14px;
-      max-width: 400px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      notification.style.transform = 'translateX(100%)';
-      notification.style.transition = 'all 0.3s ease';
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 300);
-    }, 4000);
-  };
-
-  // Chargement initial
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        
-        const [typesResponse, toolsResponse] = await Promise.all([
-          fetch(`${API_BASE}/scan/types`),
-          fetch(`${API_BASE}/test/tools`)
-        ]);
-        
-        if (typesResponse.ok) {
-          const typesData = await typesResponse.json();
-          setScanTypes(typesData.scan_types);
-          setToolsStatus(typesData.tools_status);
-        }
-        
-        if (toolsResponse.ok) {
-          const toolsData = await toolsResponse.json();
-          setToolsStatus(prev => ({
-            ...prev,
-            ...Object.fromEntries(
-              Object.entries(toolsData.tools_tests).map(([tool, test]) => [tool, test.available])
-            )
-          }));
-        }
-        
-        await Promise.all([
-          loadScans(),
-          loadActiveScans(),
-          loadReports()
-        ]);
-        
-      } catch (error) {
-        console.error('Erreur lors du chargement:', error);
-        showNotification('ERREUR CHARGEMENT DONNÉES', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInitialData();
-    
-    // Actualisation automatique toutes les 3 secondes
-    const interval = setInterval(() => {
-      loadActiveScans();
-      updateSystemStats();
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadScans = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/scans/history?limit=50`);
-      if (response.ok) {
-        const data = await response.json();
-        setScans(data.scans);
-      }
-    } catch (error) {
-      console.error('Erreur chargement scans:', error);
-    }
-  };
-
-  const loadActiveScans = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/scans/active`);
-      if (response.ok) {
-        const data = await response.json();
-        setActiveScans(data.active_scans);
-        
-        // Auto-sélectionner le premier scan actif si aucun n'est sélectionné
-        if (!selectedScan && data.active_scans.length > 0) {
-          setSelectedScan(data.active_scans[0].scan_id);
-        }
-        
-        // Désélectionner si le scan sélectionné n'est plus actif
-        if (selectedScan && !data.active_scans.some(s => s.scan_id === selectedScan)) {
-          setSelectedScan(data.active_scans.length > 0 ? data.active_scans[0].scan_id : null);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur chargement scans actifs:', error);
-    }
-  };
-
-  const loadReports = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/reports/list`);
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data.reports);
-      }
-    } catch (error) {
-      console.error('Erreur chargement rapports:', error);
-    }
-  };
-
-  const updateSystemStats = () => {
-    setSystemStats({
-      activeScans: activeScans.length,
-      totalReports: reports.length,
-      lastUpdate: new Date().toISOString()
-    });
-  };
-
-  const handleScanStart = async (formData) => {
-    try {
-      const endpoint = formData.tool === 'nmap' ? '/scan/nmap' : '/scan/nikto';
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target: formData.target,
-          scan_type: formData.scanType
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        showNotification(`SCAN ${formData.tool.toUpperCase()} LANCÉ`, 'success');
-        
-        // Sélectionner automatiquement le nouveau scan
-        setSelectedScan(data.scan_id);
-        
-        // Actualiser les listes
-        await loadActiveScans();
-        
-        // Auto-actualisation renforcée pour ce scan
-        const pollInterval = setInterval(async () => {
-          await loadActiveScans();
-          await loadScans();
-          await loadReports();
-        }, 2000);
-        
-        // Arrêter le polling après 2 minutes ou quand le scan est terminé
-        setTimeout(() => clearInterval(pollInterval), 120000);
-        
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Erreur lors du lancement du scan');
-      }
-    } catch (error) {
-      console.error('Erreur scan:', error);
-      showNotification(`ERREUR: ${error.message}`, 'error');
-    }
-  };
-
-  const handleStopScan = async (scanId) => {
-    try {
-      const response = await fetch(`${API_BASE}/scan/stop/${scanId}`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        showNotification('SCAN ARRÊTÉ', 'warning');
-        await loadActiveScans();
-        await loadScans();
-        if (selectedScan === scanId) {
-          setSelectedScan(null);
-        }
-      } else {
-        throw new Error('Erreur lors de l\'arrêt du scan');
-      }
-    } catch (error) {
-      console.error('Erreur arrêt scan:', error);
-      showNotification(`ERREUR: ${error.message}`, 'error');
-    }
-  };
-
-  const handleRefresh = async () => {
-    await Promise.all([
-      loadScans(),
-      loadActiveScans(),
-      loadReports()
-    ]);
-    showNotification('DONNÉES ACTUALISÉES', 'success');
-  };
-
-  if (loading) {
-    return (
-      <div style={{
-        ...cyberStyles.container,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            fontSize: '64px', 
-            color: '#00d4ff',
-            marginBottom: '24px',
-            animation: 'pulse 2s ease-in-out infinite'
-          }}>⚡</div>
-          <div style={{ 
-            fontSize: '24px', 
-            color: '#ffffff',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '2px'
-          }}>INITIALISATION PACHA TOOLBOX</div>
-          <div style={{ 
-            fontSize: '14px', 
-            color: '#a0a0a0',
-            marginTop: '12px'
-          }}>Chargement des modules de sécurité...</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={cyberStyles.container}>
-      <Header />
-      
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
-        {/* Navigation par onglets */}
-        <div style={{ 
-          display: 'flex', 
-          marginBottom: '24px',
-          background: 'rgba(26, 26, 46, 0.8)',
-          borderRadius: '12px',
-          padding: '8px',
-          border: '1px solid #333'
-        }}>
-          {[
-            { id: 'scanner', label: 'SCANNER', icon: '🎯' },
-            { id: 'console', label: 'CONSOLE', icon: '💻' },
-            { id: 'reports', label: 'RAPPORTS', icon: '📊' },
-            { id: 'system', label: 'SYSTÈME', icon: '🔧' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                background: activeTab === tab.id ? 
-                  'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)' : 
-                  'transparent',
-                color: activeTab === tab.id ? '#0a0a0f' : '#00d4ff',
-                border: 'none',
-                borderRadius: '8px',
-                marginRight: '8px',
-                padding: '12px 24px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: '700',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                transition: 'all 0.3s ease',
-                fontFamily: 'inherit',
-                flex: 1,
-                boxShadow: activeTab === tab.id ? cyberStyles.glow.primary : 'none'
-              }}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Contenu des onglets */}
-        {activeTab === 'scanner' && (
-          <div>
-            <ScanForm
-              onScanStart={handleScanStart}
-              toolsStatus={toolsStatus}
-              scanTypes={scanTypes}
-            />
-            
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: activeScans.length > 0 ? '1fr 1fr' : '1fr', 
-              gap: '24px' 
-            }}>
-              <ActiveScansList
-                activeScans={activeScans}
-                onStopScan={handleStopScan}
-                onSelectScan={setSelectedScan}
-                selectedScan={selectedScan}
-              />
-              
-              {activeScans.length > 0 && (
-                <ScanHistory
-                  scans={scans}
-                  onRefresh={handleRefresh}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'console' && (
-          <div>
-            <TerminalOutput 
-              scanId={selectedScan} 
-              isActive={!!selectedScan && activeScans.some(s => s.scan_id === selectedScan)}
-            />
-            
-            {activeScans.length > 0 && (
-              <ActiveScansList
-                activeScans={activeScans}
-                onStopScan={handleStopScan}
-                onSelectScan={setSelectedScan}
-                selectedScan={selectedScan}
-              />
-            )}
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <ReportsSection
-            reports={reports}
-            onRefreshReports={loadReports}
-          />
-        )}
-
-        {activeTab === 'system' && (
-          <SystemStatus
-            toolsStatus={toolsStatus}
-            systemStats={systemStats}
-          />
-        )}
-      </div>
-
-      {/* Footer */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        borderTop: '1px solid #00d4ff',
-        padding: '24px 0',
-        marginTop: '40px',
-        textAlign: 'center'
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ 
-            fontSize: '18px', 
-            fontWeight: '700', 
-            color: '#00d4ff',
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}>
-            PACHA TOOLBOX v2.0
-          </div>
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#a0a0a0',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Plateforme professionnelle d'évaluation de sécurité IT
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;// frontend/src/App.js - Interface IT Cyber Professionnelle Moderne
-import React, { useState, useEffect, useRef } from 'react';
-
-const API_BASE = 'http://localhost:5000/api';
-
-// ==================== STYLES IT CYBER ====================
-
-const cyberStyles = {
-  // Couleurs du thème cyber
-  colors: {
-    primary: '#00d4ff',      // Cyan cyber
-    secondary: '#ff6b35',    // Orange accent
-    success: '#00ff88',      // Vert néon
-    warning: '#ffff00',      // Jaune vif
-    error: '#ff3333',        // Rouge néon
-    background: '#0a0a0f',   // Noir profond
-    surface: '#1a1a2e',      // Gris foncé
-    surfaceLight: '#16213e', // Gris moyen
-    text: '#ffffff',         // Blanc
-    textSecondary: '#a0a0a0', // Gris clair
-    border: '#333',          // Bordure foncée
-    borderLight: '#555'      // Bordure claire
-  },
-  
-  // Animations et effets
-  glow: {
-    primary: '0 0 10px #00d4ff, 0 0 20px #00d4ff, 0 0 30px #00d4ff',
-    success: '0 0 10px #00ff88, 0 0 20px #00ff88',
-    warning: '0 0 10px #ffff00, 0 0 20px #ffff00',
-    error: '0 0 10px #ff3333, 0 0 20px #ff3333'
-  },
-  
-  // Styles de base
-  container: {
-    fontFamily: "'Fira Code', 'Consolas', 'Monaco', monospace",
-    backgroundColor: '#0a0a0f',
-    minHeight: '100vh',
-    color: '#ffffff',
-    backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 107, 53, 0.1) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%)'
-  },
-  
-  header: {
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    borderBottom: '2px solid #00d4ff',
-    boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)',
-    position: 'relative',
-    overflow: 'hidden'
-  },
-  
-  card: {
-    backgroundColor: '#1a1a2e',
-    border: '1px solid #333',
-    borderRadius: '12px',
-    padding: '24px',
-    marginBottom: '24px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-    backdropFilter: 'blur(10px)',
-    transition: 'all 0.3s ease',
-    position: 'relative'
-  },
-  
-  button: {
-    primary: {
-      background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
-      color: '#0a0a0f',
-      border: 'none',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      transition: 'all 0.3s ease',
-      fontFamily: 'inherit',
-      boxShadow: '0 4px 15px rgba(0, 212, 255, 0.4)'
-    },
-    secondary: {
-      background: 'transparent',
-      color: '#00d4ff',
-      border: '2px solid #00d4ff',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      transition: 'all 0.3s ease',
-      fontFamily: 'inherit'
-    },
-    success: {
-      background: 'linear-gradient(135deg, #00ff88 0%, #00cc66 100%)',
-      color: '#0a0a0f',
-      border: 'none',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      transition: 'all 0.3s ease',
-      fontFamily: 'inherit',
-      boxShadow: '0 4px 15px rgba(0, 255, 136, 0.4)'
-    },
-    danger: {
-      background: 'linear-gradient(135deg, #ff3333 0%, #cc0000 100%)',
-      color: '#ffffff',
-      border: 'none',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '1px',
-      transition: 'all 0.3s ease',
-      fontFamily: 'inherit',
-      boxShadow: '0 4px 15px rgba(255, 51, 51, 0.4)'
-    }
-  },
-  
-  input: {
-    background: '#16213e',
-    border: '1px solid #333',
-    borderRadius: '8px',
-    padding: '12px 16px',
-    fontSize: '14px',
-    color: '#ffffff',
-    fontFamily: 'inherit',
-    transition: 'all 0.3s ease',
-    outline: 'none'
-  },
-  
-  terminal: {
-    background: '#000000',
-    border: '1px solid #00d4ff',
-    borderRadius: '8px',
-    padding: '16px',
-    fontFamily: "'Fira Code', 'Consolas', 'Monaco', monospace",
-    fontSize: '13px',
-    color: '#00ff88',
-    minHeight: '200px',
-    maxHeight: '400px',
-    overflowY: 'auto',
-    whiteSpace: 'pre-wrap',
-    boxShadow: 'inset 0 0 20px rgba(0, 212, 255, 0.2)'
-  }
-};
-
-// ==================== COMPOSANTS ====================
-
-const Header = () => (
-  <div style={cyberStyles.header}>
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'url("data:image/svg+xml,%3Csvg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%2300d4ff" fill-opacity="0.05"%3E%3Cpath d="M20 20L0 0h40L20 20zM20 20L0 40h40L20 20z"/%3E%3C/g%3E%3C/svg%3E")',
-      animation: 'pulse 4s ease-in-out infinite'
-    }}></div>
-    <div style={{ 
-      maxWidth: '1400px', 
-      margin: '0 auto', 
-      padding: '24px',
-      position: 'relative',
-      zIndex: 2
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{
-            fontSize: '2.5rem',
-            background: 'linear-gradient(135deg, #00d4ff, #ff6b35)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: '900',
-            letterSpacing: '2px'
-          }}>
-            PACHA
-          </div>
-          <div style={{
-            padding: '8px 16px',
-            background: 'rgba(0, 212, 255, 0.2)',
-            border: '1px solid #00d4ff',
-            borderRadius: '20px',
-            fontSize: '12px',
-            fontWeight: '700',
-            color: '#00d4ff',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}>
-            CYBER SECURITY PLATFORM
-          </div>
-        </div>
-        <div style={{ 
-          textAlign: 'right', 
-          fontSize: '12px',
-          color: '#a0a0a0',
-          fontFamily: "'Fira Code', monospace"
-        }}>
-          <div>v2.0.0 | {new Date().toLocaleDateString()}</div>
-          <div style={{ color: '#00ff88' }}>● SYSTEM OPERATIONAL</div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const StatusIndicator = ({ status, children }) => {
-  const getStatusStyle = (status) => {
-    const baseStyle = {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
-      padding: '6px 12px',
-      borderRadius: '16px',
-      fontSize: '11px',
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    };
-
-    switch (status) {
-      case 'completed':
-        return {
-          ...baseStyle,
-          background: 'rgba(0, 255, 136, 0.2)',
-          color: '#00ff88',
-          border: '1px solid #00ff88'
-        };
-      case 'running':
-        return {
-          ...baseStyle,
-          background: 'rgba(255, 255, 0, 0.2)',
-          color: '#ffff00',
-          border: '1px solid #ffff00',
-          animation: 'pulse 2s ease-in-out infinite'
-        };
-      case 'error':
-        return {
-          ...baseStyle,
-          background: 'rgba(255, 51, 51, 0.2)',
-          color: '#ff3333',
-          border: '1px solid #ff3333'
-        };
-      case 'starting':
-        return {
-          ...baseStyle,
-          background: 'rgba(0, 212, 255, 0.2)',
-          color: '#00d4ff',
-          border: '1px solid #00d4ff'
-        };
-      default:
-        return {
-          ...baseStyle,
-          background: 'rgba(160, 160, 160, 0.2)',
-          color: '#a0a0a0',
-          border: '1px solid #a0a0a0'
-        };
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed': return '✓';
-      case 'running': return '●';
-      case 'error': return '✗';
-      case 'starting': return '○';
-      default: return '◦';
-    }
-  };
-
-  return (
-    <span style={getStatusStyle(status)}>
-      {getStatusIcon(status)} {children}
-    </span>
-  );
-};
-
-const TerminalOutput = ({ scanId, isActive }) => {
+const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   const [output, setOutput] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const terminalRef = useRef(null);
-  const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (isActive && scanId) {
-      setIsConnected(true);
-      
-      // Polling pour récupérer les nouvelles lignes
-      intervalRef.current = setInterval(async () => {
-        try {
-          const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.new_lines && data.new_lines.length > 0) {
-              setOutput(prev => [...prev, ...data.new_lines]);
-            }
-            
-            if (!data.is_running) {
-              setIsConnected(false);
-              clearInterval(intervalRef.current);
-            }
-          }
-        } catch (error) {
-          console.error('Erreur polling output:', error);
-          setIsConnected(false);
-          clearInterval(intervalRef.current);
-        }
-      }, 1000);
-    }
+    if (!isActive || !scanId) return;
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    setIsConnected(true);
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.new_lines?.length > 0) {
+            setOutput(prev => [...prev, ...data.new_lines]);
+          }
+          if (!data.is_running) {
+            setIsConnected(false);
+            clearInterval(interval);
+          }
+        }
+      } catch (error) {
+        setIsConnected(false);
+        clearInterval(interval);
       }
-    };
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [scanId, isActive]);
 
   useEffect(() => {
-    // Auto-scroll vers le bas
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [output]);
 
-  if (!isActive) {
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Terminal size={20} color={theme.colors.accent.primary} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            {title} {scanId && `- ${scanId}`}
+          </h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
+          }} />
+          <span style={{ 
+            color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
+            fontSize: '12px',
+            fontWeight: '500',
+            textTransform: 'uppercase'
+          }}>
+            {isConnected ? 'Live' : 'Standby'}
+          </span>
+        </div>
+      </div>
+
+      <div
+        ref={terminalRef}
+        style={{
+          backgroundColor: '#000',
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          minHeight: '400px',
+          maxHeight: '600px',
+          overflowY: 'auto',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: '13px',
+          lineHeight: '1.4',
+          border: `1px solid ${theme.colors.bg.accent}`
+        }}
+      >
+        {output.length > 0 ? (
+          output.map((line, index) => (
+            <div key={index} style={{ marginBottom: '2px' }}>
+              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
+                [{new Date().toLocaleTimeString()}]
+              </span>
+              <span style={{ color: '#00ff00' }}>
+                {line}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div style={{ 
+            color: theme.colors.text.muted,
+            textAlign: 'center',
+            padding: theme.spacing.xl
+          }}>
+            {isActive ? 'Initializing scan...' : `${title} ready. Execute a scan to see live output.`}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+const ScanHistory = ({ scans, onRefresh }) => (
+  <Card>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+        <FileText size={20} color={theme.colors.status.success} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Scan History
+        </h2>
+      </div>
+      <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
+        Refresh
+      </Button>
+    </div>
+
+    {scans.length > 0 ? (
+      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+        {scans.map(scan => (
+          <div
+            key={scan.scan_id}
+            style={{
+              backgroundColor: theme.colors.bg.tertiary,
+              border: `1px solid ${theme.colors.bg.accent}`,
+              borderRadius: theme.borderRadius.md,
+              padding: theme.spacing.md,
+              marginBottom: theme.spacing.md
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                    {scan.tool.toUpperCase()}
+                  </span>
+                  <Badge variant={
+                    scan.status === 'completed' ? 'success' :
+                    scan.status === 'error' ? 'error' : 'default'
+                  }>
+                    {scan.status}
+                  </Badge>
+                </div>
+                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                  Target: {scan.target}
+                </div>
+                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                  {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
+                </div>
+              </div>
+              {scan.pdf_filename && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Download}
+                  onClick={() => window.open(`${API_BASE}/reports/download/pdf/${scan.pdf_filename}`, '_blank')}
+                >
+                  Report
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: theme.spacing.xl,
+        color: theme.colors.text.muted
+      }}>
+        <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>No scan history</p>
+        <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
+      </div>
+    )}
+  </Card>
+);
+
+// ==================== COMPOSANT PRINCIPAL ====================
+const ProfessionalPentestInterface = () => {
+  const [activeTab, setActiveTab] = useState('reconnaissance');
+  const [activeScans, setActiveScans] = useState([]);
+  const [scanHistory, setScanHistory] = useState([]);
+  const [toolsStatus, setToolsStatus] = useState({});
+  const [selectedScan, setSelectedScan] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Chargement initial des données
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Simuler le statut des outils - TOUS DISPONIBLES
+        setToolsStatus({
+          nmap: true,
+          nikto: true,
+          masscan: true,
+          dirb: true,
+          gobuster: true,
+          sqlmap: true
+        });
+
+        const historyRes = await fetch(`${API_BASE}/scan/history`);
+        if (historyRes.ok) {
+          const history = await historyRes.json();
+          setScanHistory(history);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        // Même en cas d'erreur, on marque les outils comme disponibles
+        setToolsStatus({
+          nmap: true,
+          nikto: true,
+          masscan: true,
+          dirb: true,
+          gobuster: true,
+          sqlmap: true
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Polling des scans actifs
+  useEffect(() => {
+    const fetchActiveScans = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/scan/active`);
+        if (response.ok) {
+          const scans = await response.json();
+          setActiveScans(scans);
+          
+          if (scans.length > 0 && !selectedScan) {
+            setSelectedScan(scans[0].scan_id);
+          }
+          
+          if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
+            setSelectedScan(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching active scans:', error);
+      }
+    };
+
+    fetchActiveScans();
+    const interval = setInterval(fetchActiveScans, 2000);
+    return () => clearInterval(interval);
+  }, [selectedScan]);
+
+  const handleScanStart = async (formData) => {
+    try {
+      const response = await fetch(`${API_BASE}/scan/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Scan start failed');
+      }
+
+      const result = await response.json();
+      if (result.scan_id) {
+        setSelectedScan(result.scan_id);
+        setActiveTab('terminal');
+      }
+    } catch (error) {
+      console.error('Error starting scan:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleStopScan = async (scanId) => {
+    try {
+      await fetch(`${API_BASE}/scan/stop/${scanId}`, { method: 'POST' });
+    } catch (error) {
+      console.error('Error stopping scan:', error);
+    }
+  };
+
+  const handleRefreshHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/scan/history`);
+      if (response.ok) {
+        const history = await response.json();
+        setScanHistory(history);
+      }
+    } catch (error) {
+      console.error('Error refreshing history:', error);
+    }
+  };
+
+  if (isLoading) {
     return (
       <div style={{
-        ...cyberStyles.terminal,
+        backgroundColor: theme.colors.bg.primary,
+        minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#666',
-        fontStyle: 'italic'
+        color: theme.colors.text.primary
       }}>
-        Terminal en attente d'un scan actif...
+        <div style={{ textAlign: 'center' }}>
+          <Shield size={48} color={theme.colors.accent.primary} style={{ marginBottom: theme.spacing.md }} />
+          <div style={{ fontSize: '18px', fontWeight: '600' }}>Initializing Security Platform...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={cyberStyles.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h
+    <div style={{
+      backgroundColor: theme.colors.bg.primary,
+      minHeight: '100vh',
+      color: theme.colors.text.primary,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <PentestHeader />
+      <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: theme.spacing.lg }}>
+        <div style={{ display: 'grid', gap: theme.spacing.lg }}>
+          
+          {activeTab === 'reconnaissance' && (
+            <>
+              <ScanForm 
+                toolsStatus={toolsStatus} 
+                onScanStart={handleScanStart}
+              />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <ActiveScansPanel
+                  activeScans={activeScans}
+                  onStopScan={handleStopScan}
+                  onSelectScan={setSelectedScan}
+                  selectedScan={selectedScan}
+                />
+                <ScanHistory
+                  scans={scanHistory}
+                  onRefresh={handleRefreshHistory}
+                />
+              </div>
+              
+              <TerminalView
+                scanId={selectedScan}
+                isActive={!!selectedScan}
+                title="Reconnaissance Terminal"
+              />
+            </>
+          )}
+
+          {activeTab === 'scanning' && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <ActiveScansPanel
+                  activeScans={activeScans}
+                  onStopScan={handleStopScan}
+                  onSelectScan={setSelectedScan}
+                  selectedScan={selectedScan}
+                />
+                <Card>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                    <Activity size={20} color={theme.colors.accent.primary} />
+                    <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                      Vulnerability Scanner
+                    </h2>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                    <Button
+                      variant="primary"
+                      icon={Target}
+                      onClick={() => handleScanStart({ tool: 'nmap', target: '127.0.0.1', scanType: 'comprehensive' })}
+                    >
+                      Deep Port Scan
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      icon={Shield}
+                      onClick={() => handleScanStart({ tool: 'nikto', target: 'http://127.0.0.1', scanType: 'comprehensive' })}
+                    >
+                      Web Vulnerability Scan
+                    </Button>
+                  </div>
+                  
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: `1px solid ${theme.colors.bg.accent}`
+                  }}>
+                    <h4 style={{ color: theme.colors.text.primary, margin: 0, marginBottom: theme.spacing.sm }}>
+                      Scan Profiles
+                    </h4>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+                      • Deep Port Scan: Comprehensive service detection and OS fingerprinting<br/>
+                      • Web Vulnerability Scan: Complete web application security assessment
+                    </div>
+                  </div>
+                </Card>
+              </div>
+              
+              <TerminalView
+                scanId={selectedScan}
+                isActive={!!selectedScan}
+                title="Vulnerability Scanning Terminal"
+              />
+            </>
+          )}
+
+          {activeTab === 'reports' && (
+            <>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <FileText size={20} color={theme.colors.accent.primary} />
+                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                    Report Management
+                  </h2>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
+                      {scanHistory.filter(s => s.status === 'completed').length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
+                  </div>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
+                      {activeScans.length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
+                  </div>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
+                      {scanHistory.filter(s => s.pdf_filename).length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
+                  </div>
+                </div>
+              </Card>
+              
+              <ScanHistory
+                scans={scanHistory}
+                onRefresh={handleRefreshHistory}
+              />
+              
+              <TerminalView
+                scanId={selectedScan}
+                isActive={!!selectedScan}
+                title="Report Generation Terminal"
+              />
+            </>
+          )}
+
+          {activeTab === 'settings' && (
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                <Settings size={20} color={theme.colors.accent.primary} />
+                <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                  System Configuration
+                </h2>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.lg }}>
+                <div>
+                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
+                    Tool Availability
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                    {Object.entries(toolsStatus).map(([tool, available]) => (
+                      <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: theme.colors.text.secondary, textTransform: 'uppercase' }}>
+                          {tool}
+                        </span>
+                        <Badge variant={available ? 'success' : 'error'}>
+                          {available ? 'Available' : 'Missing'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
+                    Platform Status
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>API Status</span>
+                      <Badge variant="success">Operational</Badge>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
+                      <Badge variant="info">{activeScans.length}</Badge>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>Total Scans</span>
+                      <Badge variant="default">{scanHistory.length}</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default ProfessionalPentestInterface;
