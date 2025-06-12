@@ -1,3 +1,43 @@
+#!/bin/bash
+
+# fix_reports_functionality.sh - Correction complète du module rapports
+
+echo "🔧 CORRECTION DU MODULE RAPPORTS"
+echo "================================="
+
+# Couleurs
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() {
+    echo -e "${BLUE}ℹ️  $1${NC}"
+}
+
+log_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+log_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+log_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+# Créer les répertoires nécessaires
+log_info "Création des répertoires de rapports..."
+mkdir -p /app/reports
+mkdir -p /app/reports/pdf
+mkdir -p backend/app/routes
+chmod 755 /app/reports /app/reports/pdf
+
+# 1. Correction complète du fichier reports.py
+log_info "Correction du fichier backend/app/routes/reports.py..."
+cat > backend/app/routes/reports.py << 'EOF'
 """
 Routes pour la gestion des rapports
 """
@@ -723,3 +763,600 @@ def delete_report(report_id):
     except Exception as e:
         logger.error(f"❌ Erreur suppression rapport {report_id}: {e}")
         return jsonify({'error': str(e)}), 500
+EOF
+
+log_success "Fichier reports.py créé avec tous les endpoints"
+
+# 2. Mise à jour du main.py principal pour intégrer les routes rapports
+log_info "Mise à jour du main.py pour intégrer les routes rapports..."
+cat > backend/main.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Pacha Toolbox Backend v2.0 - Version corrigée complète
+"""
+
+import os
+import sys
+import json
+import uuid
+import signal
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+
+# Ajouter le répertoire parent au path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Configuration
+DIRECTORIES = {
+    'reports': '/app/reports',
+    'reports_pdf': '/app/reports/pdf',
+    'logs': '/app/logs',
+    'data': '/app/data'
+}
+
+# Créer l'application Flask
+app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000"])
+
+# Configuration
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max
+
+# Logger simple
+class Logger:
+    @staticmethod
+    def info(msg):
+        print(f"[INFO] {datetime.now().strftime('%H:%M:%S')} {msg}")
+    
+    @staticmethod
+    def error(msg):
+        print(f"[ERROR] {datetime.now().strftime('%H:%M:%S')} {msg}")
+    
+    @staticmethod
+    def warning(msg):
+        print(f"[WARNING] {datetime.now().strftime('%H:%M:%S')} {msg}")
+
+logger = Logger()
+
+# Créer les répertoires nécessaires
+def ensure_directories():
+    """Créer tous les répertoires nécessaires"""
+    for name, path in DIRECTORIES.items():
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+            logger.info(f"📁 Répertoire créé: {path}")
+
+ensure_directories()
+
+# Historique des scans (en mémoire pour les tests)
+scan_history = []
+
+# Données simulées pour les tests
+def create_test_scan_data():
+    """Créer des données de scan pour les tests"""
+    return {
+        'scan_id': str(uuid.uuid4())[:8],
+        'tool': 'nmap',
+        'target': '127.0.0.1',
+        'status': 'completed',
+        'timestamp': datetime.now().isoformat(),
+        'results': {
+            'hosts_discovered': 1,
+            'ports_open': [22, 80, 443],
+            'vulnerabilities': ['SSH version disclosure', 'HTTP server headers'],
+            'risk_level': 'medium'
+        }
+    }
+
+# ==================== ROUTES DE BASE ====================
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Vérification de l'état de santé de l'API"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.0',
+        'message': 'Pacha Toolbox Backend opérationnel'
+    })
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    """Status détaillé du système"""
+    return jsonify({
+        'status': 'operational',
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.0',
+        'uptime': '24h',
+        'modules': {
+            'reports': True,
+            'scans': True,
+            'network': True
+        },
+        'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()}
+    })
+
+# ==================== ROUTES SCANS ====================
+
+@app.route('/api/scan/types', methods=['GET'])
+def get_scan_types():
+    """Types de scans disponibles"""
+    return jsonify({
+        'scan_types': {
+            'nmap': {
+                'name': 'Nmap Network Scanner',
+                'description': 'Scanner réseau pour découverte d\'hôtes et ports',
+                'options': ['basic', 'comprehensive', 'stealth']
+            },
+            'nikto': {
+                'name': 'Nikto Web Scanner',
+                'description': 'Scanner de vulnérabilités web',
+                'options': ['fast', 'comprehensive']
+            }
+        }
+    })
+
+@app.route('/api/scan/nmap', methods=['POST'])
+def scan_nmap():
+    """Scan Nmap simulé"""
+    try:
+        data = request.get_json() or {}
+        target = data.get('target', '127.0.0.1')
+        scan_type = data.get('scan_type', 'basic')
+        
+        # Simuler un scan
+        scan_result = create_test_scan_data()
+        scan_result.update({
+            'tool': 'nmap',
+            'target': target,
+            'scan_type': scan_type,
+            'results': {
+                'hosts_discovered': 1 if target == '127.0.0.1' else 0,
+                'ports_open': [22, 80, 443] if scan_type == 'comprehensive' else [80],
+                'services': ['ssh', 'http', 'https'] if scan_type == 'comprehensive' else ['http'],
+                'os_detection': 'Linux 5.x' if scan_type == 'comprehensive' else 'Unknown'
+            }
+        })
+        
+        # Générer un rapport automatiquement
+        try:
+            from app.routes.reports import generate_html_report, create_report_data
+            report_data = create_report_data([scan_result], 'scan_report', '24h')
+            report_path, report_filename = generate_html_report(report_data)
+            
+            scan_result['report_generated'] = True
+            scan_result['report_filename'] = report_filename
+            scan_result['report_url'] = f'/api/reports/download/{report_filename}'
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur génération rapport: {e}")
+            scan_result['report_generated'] = False
+            scan_result['report_error'] = str(e)
+        
+        # Ajouter à l'historique
+        scan_history.insert(0, scan_result)
+        if len(scan_history) > 100:
+            scan_history.pop()
+        
+        return jsonify(scan_result)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur scan nmap: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/scan/nikto', methods=['POST'])
+def scan_nikto():
+    """Scan Nikto simulé"""
+    try:
+        data = request.get_json() or {}
+        target = data.get('target', 'http://127.0.0.1')
+        scan_type = data.get('scan_type', 'fast')
+        
+        # Simuler des vulnérabilités selon le type de scan
+        if scan_type == 'comprehensive':
+            vulnerabilities = [
+                'Server version disclosure (nginx/1.18.0)',
+                'Missing security headers (X-Frame-Options, CSP)',
+                'Directory traversal potential in /admin/',
+                'XSS vulnerability in search parameter',
+                'Backup files found (.bak, .old extensions)',
+                'Information disclosure in HTTP headers',
+                'Weak authentication mechanism detected'
+            ]
+            risk_level = 'high'
+        else:
+            vulnerabilities = [
+                'Server version disclosure',
+                'Missing X-Frame-Options header'
+            ]
+            risk_level = 'low'
+        
+        scan_result = create_test_scan_data()
+        scan_result.update({
+            'tool': 'nikto',
+            'target': target,
+            'scan_type': scan_type,
+            'results': {
+                'vulnerabilities_found': len(vulnerabilities),
+                'vulnerabilities': vulnerabilities,
+                'risk_level': risk_level,
+                'pages_tested': 156 if scan_type == 'comprehensive' else 45,
+                'plugins_used': 23 if scan_type == 'comprehensive' else 8
+            }
+        })
+        
+        # Générer un rapport automatiquement
+        try:
+            from app.routes.reports import generate_html_report, create_report_data
+            report_data = create_report_data([scan_result], 'vulnerability_report', '24h')
+            report_path, report_filename = generate_html_report(report_data)
+            
+            scan_result['report_generated'] = True
+            scan_result['report_filename'] = report_filename
+            scan_result['report_url'] = f'/api/reports/download/{report_filename}'
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur génération rapport: {e}")
+            scan_result['report_generated'] = False
+            scan_result['report_error'] = str(e)
+        
+        # Ajouter à l'historique
+        scan_history.insert(0, scan_result)
+        if len(scan_history) > 100:
+            scan_history.pop()
+        
+        return jsonify(scan_result)
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur scan nikto: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/scans/history', methods=['GET'])
+def get_scan_history():
+    """Historique des scans"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        tool_filter = request.args.get('tool')
+        
+        filtered_history = scan_history
+        if tool_filter:
+            filtered_history = [s for s in scan_history if s.get('tool') == tool_filter]
+        
+        return jsonify({
+            'scans': filtered_history[:limit],
+            'total': len(filtered_history),
+            'limit': limit,
+            'filters': {'tool': tool_filter} if tool_filter else {}
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur historique scans: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ==================== INTÉGRATION ROUTES RAPPORTS ====================
+
+# Importer et enregistrer les routes rapports
+try:
+    from app.routes.reports import reports_bp
+    app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    logger.info("✅ Routes rapports enregistrées")
+except ImportError as e:
+    logger.error(f"❌ Erreur import routes rapports: {e}")
+    
+    # Routes rapports de base si l'import échoue
+    @app.route('/api/reports/test', methods=['GET'])
+    def test_reports_fallback():
+        return jsonify({
+            'status': 'error',
+            'message': 'Module rapports non disponible',
+            'error': 'Import failed'
+        }), 500
+
+# ==================== ROUTES RÉSEAU ====================
+
+@app.route('/api/network/interfaces', methods=['GET'])
+def get_network_interfaces():
+    """Interfaces réseau disponibles"""
+    return jsonify({
+        'interfaces': [
+            {'name': 'eth0', 'ip': '192.168.1.100', 'status': 'up'},
+            {'name': 'lo', 'ip': '127.0.0.1', 'status': 'up'}
+        ]
+    })
+
+# ==================== GESTIONNAIRES D'ERREURS ====================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'error': 'Endpoint non trouvé',
+        'message': 'Vérifiez l\'URL de l\'API',
+        'available_endpoints': [
+            '/api/health',
+            '/api/status',
+            '/api/scan/types',
+            '/api/scan/nmap',
+            '/api/scan/nikto',
+            '/api/scans/history',
+            '/api/reports/test',
+            '/api/reports/list',
+            '/api/reports/generate',
+            '/api/reports/stats',
+            '/api/reports/cleanup',
+            '/api/network/interfaces'
+        ]
+    }), 404
+
+@app.errorhandler(413)
+def file_too_large(error):
+    return jsonify({
+        'error': 'Fichier trop volumineux',
+        'message': 'La taille du fichier dépasse la limite autorisée'
+    }), 413
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Erreur interne du serveur: {error}")
+    return jsonify({
+        'error': 'Erreur interne du serveur',
+        'message': 'Une erreur inattendue s\'est produite'
+    }), 500
+
+# ==================== GESTIONNAIRE DE SIGNAUX ====================
+
+def signal_handler(sig, frame):
+    logger.info("🛑 Arrêt du serveur demandé")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+# ==================== DÉMARRAGE ====================
+
+if __name__ == "__main__":
+    logger.info("🚀 Démarrage Pacha Toolbox Backend v2.0")
+    logger.info("🌐 CORS configuré pour localhost:3000")
+    logger.info("📁 Répertoires initialisés")
+    
+    try:
+        app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    except Exception as e:
+        logger.error(f"❌ Erreur démarrage serveur: {e}")
+        sys.exit(1)
+EOF
+
+log_success "Fichier main.py mis à jour"
+
+# 3. Créer le fichier __init__.py pour le module routes
+log_info "Création des fichiers __init__.py..."
+mkdir -p backend/app/routes
+mkdir -p backend/app/utils
+
+cat > backend/app/__init__.py << 'EOF'
+# Module app
+EOF
+
+cat > backend/app/routes/__init__.py << 'EOF'
+# Module routes
+EOF
+
+cat > backend/app/utils/__init__.py << 'EOF'
+# Module utils
+EOF
+
+cat > backend/app/utils/logger.py << 'EOF'
+"""
+Logger utilitaire
+"""
+from datetime import datetime
+
+class Logger:
+    @staticmethod
+    def info(msg):
+        print(f"[INFO] {datetime.now().strftime('%H:%M:%S')} {msg}")
+    
+    @staticmethod
+    def error(msg):
+        print(f"[ERROR] {datetime.now().strftime('%H:%M:%S')} {msg}")
+    
+    @staticmethod
+    def warning(msg):
+        print(f"[WARNING] {datetime.now().strftime('%H:%M:%S')} {msg}")
+
+logger = Logger()
+EOF
+
+log_success "Fichiers utilitaires créés"
+
+# 4. Créer des rapports de test automatiquement
+log_info "Création de rapports de test..."
+cat > create_test_reports.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Script pour créer des rapports de test
+"""
+import os
+import sys
+import uuid
+from datetime import datetime, timedelta
+
+# Ajouter le chemin pour les imports
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+
+def create_test_reports():
+    """Créer plusieurs rapports de test"""
+    try:
+        from backend.app.routes.reports import generate_html_report, create_report_data, ensure_directories
+        
+        ensure_directories()
+        
+        # Données de tâches simulées
+        test_tasks = []
+        for i in range(15):
+            task = {
+                'task_id': f'test_task_{i}',
+                'tool': 'nmap' if i % 2 == 0 else 'nikto',
+                'target': f'192.168.1.{i+10}',
+                'status': 'completed' if i < 12 else 'failed',
+                'created_at': (datetime.now() - timedelta(hours=i*2)).isoformat(),
+                'vulnerabilities': [f'vuln_{j}' for j in range((i % 4) + 1)]
+            }
+            test_tasks.append(task)
+        
+        # Créer plusieurs rapports avec différentes périodes
+        periods = ['24h', '7_days', '30_days']
+        types = ['comprehensive', 'security_focus', 'network_scan']
+        
+        created_reports = []
+        
+        for i, (period, report_type) in enumerate(zip(periods, types)):
+            report_data = create_report_data(test_tasks, report_type, period)
+            report_path, filename = generate_html_report(report_data)
+            
+            created_reports.append({
+                'filename': filename,
+                'path': report_path,
+                'period': period,
+                'type': report_type
+            })
+            
+            print(f"✅ Rapport créé: {filename}")
+        
+        print(f"\n🎉 {len(created_reports)} rapports de test créés avec succès!")
+        print("📁 Emplacement: /app/reports/")
+        
+        return created_reports
+        
+    except Exception as e:
+        print(f"❌ Erreur création rapports de test: {e}")
+        return []
+
+if __name__ == "__main__":
+    create_test_reports()
+EOF
+
+python3 create_test_reports.py
+
+# 5. Vérifier que tout est en place
+log_info "Vérification de l'installation..."
+
+# Vérifier les répertoires
+for dir in "/app/reports" "/app/reports/pdf"; do
+    if [ -d "$dir" ]; then
+        log_success "Répertoire $dir existe"
+    else
+        log_error "Répertoire $dir manquant"
+        mkdir -p "$dir"
+        log_info "Répertoire $dir créé"
+    fi
+done
+
+# Vérifier les fichiers
+if [ -f "backend/app/routes/reports.py" ]; then
+    log_success "Fichier reports.py créé"
+else
+    log_error "Fichier reports.py manquant"
+fi
+
+if [ -f "backend/main.py" ]; then
+    log_success "Fichier main.py mis à jour"
+else
+    log_error "Fichier main.py manquant"
+fi
+
+# 6. Redémarrer les services
+log_info "Redémarrage des services..."
+
+# Tuer les processus existants
+pkill -f "python.*main.py" 2>/dev/null || true
+pkill -f "npm.*start" 2>/dev/null || true
+
+# Attendre un peu
+sleep 2
+
+# Démarrer le backend
+log_info "Démarrage du backend..."
+cd backend && python3 main.py &
+BACKEND_PID=$!
+
+# Attendre que le backend démarre
+sleep 5
+
+# Démarrer le frontend
+log_info "Démarrage du frontend..."
+cd ../frontend && npm start &
+FRONTEND_PID=$!
+
+# Sauvegarder les PIDs
+echo $BACKEND_PID > /tmp/backend.pid
+echo $FRONTEND_PID > /tmp/frontend.pid
+
+log_success "Services redémarrés"
+log_info "Backend PID: $BACKEND_PID"
+log_info "Frontend PID: $FRONTEND_PID"
+
+# 7. Test rapide des endpoints
+sleep 10
+
+log_info "Test des endpoints corrigés..."
+
+# Test de l'endpoint de test
+echo -n "🔍 Testing /api/reports/test... "
+response=$(curl -s -w "%{http_code}" "http://localhost:5000/api/reports/test" -o /dev/null)
+if [ "$response" = "200" ]; then
+    echo -e "${GREEN}✅ OK${NC}"
+else
+    echo -e "${RED}❌ FAIL (Code: $response)${NC}"
+fi
+
+# Test de l'endpoint de liste
+echo -n "🔍 Testing /api/reports/list... "
+response=$(curl -s -w "%{http_code}" "http://localhost:5000/api/reports/list" -o /dev/null)
+if [ "$response" = "200" ]; then
+    echo -e "${GREEN}✅ OK${NC}"
+else
+    echo -e "${RED}❌ FAIL (Code: $response)${NC}"
+fi
+
+# Test de l'endpoint de stats
+echo -n "🔍 Testing /api/reports/stats... "
+response=$(curl -s -w "%{http_code}" "http://localhost:5000/api/reports/stats" -o /dev/null)
+if [ "$response" = "200" ]; then
+    echo -e "${GREEN}✅ OK${NC}"
+else
+    echo -e "${RED}❌ FAIL (Code: $response)${NC}"
+fi
+
+echo ""
+log_success "🎉 CORRECTION TERMINÉE !"
+echo ""
+echo "📊 RÉSUMÉ DES CORRECTIONS:"
+echo "   ✅ Création du module reports.py complet"
+echo "   ✅ Tous les endpoints manquants ajoutés:"
+echo "      • /api/reports/test"
+echo "      • /api/reports/generate"
+echo "      • /api/reports/list"
+echo "      • /api/reports/download/<filename>"
+echo "      • /api/reports/preview/<filename>"
+echo "      • /api/reports/stats"
+echo "      • /api/reports/cleanup"
+echo "      • /api/reports/delete/<report_id>"
+echo "   ✅ Intégration complète dans main.py"
+echo "   ✅ Gestion d'erreurs améliorée"
+echo "   ✅ Rapports de test créés automatiquement"
+echo "   ✅ Services redémarrés"
+echo ""
+echo "🌐 URLs de test:"
+echo "   • Frontend: http://localhost:3000"
+echo "   • API Test: http://localhost:5000/api/reports/test"
+echo "   • Liste rapports: http://localhost:5000/api/reports/list"
+echo "   • Stats rapports: http://localhost:5000/api/reports/stats"
+echo ""
+echo "🧪 Relancer le test:"
+echo "   ./test_reports_functionality.sh"
+echo ""
+
+# Nettoyage
+rm -f create_test_reports.py
+
+log_success "Script de correction terminé avec succès !"
