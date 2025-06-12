@@ -1,16 +1,14 @@
 FROM python:3.11-slim
 
-# Installation des outils de sécurité
+# Mise à jour et installation des outils de base seulement
 RUN apt-get update && apt-get install -y \
-    nmap \
-    masscan \
-    nikto \
-    dirb \
-    sqlmap \
     curl \
     wget \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+# Installation de nmap (outil principal)
+RUN apt-get update && apt-get install -y nmap && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -28,42 +26,7 @@ RUN mkdir -p /app/reports /app/logs /app/data
 ENV PYTHONPATH=/app
 ENV FLASK_APP=main.py
 
-# Exposition du port
 EXPOSE 5000
 
 # Commande de démarrage
-CMD ["python", "main.py"]
-
-# backend/Dockerfile.dev
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y \
-    nmap \
-    masscan \
-    nikto \
-    dirb \
-    sqlmap \
-    curl \
-    wget \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Installation des outils de développement
-RUN pip install flask-cors python-dotenv
-
-COPY . .
-
-RUN mkdir -p /app/reports /app/logs /app/data
-
-ENV PYTHONPATH=/app
-ENV FLASK_ENV=development
-ENV FLASK_DEBUG=true
-
-EXPOSE 5000
-
 CMD ["python", "main.py"]

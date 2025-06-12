@@ -1,415 +1,199 @@
-# backend/app/routes/scan.py
 from flask import Blueprint, request, jsonify
 import subprocess
 import uuid
 import os
 import threading
-import json
-import xml.etree.ElementTree as ET
 from datetime import datetime
 import logging
-import re
+import json
 
 scan_bp = Blueprint("scan", __name__)
 logger = logging.getLogger(__name__)
 
-# Configuration des outils
-TOOLS_CONFIG = {
-    'nmap': {
-        'binary': 'nmap',
-        'max_timeout': 300,
-        'allowed_args': ['-sV', '-sS', '-sT', '-sU', '-sC', '-A', '-O', '-p', '-T1', '-T2', '-T3', '-T4', '-T5']
-    },
-    'masscan': {
-        'binary': 'masscan',
-        'max_timeout': 180,
-        'max_rate': 10000
-    }
-}
+# Fichier de compteurs simple
+COUNTERS_FILE = "/app/data/scan_counters.json"
 
-# Dictionnaire pour stocker les tâches en cours
-active_tasks = {}
-
-# Fonctions utilitaires
-def validate_target(target):
-    """Validation sécurisée des cibles"""
-    if not target:
-        return False
-    
-    # Cibles autorisées pour les tests
-    allowed_targets = [
-        "127.0.0.1", "localhost", 
-        "printnightmare.thm", "metasploitable.thm",
-        "scanme.nmap.org"
-    ]
-    
-    # Plages IP autorisées (environnements de test)
-    allowed_ranges = [
-        "192.168.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.",
-        "10.0.", "10.1.", "10.2."
-    ]
-    
-    # Vérification directe
-    if target in allowed_targets:
-        return True
-    
-    # Vérification des plages
-    for range_prefix in allowed_ranges:
-        if target.startswith(range_prefix):
-            return True
-    
-    return False
-
-def sanitize_args(args, tool_type='nmap'):
-    """Nettoyage et validation des arguments"""
-    if not args:
-        return "-sV"  # Par défaut
-    
-    # Suppression des caractères dangereux
-    dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '"', "'"]
-    clean_args = args
-    for char in dangerous_chars:
-        clean_args = clean_args.replace(char, '')
-    
-    if tool_type == 'nmap':
-        # Validation des arguments Nmap
-        allowed_args = TOOLS_CONFIG['nmap']['allowed_args']
-        arg_parts = clean_args.split()
-        validated_args = []
-        
-        for part in arg_parts:
-            if any(part.startswith(allowed) for allowed in allowed_args):
-                validated_args.append(part)
-        
-        return ' '.join(validated_args) if validated_args else "-sV"
-    
-    return clean_args
-
-def create_task(task_type, data):
-    """Création d'une nouvelle tâche"""
-    task_id = str(uuid.uuid4())
-    task = {
-        'id': task_id,
-        'type': task_type,
-        'status': 'created',
-        'created_at': datetime.now().isoformat(),
-        'data': data,
-        'result': None,
-        'error': None
-    }
-    active_tasks[task_id] = task
-    logger.info(f"📝 Tâche créée: {task_id} ({task_type})")
-    return task_id
-
-def update_task_status(task_id, status, result=None, error=None):
-    """Mise à jour du statut d'une tâche"""
-    if task_id in active_tasks:
-        active_tasks[task_id]['status'] = status
-        active_tasks[task_id]['updated_at'] = datetime.now().isoformat()
-        if result:
-            active_tasks[task_id]['result'] = result
-        if error:
-            active_tasks[task_id]['error'] = error
-        logger.info(f"📝 Tâche {task_id}: {status}")
-
-def parse_nmap_output(output):
-    """Parsing avancé de la sortie Nmap"""
-    result = {
-        'hosts_up': 0,
-        'hosts_scanned': 0,
-        'open_ports': [],
-        'services': [],
-        'os_detection': [],
-        'raw_output': output
-    }
-    
-    lines = output.split('\n')
-    current_host = None
-    
-    for line in lines:
-        line = line.strip()
-        
-        # Détection d'hôtes actifs
-        if 'Nmap scan report for' in line:
-            current_host = line.split('for ')[1].split(' ')[0]
-            result['hosts_up'] += 1
-        
-        # Ports ouverts
-        if current_host and '/tcp' in line or '/udp' in line:
-            parts = line.split()
-            if len(parts) >= 3 and 'open' in parts[1]:
-                port_info = {
-                    'host': current_host,
-                    'port': parts[0],
-                    'state': parts[1],
-                    'service': parts[2] if len(parts) > 2 else 'unknown'
-                }
-                result['open_ports'].append(port_info)
-        
-        # Détection OS
-        if 'OS details:' in line:
-            result['os_detection'].append(line.replace('OS details: ', ''))
-    
-    # Statistiques finales
-    for line in lines:
-        if 'Nmap done:' in line:
-            match = re.search(r'(\d+) IP address.*scanned', line)
-            if match:
-                result['hosts_scanned'] = int(match.group(1))
-    
-    return result
-
-def run_nmap_scan(target, args, task_id):
-    """Exécution d'un scan Nmap en arrière-plan"""
+def load_counters():
+    """Charge les compteurs de scans"""
     try:
-        update_task_status(task_id, 'running')
-        
-        # Construction de la commande
-        safe_args = sanitize_args(args, 'nmap')
-        cmd = ['nmap'] + safe_args.split() + [target]
-        
-        logger.info(f"🔍 Commande Nmap: {' '.join(cmd)}")
-        
-        # Exécution avec timeout
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=TOOLS_CONFIG['nmap']['max_timeout']
-        )
-        
-        if result.returncode == 0:
-            parsed_result = parse_nmap_output(result.stdout)
-            
-            # Sauvegarde du rapport
-            report_file = f"/app/reports/nmap_scan_{task_id}.txt"
-            with open(report_file, 'w') as f:
-                f.write(result.stdout)
-            
-            parsed_result['report_file'] = report_file
-            parsed_result['command'] = ' '.join(cmd)
-            
-            update_task_status(task_id, 'completed', parsed_result)
-            logger.info(f"✅ Scan Nmap terminé: {task_id}")
-        else:
-            error_msg = result.stderr or "Erreur inconnue"
-            update_task_status(task_id, 'failed', error=error_msg)
-            logger.error(f"❌ Erreur Nmap: {error_msg}")
-            
-    except subprocess.TimeoutExpired:
-        update_task_status(task_id, 'timeout', error="Timeout dépassé")
-        logger.error(f"⏰ Timeout Nmap: {task_id}")
+        os.makedirs("/app/data", exist_ok=True)
+        if os.path.exists(COUNTERS_FILE):
+            with open(COUNTERS_FILE, 'r') as f:
+                return json.load(f)
     except Exception as e:
-        update_task_status(task_id, 'error', error=str(e))
-        logger.error(f"❌ Exception Nmap: {e}")
+        logger.warning(f"Erreur chargement compteurs: {e}")
+    
+    return {
+        "basic": 0,
+        "version": 0,
+        "stealth": 0,
+        "aggressive": 0,
+        "printnightmare": 0,
+        "os": 0,
+        "ports": 0,
+        "masscan": 0
+    }
 
-def run_masscan_scan(target, ports, rate, task_id):
-    """Exécution d'un scan Masscan en arrière-plan"""
+def save_counters(counters):
+    """Sauvegarde les compteurs"""
     try:
-        update_task_status(task_id, 'running')
-        
-        # Validation du rate
-        safe_rate = min(int(rate), TOOLS_CONFIG['masscan']['max_rate'])
-        
-        # Construction de la commande
-        cmd = [
-            'masscan',
-            target,
-            '-p', str(ports),
-            '--rate', str(safe_rate),
-            '--output-format', 'xml'
-        ]
-        
-        logger.info(f"🚀 Commande Masscan: {' '.join(cmd)}")
-        
-        # Exécution avec timeout
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=TOOLS_CONFIG['masscan']['max_timeout']
-        )
-        
-        if result.returncode == 0:
-            # Parsing XML si disponible
-            parsed_result = {
-                'raw_output': result.stdout,
-                'command': ' '.join(cmd),
-                'open_ports': []
-            }
-            
-            # Tentative de parsing XML
-            try:
-                root = ET.fromstring(result.stdout)
-                for host in root.findall('.//host'):
-                    addr = host.find('address').get('addr')
-                    for port in host.findall('.//port'):
-                        parsed_result['open_ports'].append({
-                            'host': addr,
-                            'port': port.get('portid'),
-                            'protocol': port.get('protocol'),
-                            'state': port.find('state').get('state')
-                        })
-            except ET.ParseError:
-                logger.warning("⚠️ Impossible de parser la sortie XML Masscan")
-            
-            # Sauvegarde du rapport
-            report_file = f"/app/reports/masscan_scan_{task_id}.xml"
-            with open(report_file, 'w') as f:
-                f.write(result.stdout)
-            
-            parsed_result['report_file'] = report_file
-            
-            update_task_status(task_id, 'completed', parsed_result)
-            logger.info(f"✅ Scan Masscan terminé: {task_id}")
-        else:
-            error_msg = result.stderr or "Erreur inconnue"
-            update_task_status(task_id, 'failed', error=error_msg)
-            logger.error(f"❌ Erreur Masscan: {error_msg}")
-            
-    except subprocess.TimeoutExpired:
-        update_task_status(task_id, 'timeout', error="Timeout dépassé")
-        logger.error(f"⏰ Timeout Masscan: {task_id}")
+        os.makedirs(os.path.dirname(COUNTERS_FILE), exist_ok=True)
+        with open(COUNTERS_FILE, 'w') as f:
+            json.dump(counters, f, indent=2)
     except Exception as e:
-        update_task_status(task_id, 'error', error=str(e))
-        logger.error(f"❌ Exception Masscan: {e}")
+        logger.error(f"Erreur sauvegarde compteurs: {e}")
 
-# Routes de l'API
-@scan_bp.route("/test", methods=["GET", "POST"])
+@scan_bp.route("/counters", methods=["GET"])
+def get_scan_counters():
+    """Récupère les compteurs actuels"""
+    try:
+        counters = load_counters()
+        return jsonify({
+            "counters": counters,
+            "next_versions": {k: v + 1 for k, v in counters.items()},
+            "status": "ok"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@scan_bp.route("/test", methods=["GET"])
 def test_scan():
     """Test de la route scan"""
     return jsonify({
-        "message": "Module scan fonctionnel !",
-        "version": "2.0",
-        "available_endpoints": [
-            "/api/scan/nmap",
-            "/api/scan/masscan",
-            "/api/scan/status/<task_id>",
-            "/api/scan/tasks"
-        ]
+        "message": "Route scan fonctionnelle !",
+        "status": "OK",
+        "timestamp": datetime.now().isoformat()
     })
 
 @scan_bp.route("/nmap", methods=["POST"])
-def start_nmap_scan():
-    """Lancement d'un scan Nmap"""
+def nmap_scan():
+    """Scan Nmap basique qui fonctionne"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        target = data.get("target", "127.0.0.1")
+        args = data.get("args", "-sn")
+        scan_type = data.get("scan_type", "basic")
         
-        if not data:
-            return jsonify({"error": "Données JSON requises"}), 400
+        logger.info(f"🔍 Scan Nmap: {target} (type: {scan_type})")
         
-        target = data.get('target')
-        args = data.get('args', '-sV')
+        # Validation basique
+        allowed_targets = ["127.0.0.1", "localhost", "printnightmare.thm"]
+        if not (target in allowed_targets or target.startswith("192.168.") or target.startswith("172.")):
+            return jsonify({"error": "Cible non autorisée"}), 400
         
-        # Validation
-        if not target:
-            return jsonify({"error": "Paramètre 'target' requis"}), 400
+        # Incrémentation compteur
+        counters = load_counters()
+        counters[scan_type] = counters.get(scan_type, 0) + 1
+        save_counters(counters)
         
-        if not validate_target(target):
-            return jsonify({"error": "Cible non autorisée"}), 403
+        # Génération des noms
+        scan_id = str(uuid.uuid4())[:8]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        scan_name = f"Scan_nmap_{scan_type}_v{counters[scan_type]}_{timestamp}"
         
-        # Création de la tâche
-        task_id = create_task('nmap_scan', {
-            'target': target,
-            'args': args,
-            'started_at': datetime.now().isoformat()
-        })
-        
-        # Lancement en arrière-plan
+        # Exécution directe simple
         thread = threading.Thread(
-            target=run_nmap_scan,
-            args=(target, args, task_id)
+            target=run_simple_nmap,
+            args=(target, args, scan_name, scan_id),
+            daemon=True
         )
-        thread.daemon = True
         thread.start()
         
         return jsonify({
-            "task_id": task_id,
+            "scan_id": scan_id,
             "status": "started",
             "target": target,
-            "args": args,
-            "message": "Scan Nmap démarré"
+            "scan_type": scan_type,
+            "scan_name": scan_name,
+            "version": counters[scan_type],
+            "message": f"Scan {scan_type} v{counters[scan_type]} lancé"
         })
         
     except Exception as e:
-        logger.error(f"❌ Erreur démarrage Nmap: {e}")
+        logger.error(f"❌ Erreur Nmap: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@scan_bp.route("/masscan", methods=["POST"])
-def start_masscan_scan():
-    """Lancement d'un scan Masscan"""
+def run_simple_nmap(target, args, scan_name, scan_id):
+    """Exécution Nmap simple"""
     try:
-        data = request.get_json()
+        logger.info(f"🔍 Démarrage scan: {scan_name}")
         
-        if not data:
-            return jsonify({"error": "Données JSON requises"}), 400
+        # Fichiers de sortie
+        xml_file = f"/app/reports/{scan_name}.xml"
+        txt_file = f"/app/reports/{scan_name}.txt"
+        html_file = f"/app/reports/{scan_name}.html"
         
-        target = data.get('target')
-        ports = data.get('ports', '1-1000')
-        rate = data.get('rate', '1000')
+        # Commande Nmap
+        cmd = [
+            "nmap", target,
+            *args.split(),
+            "-oX", xml_file,
+            "-oN", txt_file
+        ]
         
-        # Validation
-        if not target:
-            return jsonify({"error": "Paramètre 'target' requis"}), 400
+        logger.info(f"📡 Commande: {' '.join(cmd)}")
         
-        if not validate_target(target):
-            return jsonify({"error": "Cible non autorisée"}), 403
-        
-        # Création de la tâche
-        task_id = create_task('masscan_scan', {
-            'target': target,
-            'ports': ports,
-            'rate': rate,
-            'started_at': datetime.now().isoformat()
-        })
-        
-        # Lancement en arrière-plan
-        thread = threading.Thread(
-            target=run_masscan_scan,
-            args=(target, ports, rate, task_id)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
         )
-        thread.daemon = True
-        thread.start()
         
-        return jsonify({
-            "task_id": task_id,
-            "status": "started",
-            "target": target,
-            "ports": ports,
-            "rate": rate,
-            "message": "Scan Masscan démarré"
-        })
-        
+        if result.returncode == 0:
+            # Génération HTML simple
+            html_content = generate_simple_html(target, scan_name, scan_id)
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            logger.info(f"✅ Scan terminé: {scan_name}")
+        else:
+            logger.error(f"❌ Erreur scan: {result.stderr}")
+            
     except Exception as e:
-        logger.error(f"❌ Erreur démarrage Masscan: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"❌ Erreur execution: {str(e)}")
 
-@scan_bp.route("/status/<task_id>", methods=["GET"])
-def get_task_status(task_id):
-    """Récupération du statut d'une tâche"""
-    if task_id not in active_tasks:
-        return jsonify({"error": "Tâche non trouvée"}), 404
+def generate_simple_html(target, scan_name, scan_id):
+    """HTML simple avec bannière Pacha"""
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>{scan_name}</title>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; background: #0a0a0a; color: #e0e0e0; margin: 0; }}
+        .banner {{ background: linear-gradient(135deg, #00ff88, #00d4ff); padding: 2rem; text-align: center; }}
+        .banner h1 {{ color: #0a0a0a; margin: 0; font-size: 2.5rem; }}
+        .content {{ padding: 2rem; max-width: 1200px; margin: 0 auto; }}
+        .info {{ background: #1a1a2e; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; }}
+        .footer {{ text-align: center; padding: 2rem; color: #666; }}
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <h1>🛡️ PACHA TOOLBOX</h1>
+        <p>Professional Penetration Testing Suite</p>
+    </div>
     
-    task = active_tasks[task_id]
-    return jsonify(task)
-
-@scan_bp.route("/tasks", methods=["GET"])
-def list_tasks():
-    """Liste de toutes les tâches"""
-    return jsonify({
-        "total_tasks": len(active_tasks),
-        "tasks": list(active_tasks.values())
-    })
-
-@scan_bp.route("/kill/<task_id>", methods=["POST"])
-def kill_task(task_id):
-    """Arrêt d'une tâche (si possible)"""
-    if task_id not in active_tasks:
-        return jsonify({"error": "Tâche non trouvée"}), 404
+    <div class="content">
+        <div class="info">
+            <h2>📊 Informations du Scan</h2>
+            <p><strong>Nom:</strong> {scan_name}</p>
+            <p><strong>Cible:</strong> {target}</p>
+            <p><strong>ID:</strong> {scan_id}</p>
+            <p><strong>Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        
+        <div class="info">
+            <h3>📄 Fichiers Générés</h3>
+            <p>• Rapport XML: {scan_name}.xml</p>
+            <p>• Rapport Texte: {scan_name}.txt</p>
+            <p>• Rapport HTML: {scan_name}.html</p>
+        </div>
+    </div>
     
-    update_task_status(task_id, 'killed')
-    return jsonify({
-        "task_id": task_id,
-        "status": "killed",
-        "message": "Tâche marquée comme arrêtée"
-    })
+    <div class="footer">
+        <p>Généré par Pacha Toolbox v2.0 - Confidentiel</p>
+    </div>
+</body>
+</html>"""

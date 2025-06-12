@@ -1,23 +1,22 @@
-# frontend/Dockerfile
+# frontend/Dockerfile - Version simple qui fonctionne
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Installation des dépendances
+# Copie des fichiers de dépendances
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Installation des dépendances
+RUN npm install
 
 # Copie du code source
 COPY . .
 
-# Build de l'application
-RUN npm run build
-
-# Serveur de production
-FROM nginx:alpine
-COPY --from=0 /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-
+# Exposition du port
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+# Variables d'environnement
+ENV REACT_APP_API_URL=http://localhost:5000/api
+
+# Démarrage en mode développement
+CMD ["npm", "start"]
