@@ -1,4 +1,4 @@
-// frontend/src/components/ReportsModule.js
+// frontend/src/components/ReportsModule.js - Version optimisée
 import React, { useState, useEffect } from 'react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -9,9 +9,14 @@ const ReportsModule = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingAction, setLoadingAction] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     fetchReports();
+    // Rafraîchir automatiquement toutes les 30 secondes
+    const interval = setInterval(fetchReports, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchReports = async () => {
@@ -20,114 +25,156 @@ const ReportsModule = () => {
       if (response.ok) {
         const data = await response.json();
         setReports(data.reports || []);
-        setReportStats(data.stats || { total: 0, by_type: {} });
+        
+        // Calcul des stats
+        const stats = {
+          total: data.reports?.length || 0,
+          by_type: {}
+        };
+        
+        data.reports?.forEach(report => {
+          const type = report.type || 'unknown';
+          stats.by_type[type] = (stats.by_type[type] || 0) + 1;
+        });
+        
+        setReportStats(stats);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des rapports:', error);
+      showNotification('❌ Erreur lors du chargement des rapports', 'error');
     }
   };
 
-  const generateReport = async (type) => {
-    setIsGenerating(true);
+  const isLoading = (action) => loadingAction === action;
+
+  const showNotification = (message, type = 'info') => {
+    // Notification toast simple
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: bold;
+      max-width: 400px;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
     
-    try {
-      const response = await fetch(`${API_BASE}/reports/generate/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Rapport généré:', data);
-        
-        // Rafraîchir la liste des rapports
-        await fetchReports();
-        
-        // Notification de succès
-        alert(`✅ ${data.message}`);
-      } else {
-        throw new Error(`Erreur ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la génération:', error);
-      alert(`❌ Erreur lors de la génération du rapport: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(() => document.body.removeChild(toast), 300);
+    }, 4000);
   };
 
-  const downloadReport = async (reportId, format) => {
+  const downloadReport = async (reportId, format, filename) => {
     setLoadingAction(`download_${reportId}_${format}`);
     
     try {
-      const response = await fetch(`${API_BASE}/reports/download/${reportId}/${format}`);
+      let downloadUrl;
+      if (format === 'PDF') {
+        downloadUrl = `${API_BASE}/reports/download/pdf/${filename}`;
+      } else {
+        downloadUrl = `${API_BASE}/reports/download/${filename}`;
+      }
+      
+      const response = await fetch(downloadUrl);
       
       if (response.ok) {
-        // Créer un blob et déclencher le téléchargement
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         
-        // Extraire le nom du fichier depuis les headers ou utiliser un nom par défaut
+        // Nom de fichier automatique ou depuis les headers
         const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = `rapport_${reportId}.${format.toLowerCase()}`;
+        let downloadFilename = filename;
         
         if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).?\2|[^;\n]*)/);
           if (filenameMatch) {
-            filename = filenameMatch[1].replace(/['"]/g, '');
+            downloadFilename = filenameMatch[1].replace(/['"]/g, '');
           }
         }
         
         a.href = url;
-        a.download = filename;
+        a.download = downloadFilename;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        console.log(`📥 Téléchargement réussi: ${filename}`);
+        showNotification(`✅ Téléchargement réussi: ${downloadFilename}`, 'success');
+        console.log(`📥 Téléchargement réussi: ${downloadFilename}`);
       } else {
         throw new Error(`Erreur ${response.status}`);
       }
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
-      alert(`❌ Erreur lors du téléchargement: ${error.message}`);
+      showNotification(`❌ Erreur lors du téléchargement: ${error.message}`, 'error');
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const previewReport = async (reportId) => {
+  const previewReport = async (reportId, filename) => {
     setLoadingAction(`preview_${reportId}`);
     
     try {
-      const response = await fetch(`${API_BASE}/reports/preview/${reportId}`);
+      // URL de prévisualisation directe
+      const previewUrl = `${API_BASE}/reports/preview/${filename}`;
+      
+      // Vérifier que le rapport existe avant d'ouvrir
+      const response = await fetch(previewUrl, { method: 'HEAD' });
       
       if (response.ok) {
-        // Ouvrir l'aperçu dans un nouvel onglet
-        const previewUrl = `${API_BASE}/reports/preview/${reportId}`;
-        const previewWindow = window.open(previewUrl, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+        const previewWindow = window.open(
+          previewUrl, 
+          '_blank', 
+          'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=yes'
+        );
         
         if (!previewWindow) {
-          alert('❌ Votre navigateur bloque les pop-ups. Veuillez autoriser les pop-ups pour voir l\'aperçu.');
+          showNotification('❌ Votre navigateur bloque les pop-ups. Veuillez autoriser les pop-ups pour voir l\'aperçu.', 'error');
         } else {
+          showNotification(`👁️ Aperçu ouvert pour: ${filename}`, 'success');
           console.log(`👁️ Aperçu ouvert pour le rapport: ${reportId}`);
         }
       } else {
-        throw new Error(`Erreur ${response.status}`);
+        throw new Error(`Rapport non disponible (${response.status})`);
       }
     } catch (error) {
       console.error('Erreur lors de l\'aperçu:', error);
-      alert(`❌ Erreur lors de l'aperçu: ${error.message}`);
+      showNotification(`❌ Erreur lors de l'aperçu: ${error.message}`, 'error');
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const deleteReport = async (reportId, reportName) => {
-    // Confirmation de suppression
-    if (!window.confirm(`⚠️ Êtes-vous sûr de vouloir supprimer le rapport "${reportName}" ?\n\nCette action est irréversible.`)) {
+  const deleteReport = async (reportId, reportName, filename) => {
+    // Confirmation de suppression renforcée
+    const confirmMessage = `⚠️ SUPPRESSION DÉFINITIVE
+
+Êtes-vous absolument sûr de vouloir supprimer le rapport :
+"${reportName}"
+
+Fichier: ${filename}
+
+⚠️ Cette action est IRRÉVERSIBLE !
+⚠️ Tous les formats (HTML, PDF) seront supprimés !
+
+Tapez "SUPPRIMER" ci-dessous pour confirmer :`;
+
+    const userConfirmation = prompt(confirmMessage);
+    
+    if (userConfirmation !== 'SUPPRIMER') {
+      showNotification('🔒 Suppression annulée', 'info');
       return;
     }
     
@@ -135,7 +182,14 @@ const ReportsModule = () => {
     
     try {
       const response = await fetch(`${API_BASE}/reports/delete/${reportId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          filename: filename,
+          confirm: true 
+        })
       });
 
       if (response.ok) {
@@ -150,166 +204,226 @@ const ReportsModule = () => {
           setSelectedReport(null);
         }
         
-        alert(`✅ ${data.message}`);
+        showNotification(`✅ Rapport supprimé avec succès: ${reportName}`, 'success');
       } else {
-        throw new Error(`Erreur ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur ${response.status}`);
       }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
-      alert(`❌ Erreur lors de la suppression: ${error.message}`);
+      showNotification(`❌ Erreur lors de la suppression: ${error.message}`, 'error');
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'nmap': return '🔍';
-      case 'nikto': return '🌐';
-      case 'tcpdump': return '📡';
-      default: return '📄';
+  const generateReport = async (type) => {
+    setIsGenerating(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: type, 
+          format: 'html' 
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Rapport généré:', data);
+        
+        // Rafraîchir la liste des rapports
+        await fetchReports();
+        
+        showNotification(`✅ ${data.message}`, 'success');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la génération:', error);
+      showNotification(`❌ Erreur lors de la génération du rapport: ${error.message}`, 'error');
+    } finally {
+      setIsGenerating(false);
     }
+  };
+
+  const getTypeIcon = (type) => {
+    const icons = {
+      'nmap': '🔍',
+      'nikto': '🌐',
+      'tcpdump': '📡',
+      'custom': '⚙️'
+    };
+    return icons[type] || '📄';
   };
 
   const getTypeColor = (type) => {
-    switch (type) {
-      case 'nmap': return '#3b82f6';
-      case 'nikto': return '#06b6d4';
-      case 'tcpdump': return '#10b981';
-      default: return '#6b7280';
-    }
+    const colors = {
+      'nmap': 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+      'nikto': 'linear-gradient(135deg, #06b6d4, #0891b2)',
+      'tcpdump': 'linear-gradient(135deg, #10b981, #047857)',
+      'custom': 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+    };
+    return colors[type] || 'linear-gradient(135deg, #6b7280, #4b5563)';
   };
 
-  const isLoading = (action) => loadingAction === action;
+  // Filtrage des rapports
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = report.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         report.filename?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || report.type === filterType;
+    return matchesSearch && matchesType;
+  });
 
   return (
-    <div style={{ padding: '30px' }}>
-      <h2 style={{ 
-        fontSize: '2.5rem', 
-        marginBottom: '30px',
-        textAlign: 'center',
-        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent'
-      }}>
-        📊 Module de Rapports
-      </h2>
-
-      {/* Statistiques des rapports */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px',
-        marginBottom: '30px'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-          padding: '20px',
-          borderRadius: '15px',
-          color: 'white',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ margin: '0 0 10px 0' }}>📊 Total</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>{reportStats.total}</p>
-        </div>
-
-        {Object.entries(reportStats.by_type || {}).map(([type, count]) => (
-          <div key={type} style={{
-            background: `linear-gradient(135deg, ${getTypeColor(type)}, ${getTypeColor(type)}dd)`,
-            padding: '20px',
-            borderRadius: '15px',
-            color: 'white',
-            textAlign: 'center'
-          }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>{getTypeIcon(type)} {type.toUpperCase()}</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>{count}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Actions de génération */}
+    <div style={{
+      padding: '20px',
+      background: 'linear-gradient(135deg, #1e293b, #334155)',
+      minHeight: '100vh',
+      color: 'white'
+    }}>
+      {/* En-tête avec statistiques */}
       <div style={{
         background: 'rgba(255,255,255,0.05)',
         padding: '25px',
         borderRadius: '15px',
         border: '1px solid rgba(255,255,255,0.1)',
-        marginBottom: '30px'
+        marginBottom: '20px'
       }}>
-        <h3 style={{ color: '#10b981', marginBottom: '20px' }}>⚡ Génération de Rapports</h3>
+        <h2 style={{ color: '#f8fafc', marginBottom: '20px', textAlign: 'center' }}>
+          📊 Gestionnaire de Rapports Pacha Toolbox
+        </h2>
         
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '20px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '15px',
+          marginBottom: '20px'
         }}>
-          <button
-            onClick={() => generateReport('nmap')}
-            disabled={isGenerating}
-            style={{
-              background: isGenerating ? 'rgba(107, 114, 128, 0.5)' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              color: 'white',
-              border: 'none',
-              padding: '20px',
+          <div style={{
+            background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            padding: '15px',
+            borderRadius: '10px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '5px' }}>📈</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{reportStats.total}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Rapports Total</div>
+          </div>
+          
+          {Object.entries(reportStats.by_type).map(([type, count]) => (
+            <div key={type} style={{
+              background: getTypeColor(type),
+              padding: '15px',
               borderRadius: '10px',
-              cursor: isGenerating ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '5px' }}>{getTypeIcon(type)}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{count}</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>{type.toUpperCase()}</div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Contrôles de filtrage et recherche */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto auto',
+          gap: '15px',
+          alignItems: 'center'
+        }}>
+          <input
+            type="text"
+            placeholder="🔍 Rechercher un rapport..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '12px 15px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.1)',
+              color: 'white',
+              fontSize: '1rem'
+            }}
+          />
+          
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            style={{
+              padding: '12px 15px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.1)',
+              color: 'white',
+              fontSize: '1rem'
             }}
           >
-            🔍 Rapport Nmap
-          </button>
-
+            <option value="all">Tous les types</option>
+            <option value="nmap">Nmap</option>
+            <option value="nikto">Nikto</option>
+            <option value="tcpdump">tcpdump</option>
+          </select>
+          
           <button
-            onClick={() => generateReport('nikto')}
+            onClick={fetchReports}
             disabled={isGenerating}
             style={{
-              background: isGenerating ? 'rgba(107, 114, 128, 0.5)' : 'linear-gradient(135deg, #06b6d4, #0891b2)',
+              background: 'linear-gradient(135deg, #10b981, #047857)',
               color: 'white',
               border: 'none',
-              padding: '20px',
-              borderRadius: '10px',
-              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
               fontSize: '1rem',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
+              fontWeight: 'bold'
             }}
           >
-            🌐 Rapport Nikto
-          </button>
-
-          <button
-            onClick={() => generateReport('tcpdump')}
-            disabled={isGenerating}
-            style={{
-              background: isGenerating ? 'rgba(107, 114, 128, 0.5)' : 'linear-gradient(135deg, #10b981, #047857)',
-              color: 'white',
-              border: 'none',
-              padding: '20px',
-              borderRadius: '10px',
-              cursor: isGenerating ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            📡 Rapport tcpdump
+            🔄 Actualiser
           </button>
         </div>
+      </div>
 
-        {isGenerating && (
-          <div style={{
-            marginTop: '20px',
-            padding: '15px',
-            background: 'rgba(16, 185, 129, 0.2)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '8px',
-            textAlign: 'center',
-            color: '#10b981'
-          }}>
-            🔄 Génération en cours... Veuillez patienter.
-          </div>
-        )}
+      {/* Boutons de génération rapide */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        padding: '20px',
+        borderRadius: '15px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{ color: '#10b981', marginBottom: '15px' }}>⚡ Génération rapide</h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '15px'
+        }}>
+          {['nmap', 'nikto', 'tcpdump'].map(type => (
+            <button
+              key={type}
+              onClick={() => generateReport(type)}
+              disabled={isGenerating}
+              style={{
+                background: isGenerating 
+                  ? 'rgba(107, 114, 128, 0.5)' 
+                  : getTypeColor(type),
+                color: 'white',
+                border: 'none',
+                padding: '15px 20px',
+                borderRadius: '10px',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isGenerating ? '⏳' : getTypeIcon(type)} Générer {type.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Liste des rapports */}
@@ -319,12 +433,14 @@ const ReportsModule = () => {
         borderRadius: '15px',
         border: '1px solid rgba(255,255,255,0.1)'
       }}>
-        <h3 style={{ color: '#8b5cf6', marginBottom: '20px' }}>📜 Rapports Disponibles</h3>
+        <h3 style={{ color: '#8b5cf6', marginBottom: '20px' }}>
+          📜 Rapports Disponibles ({filteredReports.length})
+        </h3>
         
-        {reports.length > 0 ? (
-          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-            {reports.map((report) => (
-              <div key={report.id} style={{
+        {filteredReports.length > 0 ? (
+          <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            {filteredReports.map((report) => (
+              <div key={report.id || report.filename} style={{
                 background: 'rgba(255,255,255,0.05)',
                 padding: '20px',
                 borderRadius: '10px',
@@ -333,7 +449,11 @@ const ReportsModule = () => {
                 transition: 'all 0.3s ease',
                 cursor: 'pointer'
               }}
-              onClick={() => setSelectedReport(selectedReport === report.id ? null : report.id)}
+              onClick={() => setSelectedReport(
+                selectedReport === (report.id || report.filename) 
+                  ? null 
+                  : (report.id || report.filename)
+              )}
               >
                 <div style={{ 
                   display: 'flex', 
@@ -343,9 +463,26 @@ const ReportsModule = () => {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '1.5rem' }}>{getTypeIcon(report.type)}</span>
-                    <span style={{ color: 'white', fontWeight: 'bold' }}>{report.name}</span>
+                    <span style={{ color: 'white', fontWeight: 'bold' }}>
+                      {report.name || report.filename}
+                    </span>
                   </div>
+                  
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Badges de format */}
+                    {report.formats?.map(format => (
+                      <span key={format} style={{
+                        background: format === 'PDF' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #10b981, #047857)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {format}
+                      </span>
+                    ))}
+                    
                     <span style={{ 
                       background: getTypeColor(report.type),
                       color: 'white',
@@ -354,16 +491,21 @@ const ReportsModule = () => {
                       fontSize: '0.8rem',
                       fontWeight: 'bold'
                     }}>
-                      {report.type.toUpperCase()}
+                      {(report.type || 'unknown').toUpperCase()}
                     </span>
+                    
                     <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-                      {report.size}
+                      {report.size || 'N/A'}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '10px' }}>
-                  📝 {report.description}
+                <div style={{ 
+                  color: 'rgba(255,255,255,0.8)', 
+                  fontSize: '0.9rem', 
+                  marginBottom: '10px' 
+                }}>
+                  📁 {report.filename || report.html_filename}
                 </div>
 
                 <div style={{ 
@@ -373,22 +515,11 @@ const ReportsModule = () => {
                   color: 'rgba(255,255,255,0.6)',
                   fontSize: '0.8rem'
                 }}>
-                  <span>⏰ {new Date(report.created_at).toLocaleString()}</span>
-                  <div style={{ display: 'flex', gap: '5px' }}>
-                    {report.formats?.map(format => (
-                      <span key={format} style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem'
-                      }}>
-                        {format}
-                      </span>
-                    ))}
-                  </div>
+                  <span>⏰ {new Date(report.created || report.created_at).toLocaleString()}</span>
+                  <span>📊 {report.status || 'Disponible'}</span>
                 </div>
 
-                {selectedReport === report.id && (
+                {selectedReport === (report.id || report.filename) && (
                   <div style={{
                     marginTop: '15px',
                     padding: '15px',
@@ -400,36 +531,39 @@ const ReportsModule = () => {
                       🔧 Actions disponibles
                     </h4>
                     
+                    {/* Boutons de téléchargement par format */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                       gap: '10px',
                       marginBottom: '15px'
                     }}>
-                      {/* Boutons de téléchargement par format */}
                       {report.formats?.map(format => (
                         <button 
                           key={format} 
                           onClick={(e) => {
                             e.stopPropagation();
-                            downloadReport(report.id, format);
+                            const filename = format === 'PDF' 
+                              ? (report.pdf_filename || report.filename?.replace('.html', '.pdf'))
+                              : (report.html_filename || report.filename);
+                            downloadReport(report.id || report.filename, format, filename);
                           }}
-                          disabled={isLoading(`download_${report.id}_${format}`)}
+                          disabled={isLoading(`download_${report.id || report.filename}_${format}`)}
                           style={{
-                            background: isLoading(`download_${report.id}_${format}`) 
+                            background: isLoading(`download_${report.id || report.filename}_${format}`) 
                               ? 'rgba(107, 114, 128, 0.5)' 
                               : 'linear-gradient(135deg, #10b981, #047857)',
                             color: 'white',
                             border: 'none',
                             padding: '8px 15px',
                             borderRadius: '6px',
-                            cursor: isLoading(`download_${report.id}_${format}`) ? 'not-allowed' : 'pointer',
+                            cursor: isLoading(`download_${report.id || report.filename}_${format}`) ? 'not-allowed' : 'pointer',
                             fontSize: '0.9rem',
                             fontWeight: 'bold',
                             transition: 'all 0.3s ease'
                           }}
                         >
-                          {isLoading(`download_${report.id}_${format}`) ? '⏳' : '📥'} {format}
+                          {isLoading(`download_${report.id || report.filename}_${format}`) ? '⏳' : '📥'} {format}
                         </button>
                       ))}
                     </div>
@@ -444,24 +578,25 @@ const ReportsModule = () => {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            previewReport(report.id);
+                            const filename = report.html_filename || report.filename;
+                            previewReport(report.id || report.filename, filename);
                           }}
-                          disabled={isLoading(`preview_${report.id}`)}
+                          disabled={isLoading(`preview_${report.id || report.filename}`)}
                           style={{
-                            background: isLoading(`preview_${report.id}`) 
+                            background: isLoading(`preview_${report.id || report.filename}`) 
                               ? 'rgba(107, 114, 128, 0.5)' 
                               : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
                             color: 'white',
                             border: 'none',
                             padding: '8px 15px',
                             borderRadius: '6px',
-                            cursor: isLoading(`preview_${report.id}`) ? 'not-allowed' : 'pointer',
+                            cursor: isLoading(`preview_${report.id || report.filename}`) ? 'not-allowed' : 'pointer',
                             fontSize: '0.9rem',
                             fontWeight: 'bold',
                             transition: 'all 0.3s ease'
                           }}
                         >
-                          {isLoading(`preview_${report.id}`) ? '⏳' : '👁️'} Aperçu
+                          {isLoading(`preview_${report.id || report.filename}`) ? '⏳' : '👁️'} Aperçu
                         </button>
                       )}
                       
@@ -469,24 +604,28 @@ const ReportsModule = () => {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteReport(report.id, report.name);
+                          deleteReport(
+                            report.id || report.filename, 
+                            report.name || report.filename,
+                            report.filename || report.html_filename
+                          );
                         }}
-                        disabled={isLoading(`delete_${report.id}`)}
+                        disabled={isLoading(`delete_${report.id || report.filename}`)}
                         style={{
-                          background: isLoading(`delete_${report.id}`) 
+                          background: isLoading(`delete_${report.id || report.filename}`) 
                             ? 'rgba(107, 114, 128, 0.5)' 
                             : 'linear-gradient(135deg, #ef4444, #dc2626)',
                           color: 'white',
                           border: 'none',
                           padding: '8px 15px',
                           borderRadius: '6px',
-                          cursor: isLoading(`delete_${report.id}`) ? 'not-allowed' : 'pointer',
+                          cursor: isLoading(`delete_${report.id || report.filename}`) ? 'not-allowed' : 'pointer',
                           fontSize: '0.9rem',
                           fontWeight: 'bold',
                           transition: 'all 0.3s ease'
                         }}
                       >
-                        {isLoading(`delete_${report.id}`) ? '⏳' : '🗑️'} Supprimer
+                        {isLoading(`delete_${report.id || report.filename}`) ? '⏳' : '🗑️'} Supprimer
                       </button>
                     </div>
                     
@@ -501,7 +640,7 @@ const ReportsModule = () => {
                       color: 'rgba(255,255,255,0.7)'
                     }}>
                       💡 <strong>Astuce:</strong> L'aperçu s'ouvre dans un nouvel onglet. 
-                      Les téléchargements se lancent automatiquement.
+                      Les téléchargements se lancent automatiquement. La suppression nécessite une confirmation.
                     </div>
                   </div>
                 )}
@@ -515,15 +654,18 @@ const ReportsModule = () => {
             padding: '50px 20px'
           }}>
             <div style={{ fontSize: '3rem', marginBottom: '15px' }}>📊</div>
-            <p>Aucun rapport disponible</p>
+            <p>Aucun rapport trouvé</p>
             <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>
-              Générez votre premier rapport en utilisant les boutons ci-dessus
+              {searchTerm || filterType !== 'all' 
+                ? 'Essayez d\'ajuster vos filtres' 
+                : 'Générez votre premier rapport en utilisant les boutons ci-dessus'
+              }
             </p>
           </div>
         )}
       </div>
 
-      {/* Section d'aide et informations */}
+      {/* Section d'aide */}
       <div style={{
         background: 'rgba(255,255,255,0.05)',
         padding: '25px',
@@ -531,7 +673,7 @@ const ReportsModule = () => {
         border: '1px solid rgba(255,255,255,0.1)',
         marginTop: '20px'
       }}>
-        <h3 style={{ color: '#06b6d4', marginBottom: '20px' }}>ℹ️ Informations sur les Rapports</h3>
+        <h3 style={{ color: '#06b6d4', marginBottom: '20px' }}>ℹ️ Guide des Rapports</h3>
         
         <div style={{
           display: 'grid',
@@ -546,8 +688,8 @@ const ReportsModule = () => {
           }}>
             <h4 style={{ color: '#3b82f6', marginBottom: '10px' }}>🔍 Rapports Nmap</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Analyses réseau avec découverte d'hôtes, scan de ports et détection de services.
-              Formats: HTML et PDF.
+              Analyses réseau : découverte d'hôtes, scan de ports, détection de services et OS.
+              <br/>Formats disponibles : HTML et PDF.
             </p>
           </div>
 
@@ -559,8 +701,8 @@ const ReportsModule = () => {
           }}>
             <h4 style={{ color: '#06b6d4', marginBottom: '10px' }}>🌐 Rapports Nikto</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Analyses de vulnérabilités web avec scan des failles de sécurité courantes.
-              Formats: HTML et PDF.
+              Audits de sécurité web : vulnérabilités, configurations, failles courantes.
+              <br/>Formats disponibles : HTML et PDF.
             </p>
           </div>
 
@@ -572,9 +714,28 @@ const ReportsModule = () => {
           }}>
             <h4 style={{ color: '#10b981', marginBottom: '10px' }}>📡 Rapports tcpdump</h4>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', margin: '0' }}>
-              Analyses de capture réseau avec inspection du trafic et détection d'anomalies.
-              Formats: PCAP et HTML.
+              Analyses de trafic réseau : capture, inspection, détection d'anomalies.
+              <br/>Formats disponibles : PCAP et HTML.
             </p>
+          </div>
+        </div>
+        
+        <div style={{
+          marginTop: '20px',
+          padding: '15px',
+          background: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '8px',
+          fontSize: '0.9rem',
+          color: 'rgba(255,255,255,0.8)'
+        }}>
+          <h5 style={{ color: '#f59e0b', marginBottom: '10px' }}>🔧 Fonctionnalités :</h5>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '10px' }}>
+            <div>📥 <strong>Téléchargement</strong> : Tous formats disponibles</div>
+            <div>👁️ <strong>Aperçu</strong> : Visualisation dans nouvel onglet</div>
+            <div>🗑️ <strong>Suppression</strong> : Avec confirmation sécurisée</div>
+            <div>🔍 <strong>Recherche</strong> : Par nom ou fichier</div>
+            <div>🏷️ <strong>Filtrage</strong> : Par type d'outil</div>
+            <div>🔄 <strong>Auto-refresh</strong> : Mise à jour automatique</div>
           </div>
         </div>
       </div>
