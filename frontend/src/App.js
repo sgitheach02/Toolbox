@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // Configuration API
 const API_BASE = 'http://localhost:5000/api';
 
-// Icônes simples en SVG pour remplacer lucide-react
+// Icônes simples en SVG
 const Terminal = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <polyline points="4,17 10,11 4,5"></polyline>
@@ -77,29 +77,29 @@ const RefreshCw = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
-// ==================== THÈME PROFESSIONNEL ====================
+// Thème professionnel
 const theme = {
   colors: {
     bg: {
-      primary: '#1a1a1a',      // Gris très sombre
-      secondary: '#2a2a2a',    // Gris sombre
-      tertiary: '#3a3a3a',     // Gris moyen sombre
-      accent: '#4a4a4a'        // Gris moyen
+      primary: '#1a1a1a',
+      secondary: '#2a2a2a',
+      tertiary: '#3a3a3a',
+      accent: '#4a4a4a'
     },
     text: {
-      primary: '#e5e5e5',      // Blanc cassé
-      secondary: '#b5b5b5',    // Gris clair
-      muted: '#888888'         // Gris moyen
+      primary: '#e5e5e5',
+      secondary: '#b5b5b5',
+      muted: '#888888'
     },
     status: {
-      success: '#22c55e',      // Vert sobre
-      warning: '#eab308',      // Jaune sobre
-      error: '#dc2626',        // Rouge sobre
-      info: '#3b82f6'          // Bleu sobre
+      success: '#22c55e',
+      warning: '#eab308',
+      error: '#dc2626',
+      info: '#3b82f6'
     },
     accent: {
-      primary: '#6b7280',      // Gris bleuté
-      secondary: '#9ca3af'     // Gris plus clair
+      primary: '#6b7280',
+      secondary: '#9ca3af'
     }
   },
   spacing: {
@@ -116,32 +116,19 @@ const theme = {
   }
 };
 
-// ==================== COMPOSANTS UI ====================
-const Card = ({ children, className = '', ...props }) => (
-  <div 
-    className={`bg-slate-800 border border-slate-700 rounded-lg p-6 ${className}`}
-    style={{
-      backgroundColor: theme.colors.bg.secondary,
-      border: `1px solid ${theme.colors.bg.tertiary}`,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.lg
-    }}
-    {...props}
-  >
+// Composants UI
+const Card = ({ children }) => (
+  <div style={{
+    backgroundColor: theme.colors.bg.secondary,
+    border: `1px solid ${theme.colors.bg.tertiary}`,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg
+  }}>
     {children}
   </div>
 );
 
-const Button = ({ 
-  children, 
-  variant = 'primary', 
-  size = 'md',
-  icon: Icon,
-  disabled = false,
-  onClick,
-  className = '',
-  ...props 
-}) => {
+const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick }) => {
   const variants = {
     primary: {
       backgroundColor: theme.colors.accent.primary,
@@ -192,8 +179,6 @@ const Button = ({
       }}
       disabled={disabled}
       onClick={onClick}
-      className={className}
-      {...props}
     >
       {Icon && <Icon size={16} />}
       {children}
@@ -211,24 +196,22 @@ const Badge = ({ children, variant = 'default' }) => {
   };
 
   return (
-    <span
-      style={{
-        backgroundColor: variants[variant].bg,
-        color: variants[variant].color,
-        padding: '2px 8px',
-        borderRadius: theme.borderRadius.sm,
-        fontSize: '12px',
-        fontWeight: '500',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-      }}
-    >
+    <span style={{
+      backgroundColor: variants[variant].bg,
+      color: variants[variant].color,
+      padding: '2px 8px',
+      borderRadius: theme.borderRadius.sm,
+      fontSize: '12px',
+      fontWeight: '500',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
+    }}>
       {children}
     </span>
   );
 };
 
-// ==================== COMPOSANTS MÉTIER ====================
+// Header
 const PentestHeader = () => (
   <header style={{
     backgroundColor: theme.colors.bg.secondary,
@@ -269,6 +252,7 @@ const PentestHeader = () => (
   </header>
 );
 
+// Navigation
 const NavigationTabs = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'reconnaissance', label: 'Reconnaissance', icon: Target },
@@ -320,23 +304,18 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
   );
 };
 
+// Formulaire de scan
 const ScanForm = ({ toolsStatus, onScanStart }) => {
   const [target, setTarget] = useState('');
-  const [tool, setTool] = useState('nmap');
   const [scanType, setScanType] = useState('basic');
   const [isLoading, setIsLoading] = useState(false);
 
+  // RECONNAISSANCE = NMAP UNIQUEMENT
   const scanTypes = {
-    nmap: {
-      basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (-sS -T4)' },
-      stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
-      comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
-      udp: { name: 'UDP Scan', description: 'UDP port discovery (-sU --top-ports 1000)' }
-    },
-    nikto: {
-      fast: { name: 'Fast Web Scan', description: 'Quick vulnerability assessment (-Tuning 1,2,3)' },
-      comprehensive: { name: 'Deep Web Scan', description: 'Comprehensive web vulnerability scan (-Tuning 1,2,3,4,5,6,7,8,9)' }
-    }
+    basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (--top-ports 1000)' },
+    stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
+    comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
+    udp: { name: 'UDP Scan', description: 'UDP port discovery (--top-ports 100)' }
   };
 
   const handleSubmit = async (e) => {
@@ -345,18 +324,11 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
 
     setIsLoading(true);
     try {
-      await onScanStart({ tool, target, scanType });
+      await onScanStart({ tool: 'nmap', target, scanType });
       setTarget('');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getPlaceholder = () => {
-    if (tool === 'nmap') {
-      return 'e.g., 192.168.1.0/24, 10.0.0.1, scanme.nmap.org';
-    }
-    return 'e.g., http://example.com, https://target.domain.com';
   };
 
   return (
@@ -364,45 +336,12 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
       <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
         <Target size={20} color={theme.colors.accent.primary} />
         <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Target Configuration
+          Network Reconnaissance - NMAP
         </h2>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 2fr 240px auto', gap: theme.spacing.md, alignItems: 'end' }}>
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Tool
-            </label>
-            <select
-              value={tool}
-              onChange={(e) => {
-                setTool(e.target.value);
-                setScanType('basic');
-              }}
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            >
-              <option value="nmap">Nmap</option>
-              <option value="nikto">Nikto</option>
-            </select>
-          </div>
-
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
           <div>
             <label style={{ 
               display: 'block', 
@@ -419,7 +358,7 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
               type="text"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
-              placeholder={getPlaceholder()}
+              placeholder="e.g., scanme.nmap.org, 192.168.1.1, 10.0.0.0/24"
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -457,7 +396,7 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
                 fontSize: '14px'
               }}
             >
-              {scanTypes[tool] && Object.entries(scanTypes[tool]).map(([key, config]) => (
+              {Object.entries(scanTypes).map(([key, config]) => (
                 <option key={key} value={key}>{config.name}</option>
               ))}
             </select>
@@ -467,13 +406,13 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
             type="submit"
             variant="primary"
             icon={Play}
-            disabled={isLoading || !toolsStatus[tool]}
+            disabled={isLoading || !toolsStatus.nmap}
           >
-            {isLoading ? 'Starting...' : 'Execute'}
+            {isLoading ? 'Scanning...' : 'Execute'}
           </Button>
         </div>
 
-        {scanTypes[tool]?.[scanType] && (
+        {scanTypes[scanType] && (
           <div style={{
             marginTop: theme.spacing.lg,
             padding: theme.spacing.md,
@@ -482,15 +421,15 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
             border: `1px solid ${theme.colors.accent.primary}33`
           }}>
             <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-              <strong>{scanTypes[tool][scanType].name}</strong>
+              <strong>{scanTypes[scanType].name}</strong>
             </div>
             <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-              {scanTypes[tool][scanType].description}
+              {scanTypes[scanType].description}
             </div>
           </div>
         )}
 
-        {!toolsStatus[tool] && (
+        {!toolsStatus.nmap && (
           <div style={{
             marginTop: theme.spacing.lg,
             padding: theme.spacing.md,
@@ -501,7 +440,7 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
             fontSize: '14px',
             fontWeight: '500'
           }}>
-            ⚠️ {tool.toUpperCase()} is not available on this system
+            ⚠️ NMAP is not available on this system
           </div>
         )}
       </form>
@@ -509,50 +448,97 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
   );
 };
 
-const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan }) => (
-  <Card>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-        <Activity size={20} color={theme.colors.status.warning} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Active Scans ({activeScans.length})
-        </h2>
-      </div>
-    </div>
+// Panneau des scans actifs
+const ProgressBar = ({ progress, status }) => (
+  <div style={{
+    width: '100%',
+    height: '8px',
+    backgroundColor: theme.colors.bg.tertiary,
+    borderRadius: '4px',
+    overflow: 'hidden',
+    marginBottom: theme.spacing.md
+  }}>
+    <div style={{
+      height: '100%',
+      backgroundColor: status === 'completed' ? theme.colors.status.success : 
+                      status === 'error' ? theme.colors.status.error : 
+                      theme.colors.accent.primary,
+      width: `${progress}%`,
+      transition: 'width 0.3s ease',
+      animation: status === 'running' ? 'pulse 2s infinite' : 'none'
+    }} />
+  </div>
+);
 
-    {activeScans.length > 0 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-        {activeScans.map(scan => (
-          <div
-            key={scan.scan_id}
-            onClick={() => onSelectScan(scan.scan_id)}
-            style={{
-              backgroundColor: selectedScan === scan.scan_id ? 
-                `${theme.colors.accent.primary}20` : 
-                theme.colors.bg.tertiary,
-              border: selectedScan === scan.scan_id ? 
-                `1px solid ${theme.colors.accent.primary}` : 
-                `1px solid ${theme.colors.bg.accent}`,
-              borderRadius: theme.borderRadius.md,
-              padding: theme.spacing.md,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                  <span style={{ 
-                    color: theme.colors.text.primary,
-                    fontWeight: '600',
-                    fontSize: '14px'
-                  }}>
-                    {scan.tool.toUpperCase()}
-                  </span>
-                  <Badge variant={scan.status === 'running' ? 'warning' : 'info'}>
-                    {scan.status}
-                  </Badge>
+const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan, currentTool }) => {
+  // Filtrer les scans par outil actuel
+  const filteredScans = activeScans.filter(scan => scan.tool === currentTool);
+  
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Activity size={20} color={theme.colors.status.warning} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Active {currentTool.toUpperCase()} Scans ({filteredScans.length})
+          </h2>
+        </div>
+      </div>
+
+      {filteredScans.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+          {filteredScans.map(scan => {
+            const progress = scan.status === 'completed' ? 100 : 
+                           scan.status === 'running' ? 75 : 
+                           scan.status === 'error' ? 100 : 25;
+            
+            return (
+              <div
+                key={scan.scan_id}
+                onClick={() => onSelectScan(scan.scan_id)}
+                style={{
+                  backgroundColor: selectedScan === scan.scan_id ? 
+                    `${theme.colors.accent.primary}20` : 
+                    theme.colors.bg.tertiary,
+                  border: selectedScan === scan.scan_id ? 
+                    `1px solid ${theme.colors.accent.primary}` : 
+                    `1px solid ${theme.colors.bg.accent}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing.md,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                    <span style={{ 
+                      color: theme.colors.text.primary,
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      {scan.tool.toUpperCase()}
+                    </span>
+                    <Badge variant={scan.status === 'running' ? 'warning' : scan.status === 'completed' ? 'success' : 'error'}>
+                      {scan.status}
+                    </Badge>
+                  </div>
+                  {scan.status === 'running' && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={Square}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStopScan(scan.scan_id);
+                      }}
+                    >
+                      Stop
+                    </Button>
+                  )}
                 </div>
+                
+                <ProgressBar progress={progress} status={scan.status} />
+                
                 <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
                   Target: {scan.target}
                 </div>
@@ -560,37 +546,25 @@ const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan 
                   {scan.scan_type} • Started: {new Date(scan.start_time).toLocaleTimeString()}
                 </div>
               </div>
-              {scan.status === 'running' && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  icon={Square}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStopScan(scan.scan_id);
-                  }}
-                >
-                  Stop
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div style={{ 
-        textAlign: 'center', 
-        padding: theme.spacing.xl,
-        color: theme.colors.text.muted
-      }}>
-        <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>No active scans</p>
-        <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
-      </div>
-    )}
-  </Card>
-);
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl,
+          color: theme.colors.text.muted
+        }}>
+          <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p>No active {currentTool.toUpperCase()} scans</p>
+          <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
+        </div>
+      )}
+    </Card>
+  );
+};
 
+// Terminal
 const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   const [output, setOutput] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -605,7 +579,7 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
         const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
         if (response.ok) {
           const data = await response.json();
-          if (data.new_lines?.length > 0) {
+          if (data.new_lines && data.new_lines.length > 0) {
             setOutput(prev => [...prev, ...data.new_lines]);
           }
           if (!data.is_running) {
@@ -656,7 +630,6 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
       </div>
 
       <div
-        ref={terminalRef}
         style={{
           backgroundColor: '#000',
           borderRadius: theme.borderRadius.md,
@@ -695,6 +668,7 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   );
 };
 
+// Historique des scans
 const ScanHistory = ({ scans, onRefresh }) => (
   <Card>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
@@ -742,15 +716,27 @@ const ScanHistory = ({ scans, onRefresh }) => (
                   {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
                 </div>
               </div>
-              {scan.pdf_filename && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={Download}
-                  onClick={() => window.open(`${API_BASE}/reports/download/pdf/${scan.pdf_filename}`, '_blank')}
-                >
-                  Report
-                </Button>
+              {scan.report_filename && (
+                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={Download}
+                    onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
+                  >
+                    TXT
+                  </Button>
+                  {scan.pdf_filename && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      icon={Download}
+                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
+                    >
+                      PDF
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -770,7 +756,7 @@ const ScanHistory = ({ scans, onRefresh }) => (
   </Card>
 );
 
-// ==================== COMPOSANT PRINCIPAL ====================
+// Composant principal
 const ProfessionalPentestInterface = () => {
   const [activeTab, setActiveTab] = useState('reconnaissance');
   const [activeScans, setActiveScans] = useState([]);
@@ -783,7 +769,6 @@ const ProfessionalPentestInterface = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Simuler le statut des outils - TOUS DISPONIBLES
         setToolsStatus({
           nmap: true,
           nikto: true,
@@ -800,7 +785,6 @@ const ProfessionalPentestInterface = () => {
         }
       } catch (error) {
         console.error('Error loading data:', error);
-        // Même en cas d'erreur, on marque les outils comme disponibles
         setToolsStatus({
           nmap: true,
           nikto: true,
@@ -860,7 +844,6 @@ const ProfessionalPentestInterface = () => {
       const result = await response.json();
       if (result.scan_id) {
         setSelectedScan(result.scan_id);
-        setActiveTab('terminal');
       }
     } catch (error) {
       console.error('Error starting scan:', error);
@@ -932,9 +915,10 @@ const ProfessionalPentestInterface = () => {
                   onStopScan={handleStopScan}
                   onSelectScan={setSelectedScan}
                   selectedScan={selectedScan}
+                  currentTool="nmap"
                 />
                 <ScanHistory
-                  scans={scanHistory}
+                  scans={scanHistory.filter(s => s.tool === 'nmap')}
                   onRefresh={handleRefreshHistory}
                 />
               </div>
@@ -949,59 +933,126 @@ const ProfessionalPentestInterface = () => {
 
           {activeTab === 'scanning' && (
             <>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <Shield size={20} color={theme.colors.accent.primary} />
+                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                    Web Vulnerability Scanner - NIKTO
+                  </h2>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const target = e.target.elements.niktoTarget.value;
+                  if (target) {
+                    handleScanStart({ tool: 'nikto', target, scanType: 'comprehensive' });
+                    e.target.elements.niktoTarget.value = '';
+                  }
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: theme.spacing.sm, 
+                        color: theme.colors.text.secondary,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Web Target (URL)
+                      </label>
+                      <input
+                        name="niktoTarget"
+                        type="text"
+                        placeholder="e.g., http://testphp.vulnweb.com, https://example.com"
+                        style={{
+                          width: '100%',
+                          backgroundColor: theme.colors.bg.tertiary,
+                          border: `1px solid ${theme.colors.bg.accent}`,
+                          borderRadius: theme.borderRadius.md,
+                          padding: theme.spacing.md,
+                          color: theme.colors.text.primary,
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: theme.spacing.sm, 
+                        color: theme.colors.text.secondary,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Scan Mode
+                      </label>
+                      <select
+                        defaultValue="comprehensive"
+                        style={{
+                          width: '100%',
+                          backgroundColor: theme.colors.bg.tertiary,
+                          border: `1px solid ${theme.colors.bg.accent}`,
+                          borderRadius: theme.borderRadius.md,
+                          padding: theme.spacing.md,
+                          color: theme.colors.text.primary,
+                          fontSize: '14px'
+                        }}
+                      >
+                        <option value="fast">Fast Scan</option>
+                        <option value="comprehensive">Deep Scan</option>
+                      </select>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="success"
+                      icon={Shield}
+                    >
+                      Scan Web App
+                    </Button>
+                  </div>
+                </form>
+                
+                <div style={{
+                  marginTop: theme.spacing.lg,
+                  padding: theme.spacing.md,
+                  backgroundColor: theme.colors.bg.primary,
+                  borderRadius: theme.borderRadius.md,
+                  border: `1px solid ${theme.colors.status.success}33`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
+                    <strong>Web Vulnerability Assessment</strong>
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+                    • Comprehensive web application security testing<br/>
+                    • Detection of common vulnerabilities (XSS, SQLi, etc.)<br/>
+                    • Server configuration issues and outdated software
+                  </div>
+                </div>
+              </Card>
+              
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
                 <ActiveScansPanel
                   activeScans={activeScans}
                   onStopScan={handleStopScan}
                   onSelectScan={setSelectedScan}
                   selectedScan={selectedScan}
+                  currentTool="nikto"
                 />
-                <Card>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                    <Activity size={20} color={theme.colors.accent.primary} />
-                    <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                      Vulnerability Scanner
-                    </h2>
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                    <Button
-                      variant="primary"
-                      icon={Target}
-                      onClick={() => handleScanStart({ tool: 'nmap', target: '127.0.0.1', scanType: 'comprehensive' })}
-                    >
-                      Deep Port Scan
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={Shield}
-                      onClick={() => handleScanStart({ tool: 'nikto', target: 'http://127.0.0.1', scanType: 'comprehensive' })}
-                    >
-                      Web Vulnerability Scan
-                    </Button>
-                  </div>
-                  
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    border: `1px solid ${theme.colors.bg.accent}`
-                  }}>
-                    <h4 style={{ color: theme.colors.text.primary, margin: 0, marginBottom: theme.spacing.sm }}>
-                      Scan Profiles
-                    </h4>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-                      • Deep Port Scan: Comprehensive service detection and OS fingerprinting<br/>
-                      • Web Vulnerability Scan: Complete web application security assessment
-                    </div>
-                  </div>
-                </Card>
+                <ScanHistory
+                  scans={scanHistory.filter(s => s.tool === 'nikto')}
+                  onRefresh={handleRefreshHistory}
+                />
               </div>
               
               <TerminalView
                 scanId={selectedScan}
                 isActive={!!selectedScan}
-                title="Vulnerability Scanning Terminal"
+                title="Web Vulnerability Scanner"
               />
             </>
           )}
@@ -1046,7 +1097,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.pdf_filename).length}
+                      {scanHistory.filter(s => s.report_filename).length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
                   </div>
@@ -1056,12 +1107,6 @@ const ProfessionalPentestInterface = () => {
               <ScanHistory
                 scans={scanHistory}
                 onRefresh={handleRefreshHistory}
-              />
-              
-              <TerminalView
-                scanId={selectedScan}
-                isActive={!!selectedScan}
-                title="Report Generation Terminal"
               />
             </>
           )}
@@ -1121,6 +1166,6 @@ const ProfessionalPentestInterface = () => {
       </main>
     </div>
   );
-}
+};
 
 export default ProfessionalPentestInterface;
