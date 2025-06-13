@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // Configuration API
 const API_BASE = 'http://localhost:5000/api';
 
-// Icônes simples en SVG
+// Icônes SVG complètes
 const Terminal = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <polyline points="4,17 10,11 4,5"></polyline>
@@ -74,6 +74,24 @@ const RefreshCw = ({ size = 16, color = "#666" }) => (
     <polyline points="1,20 1,14 7,14"></polyline>
     <path d="m23 10a8.5 8.5 0 0 0-14.5-6"></path>
     <path d="m1 14a8.5 8.5 0 0 0 14.5 6"></path>
+  </svg>
+);
+
+const Wifi = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="m1 9 2-2c4.97-4.97 13.03-4.97 18 0l2 2"></path>
+    <path d="m5 13 2-2c2.76-2.76 7.24-2.76 10 0l2 2"></path>
+    <path d="m9 17 1-1c.55-.55 1.45-.55 2 0l1 1"></path>
+  </svg>
+);
+
+const Network = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <rect x="16" y="16" width="6" height="6" rx="1"></rect>
+    <rect x="2" y="16" width="6" height="6" rx="1"></rect>
+    <rect x="9" y="2" width="6" height="6" rx="1"></rect>
+    <path d="m5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path>
+    <path d="m12 12v4"></path>
   </svg>
 );
 
@@ -231,7 +249,7 @@ const PentestHeader = () => (
               margin: 0,
               letterSpacing: '-0.5px'
             }}>
-              PACHA - Pentest Automation & Cybersecurity Hacking Assistant
+              PACHA Security Platform
             </h1>
             <p style={{
               color: theme.colors.text.muted,
@@ -253,11 +271,12 @@ const PentestHeader = () => (
   </header>
 );
 
-// Navigation
+// Navigation avec onglet Sniffing
 const NavigationTabs = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'reconnaissance', label: 'Reconnaissance', icon: Target },
     { id: 'scanning', label: 'Vulnerability Scanning', icon: Activity },
+    { id: 'sniffing', label: 'Sniffing Réseau', icon: Network },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Configuration', icon: Settings }
   ];
@@ -305,7 +324,573 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
   );
 };
 
-// Formulaire de scan
+// Formulaire de capture réseau
+const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
+  const [selectedInterface, setSelectedInterface] = useState('eth0');
+  const [filter, setFilter] = useState('');
+  const [duration, setDuration] = useState(60);
+  const [packetCount, setPacketCount] = useState(100);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Filtres prédéfinis
+  const predefinedFilters = {
+    'all': { name: 'Tout le trafic', filter: '', description: 'Capture tout le trafic réseau' },
+    'http': { name: 'HTTP', filter: 'tcp port 80', description: 'Trafic HTTP uniquement' },
+    'https': { name: 'HTTPS', filter: 'tcp port 443', description: 'Trafic HTTPS uniquement' },
+    'dns': { name: 'DNS', filter: 'udp port 53', description: 'Requêtes DNS uniquement' },
+    'ssh': { name: 'SSH', filter: 'tcp port 22', description: 'Connexions SSH uniquement' },
+    'smb': { name: 'SMB', filter: 'port 445 or port 139', description: 'Trafic SMB/CIFS (Print Nightmare)' },
+    'rpc': { name: 'RPC', filter: 'port 135', description: 'Remote Procedure Call' },
+    'web': { name: 'Web (HTTP/HTTPS)', filter: 'tcp port 80 or tcp port 443', description: 'Trafic web complet' },
+    'tcp': { name: 'TCP', filter: 'tcp', description: 'Tout le trafic TCP' },
+    'udp': { name: 'UDP', filter: 'udp', description: 'Tout le trafic UDP' }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedInterface) return;
+
+    setIsLoading(true);
+    try {
+      await onCaptureStart({
+        interface: selectedInterface,
+        filter: filter,
+        duration: parseInt(duration),
+        packet_count: parseInt(packetCount)
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFilterSelect = (filterKey) => {
+    setFilter(predefinedFilters[filterKey].filter);
+  };
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Network size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Capture de Trafic Réseau - TCPDUMP
+        </h2>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Interface Réseau
+            </label>
+            <select
+              value={selectedInterface}
+              onChange={(e) => setSelectedInterface(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            >
+              {Array.isArray(interfaces) && interfaces.map(iface => (
+                <option key={iface.name} value={iface.name}>
+                  {iface.display}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Filtre BPF (Berkeley Packet Filter)
+            </label>
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="e.g., tcp port 80, host 192.168.1.1"
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Filtres prédéfinis */}
+        <div style={{ marginBottom: theme.spacing.lg }}>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Filtres Prédéfinis
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {Object.entries(predefinedFilters).map(([key, info]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleFilterSelect(key)}
+                style={{
+                  backgroundColor: filter === info.filter ? theme.colors.status.info : theme.colors.bg.tertiary,
+                  color: filter === info.filter ? theme.colors.text.primary : theme.colors.text.secondary,
+                  border: `1px solid ${filter === info.filter ? theme.colors.status.info : theme.colors.bg.accent}`,
+                  borderRadius: theme.borderRadius.sm,
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+                title={info.description}
+              >
+                {info.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: theme.spacing.md, alignItems: 'end' }}>
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Durée max (secondes)
+            </label>
+            <input
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              min="10"
+              max="600"
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Nb paquets max
+            </label>
+            <input
+              type="number"
+              value={packetCount}
+              onChange={(e) => setPacketCount(e.target.value)}
+              min="10"
+              max="10000"
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            variant="success"
+            icon={Play}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Démarrage...' : 'Démarrer Capture'}
+          </Button>
+        </div>
+
+        <div style={{
+          marginTop: theme.spacing.lg,
+          padding: theme.spacing.md,
+          backgroundColor: theme.colors.bg.primary,
+          borderRadius: theme.borderRadius.md,
+          border: `1px solid ${theme.colors.status.info}33`
+        }}>
+          <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
+            <strong>Capture de Trafic Réseau</strong>
+          </div>
+          <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+            • Capture en temps réel du trafic réseau avec tcpdump<br/>
+            • Filtrage avancé avec syntaxe BPF (Berkeley Packet Filter)<br/>
+            • Analyse des protocoles HTTP, HTTPS, SSH, DNS, SMB et plus<br/>
+            • Sauvegarde automatique au format PCAP pour analyse Wireshark
+          </div>
+        </div>
+      </form>
+    </Card>
+  );
+};
+
+// Panneau des captures actives
+const ActiveCapturesPanel = ({ activeCaptures, onStopCapture, onSelectCapture, selectedCapture }) => {
+  const getSafeActiveCaptures = () => {
+    return Array.isArray(activeCaptures) ? activeCaptures : [];
+  };
+
+  const safeCaptures = getSafeActiveCaptures();
+  
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Wifi size={20} color={theme.colors.status.warning} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Captures Actives ({safeCaptures.length})
+          </h2>
+        </div>
+      </div>
+
+      {safeCaptures.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+          {safeCaptures.map(capture => (
+            <div
+              key={capture.capture_id}
+              onClick={() => onSelectCapture(capture.capture_id)}
+              style={{
+                backgroundColor: selectedCapture === capture.capture_id ? 
+                  `${theme.colors.status.info}20` : 
+                  theme.colors.bg.tertiary,
+                border: selectedCapture === capture.capture_id ? 
+                  `1px solid ${theme.colors.status.info}` : 
+                  `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                  <span style={{ 
+                    color: theme.colors.text.primary,
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}>
+                    {capture.interface || 'Unknown'}
+                  </span>
+                  <Badge variant={capture.status === 'running' ? 'warning' : capture.status === 'completed' ? 'success' : 'error'}>
+                    {capture.status || 'unknown'}
+                  </Badge>
+                </div>
+                {capture.status === 'running' && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Square}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStopCapture(capture.capture_id);
+                    }}
+                  >
+                    Stop
+                  </Button>
+                )}
+              </div>
+              
+              <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                Filtre: {capture.filter || 'Aucun filtre'}
+              </div>
+              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                Paquets: {capture.packets_captured || 0} • 
+                Démarré: {capture.start_time ? new Date(capture.start_time).toLocaleTimeString() : 'N/A'}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl,
+          color: theme.colors.text.muted
+        }}>
+          <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p>Aucune capture réseau active</p>
+          <p style={{ fontSize: '13px' }}>Démarrez une capture pour monitorer le trafic en temps réel</p>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// Terminal pour les captures
+const CaptureTerminalView = ({ captureId, isActive, title = "Capture Output" }) => {
+  const [output, setOutput] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [packetsCount, setPacketsCount] = useState(0);
+  const terminalRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (!isActive || !captureId) {
+      setIsConnected(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+
+    setIsConnected(true);
+    intervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/network/capture/live/${captureId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.lines && Array.isArray(data.lines)) {
+            setOutput(data.lines);
+            setPacketsCount(data.packets_captured || 0);
+          }
+          if (!data.is_running) {
+            setIsConnected(false);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Capture terminal fetch error:', error);
+        setIsConnected(false);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      }
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [captureId, isActive]);
+
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Terminal size={20} color={theme.colors.status.info} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            {title} {captureId && `- ${captureId}`}
+          </h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+            📦 {packetsCount} paquets
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
+            }} />
+            <span style={{ 
+              color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
+              fontSize: '12px',
+              fontWeight: '500',
+              textTransform: 'uppercase'
+            }}>
+              {isConnected ? 'Live' : 'Standby'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={terminalRef}
+        style={{
+          backgroundColor: '#000',
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          minHeight: '400px',
+          maxHeight: '600px',
+          overflowY: 'auto',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: '13px',
+          lineHeight: '1.4',
+          border: `1px solid ${theme.colors.bg.accent}`
+        }}
+      >
+        {output.length > 0 ? (
+          output.map((line, index) => (
+            <div key={index} style={{ marginBottom: '2px' }}>
+              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
+                [{new Date().toLocaleTimeString()}]
+              </span>
+              <span style={{ color: line.includes('TCP') ? '#00ff00' : 
+                                  line.includes('UDP') ? '#ffff00' :
+                                  line.includes('ARP') ? '#ff6600' :
+                                  line.includes('HTTP') ? '#00ffff' : 
+                                  line.includes('SMB') ? '#ff0066' :
+                                  line.includes('DNS') ? '#66ff00' : '#ffffff' }}>
+                {line}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div style={{ 
+            color: theme.colors.text.muted,
+            textAlign: 'center',
+            padding: theme.spacing.xl
+          }}>
+            {isActive ? 'Initialisation de la capture...' : `${title} prêt. Démarrez une capture pour voir le trafic en temps réel.`}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+// Historique des captures
+const CaptureHistory = ({ captures, onRefresh }) => {
+  const getSafeCaptures = () => {
+    return Array.isArray(captures) ? captures : [];
+  };
+
+  const safeCaptures = getSafeCaptures();
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <FileText size={20} color={theme.colors.status.success} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Historique des Captures ({safeCaptures.length})
+          </h2>
+        </div>
+        <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
+          Refresh
+        </Button>
+      </div>
+
+      {safeCaptures.length > 0 ? (
+        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+          {safeCaptures.map((capture, index) => (
+            <div
+              key={capture.capture_id || index}
+              style={{
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                marginBottom: theme.spacing.md
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                      {capture.interface || 'Unknown'}
+                    </span>
+                    <Badge variant={
+                      capture.status === 'completed' ? 'success' :
+                      capture.status === 'error' ? 'error' : 'default'
+                    }>
+                      {capture.status || 'unknown'}
+                    </Badge>
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                    Filtre: {capture.filter || 'Aucun filtre'}
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                    {capture.duration || 'N/A'} • {capture.packets_captured || 0} paquets • {capture.file_size || 'N/A'} • {capture.start_time ? new Date(capture.start_time).toLocaleString() : 'N/A'}
+                  </div>
+                  {capture.error && (
+                    <div style={{ color: theme.colors.status.error, fontSize: '12px', marginTop: theme.spacing.xs }}>
+                      Erreur: {capture.error}
+                    </div>
+                  )}
+                </div>
+                {capture.filename && (
+                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Download}
+                      onClick={() => window.open(`${API_BASE}/network/capture/download/${capture.capture_id}`, '_blank')}
+                    >
+                      PCAP
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl,
+          color: theme.colors.text.muted
+        }}>
+          <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p>Aucun historique de capture</p>
+          <p style={{ fontSize: '13px' }}>Les captures terminées apparaîtront ici</p>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// Formulaire de scan existant (simplifié)
 const ScanForm = ({ toolsStatus, onScanStart }) => {
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('basic');
@@ -411,164 +996,12 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
             {isLoading ? 'Scanning...' : 'Execute'}
           </Button>
         </div>
-
-        {scanTypes[scanType] && (
-          <div style={{
-            marginTop: theme.spacing.lg,
-            padding: theme.spacing.md,
-            backgroundColor: theme.colors.bg.primary,
-            borderRadius: theme.borderRadius.md,
-            border: `1px solid ${theme.colors.accent.primary}33`
-          }}>
-            <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-              <strong>{scanTypes[scanType].name}</strong>
-            </div>
-            <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-              {scanTypes[scanType].description}
-            </div>
-          </div>
-        )}
-
-        {!toolsStatus.nmap && (
-          <div style={{
-            marginTop: theme.spacing.lg,
-            padding: theme.spacing.md,
-            backgroundColor: `${theme.colors.status.error}20`,
-            borderRadius: theme.borderRadius.md,
-            border: `1px solid ${theme.colors.status.error}`,
-            color: theme.colors.status.error,
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
-            ⚠️ NMAP is not available on this system
-          </div>
-        )}
       </form>
     </Card>
   );
 };
 
-// Panneau des scans actifs
-const ProgressBar = ({ progress, status }) => (
-  <div style={{
-    width: '100%',
-    height: '8px',
-    backgroundColor: theme.colors.bg.tertiary,
-    borderRadius: '4px',
-    overflow: 'hidden',
-    marginBottom: theme.spacing.md
-  }}>
-    <div style={{
-      height: '100%',
-      backgroundColor: status === 'completed' ? theme.colors.status.success : 
-                      status === 'error' ? theme.colors.status.error : 
-                      theme.colors.accent.primary,
-      width: `${progress}%`,
-      transition: 'width 0.3s ease',
-      animation: status === 'running' ? 'pulse 2s infinite' : 'none'
-    }} />
-  </div>
-);
-
-const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan, currentTool }) => {
-  // ✅ Fonction sécurisée pour filtrer les scans - CORRECTION CRITIQUE
-  const getSafeActiveScans = () => {
-    return Array.isArray(activeScans) ? activeScans : [];
-  };
-
-  const filteredScans = getSafeActiveScans().filter(scan => scan && scan.tool === currentTool);
-  
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Activity size={20} color={theme.colors.status.warning} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Active {currentTool.toUpperCase()} Scans ({filteredScans.length})
-          </h2>
-        </div>
-      </div>
-
-      {filteredScans.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-          {filteredScans.map(scan => {
-            const progress = scan.status === 'completed' ? 100 : 
-                           scan.status === 'running' ? 75 : 
-                           scan.status === 'error' ? 100 : 25;
-            
-            return (
-              <div
-                key={scan.scan_id}
-                onClick={() => onSelectScan(scan.scan_id)}
-                style={{
-                  backgroundColor: selectedScan === scan.scan_id ? 
-                    `${theme.colors.accent.primary}20` : 
-                    theme.colors.bg.tertiary,
-                  border: selectedScan === scan.scan_id ? 
-                    `1px solid ${theme.colors.accent.primary}` : 
-                    `1px solid ${theme.colors.bg.accent}`,
-                  borderRadius: theme.borderRadius.md,
-                  padding: theme.spacing.md,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                    <span style={{ 
-                      color: theme.colors.text.primary,
-                      fontWeight: '600',
-                      fontSize: '14px'
-                    }}>
-                      {scan.tool ? scan.tool.toUpperCase() : 'UNKNOWN'}
-                    </span>
-                    <Badge variant={scan.status === 'running' ? 'warning' : scan.status === 'completed' ? 'success' : 'error'}>
-                      {scan.status || 'unknown'}
-                    </Badge>
-                  </div>
-                  {scan.status === 'running' && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      icon={Square}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onStopScan(scan.scan_id);
-                      }}
-                    >
-                      Stop
-                    </Button>
-                  )}
-                </div>
-                
-                <ProgressBar progress={progress} status={scan.status} />
-                
-                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                  Target: {scan.target || 'N/A'}
-                </div>
-                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {scan.scan_type || 'N/A'} • Started: {scan.start_time ? new Date(scan.start_time).toLocaleTimeString() : 'N/A'}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: theme.spacing.xl,
-          color: theme.colors.text.muted
-        }}>
-          <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-          <p>No active {currentTool.toUpperCase()} scans</p>
-          <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
-        </div>
-      )}
-    </Card>
-  );
-};
-
-// Terminal
+// Terminal pour les scans existants (simplifié)
 const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   const [output, setOutput] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -693,126 +1126,18 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   );
 };
 
-// Historique des scans
-const ScanHistory = ({ scans, onRefresh }) => {
-  // ✅ Fonction sécurisée pour les scans - CORRECTION CRITIQUE
-  const getSafeScans = () => {
-    return Array.isArray(scans) ? scans : [];
-  };
-
-  const safeScans = getSafeScans();
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <FileText size={20} color={theme.colors.status.success} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Scan History ({safeScans.length})
-          </h2>
-        </div>
-        <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
-          Refresh
-        </Button>
-      </div>
-
-      {safeScans.length > 0 ? (
-        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-          {safeScans.map((scan, index) => (
-            <div
-              key={scan.scan_id || index}
-              style={{
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                marginBottom: theme.spacing.md
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {scan.tool ? scan.tool.toUpperCase() : 'UNKNOWN'}
-                    </span>
-                    <Badge variant={
-                      scan.status === 'completed' ? 'success' :
-                      scan.status === 'error' ? 'error' : 'default'
-                    }>
-                      {scan.status || 'unknown'}
-                    </Badge>
-                  </div>
-                  <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                    Target: {scan.target || 'N/A'}
-                  </div>
-                  <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                    {scan.scan_type || 'N/A'} • {scan.duration || 'N/A'} • {scan.start_time ? new Date(scan.start_time).toLocaleString() : 'N/A'}
-                  </div>
-                  {scan.error && (
-                    <div style={{ color: theme.colors.status.error, fontSize: '12px', marginTop: theme.spacing.xs }}>
-                      Error: {scan.error}
-                    </div>
-                  )}
-                </div>
-                {scan.report_filename && (
-                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={Download}
-                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
-                    >
-                      TXT
-                    </Button>
-                    {scan.pdf_filename && (
-                      <Button
-                        variant="success"
-                        size="sm"
-                        icon={Download}
-                        onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
-                      >
-                        PDF
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: theme.spacing.xl,
-          color: theme.colors.text.muted
-        }}>
-          <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-          <p>No scan history</p>
-          <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
-        </div>
-      )}
-    </Card>
-  );
-};
-
-// Composant principal - INTERFACE PROFESSIONNELLE CORRIGÉE
+// Composant principal
 const ProfessionalPentestInterface = () => {
   const [activeTab, setActiveTab] = useState('reconnaissance');
-  const [activeScans, setActiveScans] = useState([]); // ✅ Initialisation sécurisée
-  const [scanHistory, setScanHistory] = useState([]); // ✅ Initialisation sécurisée
+  const [activeScans, setActiveScans] = useState([]);
+  const [scanHistory, setScanHistory] = useState([]);
+  const [activeCaptures, setActiveCaptures] = useState([]);
+  const [captureHistory, setCaptureHistory] = useState([]);
+  const [networkInterfaces, setNetworkInterfaces] = useState([]);
   const [toolsStatus, setToolsStatus] = useState({});
   const [selectedScan, setSelectedScan] = useState(null);
+  const [selectedCapture, setSelectedCapture] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // ✅ Fonction sécurisée pour l'historique - CORRECTION CRITIQUE
-  const getSafeScanHistory = () => {
-    return Array.isArray(scanHistory) ? scanHistory : [];
-  };
-
-  // ✅ Fonction sécurisée pour les scans actifs - CORRECTION CRITIQUE
-  const getSafeActiveScans = () => {
-    return Array.isArray(activeScans) ? activeScans : [];
-  };
 
   // Chargement initial des données
   useEffect(() => {
@@ -822,38 +1147,35 @@ const ProfessionalPentestInterface = () => {
         setToolsStatus({
           nmap: true,
           nikto: true,
-          masscan: true,
-          dirb: true,
-          gobuster: true,
-          sqlmap: true
+          tcpdump: true
         });
 
-        // Charger l'historique avec vérification sécurisée
+        // Charger les interfaces réseau
+        const interfacesRes = await fetch(`${API_BASE}/network/interfaces`);
+        if (interfacesRes.ok) {
+          const interfacesData = await interfacesRes.json();
+          setNetworkInterfaces(interfacesData.interfaces || []);
+        }
+
+        // Charger l'historique des scans
         const historyRes = await fetch(`${API_BASE}/scan/history`);
         if (historyRes.ok) {
           const history = await historyRes.json();
           if (Array.isArray(history)) {
             setScanHistory(history);
-            console.log('✅ History loaded:', history.length, 'scans');
-          } else {
-            console.warn('⚠️ History is not an array:', history);
-            setScanHistory([]);
           }
-        } else {
-          console.warn('⚠️ Failed to load history');
-          setScanHistory([]);
+        }
+
+        // Charger l'historique des captures
+        const captureHistoryRes = await fetch(`${API_BASE}/network/capture/history`);
+        if (captureHistoryRes.ok) {
+          const captureHist = await captureHistoryRes.json();
+          if (Array.isArray(captureHist)) {
+            setCaptureHistory(captureHist);
+          }
         }
       } catch (error) {
         console.error('❌ Error loading data:', error);
-        setScanHistory([]);
-        setToolsStatus({
-          nmap: true,
-          nikto: true,
-          masscan: true,
-          dirb: true,
-          gobuster: true,
-          sqlmap: true
-        });
       } finally {
         setIsLoading(false);
       }
@@ -862,7 +1184,7 @@ const ProfessionalPentestInterface = () => {
     loadData();
   }, []);
 
-  // Polling des scans actifs avec vérification sécurisée
+  // Polling des scans actifs
   useEffect(() => {
     const fetchActiveScans = async () => {
       try {
@@ -872,7 +1194,6 @@ const ProfessionalPentestInterface = () => {
           if (Array.isArray(scans)) {
             setActiveScans(scans);
             
-            // Sélectionner automatiquement un scan actif
             if (scans.length > 0 && !selectedScan) {
               const runningScan = scans.find(s => s.status === 'running');
               if (runningScan) {
@@ -880,18 +1201,13 @@ const ProfessionalPentestInterface = () => {
               }
             }
             
-            // Désélectionner si le scan n'existe plus
             if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
               setSelectedScan(null);
             }
-          } else {
-            console.warn('⚠️ Active scans is not an array:', scans);
-            setActiveScans([]);
           }
         }
       } catch (error) {
         console.error('❌ Error fetching active scans:', error);
-        setActiveScans([]);
       }
     };
 
@@ -899,6 +1215,40 @@ const ProfessionalPentestInterface = () => {
     const interval = setInterval(fetchActiveScans, 2000);
     return () => clearInterval(interval);
   }, [selectedScan]);
+
+  // Polling des captures actives
+  useEffect(() => {
+    const fetchActiveCaptures = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/network/capture/active`);
+        if (response.ok) {
+          const captures = await response.json();
+          if (Array.isArray(captures)) {
+            setActiveCaptures(captures);
+            
+            if (captures.length > 0 && !selectedCapture) {
+              const runningCapture = captures.find(c => c.status === 'running');
+              if (runningCapture) {
+                setSelectedCapture(runningCapture.capture_id);
+              }
+            }
+            
+            if (selectedCapture && !captures.find(c => c.capture_id === selectedCapture)) {
+              setSelectedCapture(null);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching active captures:', error);
+      }
+    };
+
+    if (activeTab === 'sniffing') {
+      fetchActiveCaptures();
+      const interval = setInterval(fetchActiveCaptures, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedCapture, activeTab]);
 
   // Fonction pour démarrer un scan
   const handleScanStart = async (formData) => {
@@ -931,41 +1281,90 @@ const ProfessionalPentestInterface = () => {
   // Fonction pour arrêter un scan
   const handleStopScan = async (scanId) => {
     try {
-      console.log('🛑 Stopping scan:', scanId);
-      
       const response = await fetch(`${API_BASE}/scan/stop/${scanId}`, { 
         method: 'POST' 
       });
       
       if (response.ok) {
         console.log('✅ Scan stopped successfully');
-        // Rafraîchir l'historique après arrêt
-        handleRefreshHistory();
+        handleRefreshScanHistory();
       }
     } catch (error) {
       console.error('❌ Error stopping scan:', error);
     }
   };
 
-  // Fonction pour rafraîchir l'historique
-  const handleRefreshHistory = async () => {
+  // Fonction pour démarrer une capture
+  const handleCaptureStart = async (formData) => {
     try {
-      console.log('🔄 Refreshing history...');
+      console.log('📡 Starting capture:', formData);
       
+      const response = await fetch(`${API_BASE}/network/capture/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Capture start failed');
+      }
+
+      const result = await response.json();
+      console.log('✅ Capture started:', result);
+      
+      if (result.capture_id) {
+        setSelectedCapture(result.capture_id);
+      }
+    } catch (error) {
+      console.error('❌ Error starting capture:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  // Fonction pour arrêter une capture
+  const handleStopCapture = async (captureId) => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/stop/${captureId}`, { 
+        method: 'POST' 
+      });
+      
+      if (response.ok) {
+        console.log('✅ Capture stopped successfully');
+        handleRefreshCaptureHistory();
+      }
+    } catch (error) {
+      console.error('❌ Error stopping capture:', error);
+    }
+  };
+
+  // Fonction pour rafraîchir l'historique des scans
+  const handleRefreshScanHistory = async () => {
+    try {
       const response = await fetch(`${API_BASE}/scan/history`);
       if (response.ok) {
         const history = await response.json();
         if (Array.isArray(history)) {
           setScanHistory(history);
-          console.log('✅ History refreshed:', history.length, 'scans');
-        } else {
-          console.warn('⚠️ Refresh: History is not an array:', history);
-          setScanHistory([]);
         }
       }
     } catch (error) {
-      console.error('❌ Error refreshing history:', error);
-      setScanHistory([]);
+      console.error('❌ Error refreshing scan history:', error);
+    }
+  };
+
+  // Fonction pour rafraîchir l'historique des captures
+  const handleRefreshCaptureHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/history`);
+      if (response.ok) {
+        const history = await response.json();
+        if (Array.isArray(history)) {
+          setCaptureHistory(history);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing capture history:', error);
     }
   };
 
@@ -1016,20 +1415,6 @@ const ProfessionalPentestInterface = () => {
                 toolsStatus={toolsStatus} 
                 onScanStart={handleScanStart}
               />
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <ActiveScansPanel
-                  activeScans={activeScans}
-                  onStopScan={handleStopScan}
-                  onSelectScan={setSelectedScan}
-                  selectedScan={selectedScan}
-                  currentTool="nmap"
-                />
-                <ScanHistory
-                  scans={getSafeScanHistory().filter(s => s.tool === 'nmap')}
-                  onRefresh={handleRefreshHistory}
-                />
-              </div>
               
               <TerminalView
                 scanId={selectedScan}
@@ -1127,43 +1512,41 @@ const ProfessionalPentestInterface = () => {
                     </Button>
                   </div>
                 </form>
-                
-                <div style={{
-                  marginTop: theme.spacing.lg,
-                  padding: theme.spacing.md,
-                  backgroundColor: theme.colors.bg.primary,
-                  borderRadius: theme.borderRadius.md,
-                  border: `1px solid ${theme.colors.status.success}33`
-                }}>
-                  <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-                    <strong>Web Vulnerability Assessment</strong>
-                  </div>
-                  <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-                    • Comprehensive web application security testing<br/>
-                    • Detection of common vulnerabilities (XSS, SQLi, etc.)<br/>
-                    • Server configuration issues and outdated software
-                  </div>
-                </div>
               </Card>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <ActiveScansPanel
-                  activeScans={activeScans}
-                  onStopScan={handleStopScan}
-                  onSelectScan={setSelectedScan}
-                  selectedScan={selectedScan}
-                  currentTool="nikto"
-                />
-                <ScanHistory
-                  scans={getSafeScanHistory().filter(s => s.tool === 'nikto')}
-                  onRefresh={handleRefreshHistory}
-                />
-              </div>
               
               <TerminalView
                 scanId={selectedScan}
                 isActive={!!selectedScan}
                 title="Web Vulnerability Scanner"
+              />
+            </>
+          )}
+
+          {/* Onglet Sniffing Réseau - NOUVEAU */}
+          {activeTab === 'sniffing' && (
+            <>
+              <NetworkCaptureForm 
+                interfaces={networkInterfaces} 
+                onCaptureStart={handleCaptureStart}
+              />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <ActiveCapturesPanel
+                  activeCaptures={activeCaptures}
+                  onStopCapture={handleStopCapture}
+                  onSelectCapture={setSelectedCapture}
+                  selectedCapture={selectedCapture}
+                />
+                <CaptureHistory
+                  captures={captureHistory}
+                  onRefresh={handleRefreshCaptureHistory}
+                />
+              </div>
+              
+              <CaptureTerminalView
+                captureId={selectedCapture}
+                isActive={!!selectedCapture}
+                title="Network Capture Terminal"
               />
             </>
           )}
@@ -1187,7 +1570,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
-                      {getSafeScanHistory().filter(s => s.status === 'completed').length}
+                      {scanHistory.filter(s => s.status === 'completed').length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
                   </div>
@@ -1198,7 +1581,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
-                      {getSafeActiveScans().length}
+                      {activeScans.length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
                   </div>
@@ -1209,17 +1592,106 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
-                      {getSafeScanHistory().filter(s => s.report_filename).length}
+                      {captureHistory.filter(c => c.status === 'completed').length}
                     </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Network Captures</div>
                   </div>
                 </div>
               </Card>
               
-              <ScanHistory
-                scans={getSafeScanHistory()}
-                onRefresh={handleRefreshHistory}
-              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <Card>
+                  <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
+                    📊 Scan Reports
+                  </h3>
+                  {scanHistory.length > 0 ? (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      {scanHistory.slice(0, 10).map((scan, index) => (
+                        <div
+                          key={scan.scan_id || index}
+                          style={{
+                            backgroundColor: theme.colors.bg.tertiary,
+                            border: `1px solid ${theme.colors.bg.accent}`,
+                            borderRadius: theme.borderRadius.md,
+                            padding: theme.spacing.sm,
+                            marginBottom: theme.spacing.sm
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
+                                {scan.tool?.toUpperCase() || 'UNKNOWN'} - {scan.target || 'N/A'}
+                              </div>
+                              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                                {scan.start_time ? new Date(scan.start_time).toLocaleString() : 'N/A'}
+                              </div>
+                            </div>
+                            <Badge variant={scan.status === 'completed' ? 'success' : 'error'}>
+                              {scan.status || 'unknown'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, color: theme.colors.text.muted }}>
+                      <p>No scan reports available</p>
+                    </div>
+                  )}
+                </Card>
+
+                <Card>
+                  <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
+                    📡 Network Captures
+                  </h3>
+                  {captureHistory.length > 0 ? (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      {captureHistory.slice(0, 10).map((capture, index) => (
+                        <div
+                          key={capture.capture_id || index}
+                          style={{
+                            backgroundColor: theme.colors.bg.tertiary,
+                            border: `1px solid ${theme.colors.bg.accent}`,
+                            borderRadius: theme.borderRadius.md,
+                            padding: theme.spacing.sm,
+                            marginBottom: theme.spacing.sm
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
+                                {capture.interface || 'Unknown'} - {capture.packets_captured || 0} packets
+                              </div>
+                              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                                {capture.start_time ? new Date(capture.start_time).toLocaleString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: theme.spacing.xs, alignItems: 'center' }}>
+                              <Badge variant={capture.status === 'completed' ? 'success' : 'error'}>
+                                {capture.status || 'unknown'}
+                              </Badge>
+                              {capture.filename && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  icon={Download}
+                                  onClick={() => window.open(`${API_BASE}/network/capture/download/${capture.capture_id}`, '_blank')}
+                                >
+                                  PCAP
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, color: theme.colors.text.muted }}>
+                      <p>No network captures available</p>
+                    </div>
+                  )}
+                </Card>
+              </div>
             </>
           )}
 
@@ -1254,6 +1726,24 @@ const ProfessionalPentestInterface = () => {
                 
                 <div>
                   <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
+                    Network Interfaces
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                    {networkInterfaces.slice(0, 5).map((iface, index) => (
+                      <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: theme.colors.text.secondary, fontSize: '14px' }}>
+                          {iface.name}
+                        </span>
+                        <Badge variant={iface.active ? 'success' : 'default'}>
+                          {iface.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
                     Platform Status
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
@@ -1263,11 +1753,15 @@ const ProfessionalPentestInterface = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
-                      <Badge variant="info">{getSafeActiveScans().length}</Badge>
+                      <Badge variant="info">{activeScans.length}</Badge>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Total Scans</span>
-                      <Badge variant="default">{getSafeScanHistory().length}</Badge>
+                      <span style={{ color: theme.colors.text.secondary }}>Active Captures</span>
+                      <Badge variant="warning">{activeCaptures.length}</Badge>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>Total Reports</span>
+                      <Badge variant="default">{scanHistory.length + captureHistory.length}</Badge>
                     </div>
                   </div>
                 </div>
