@@ -128,7 +128,7 @@ const Card = ({ children }) => (
   </div>
 );
 
-const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick }) => {
+const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick, type = 'button' }) => {
   const variants = {
     primary: {
       backgroundColor: theme.colors.accent.primary,
@@ -165,6 +165,7 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
 
   return (
     <button
+      type={type}
       style={{
         ...variants[variant],
         ...sizes[size],
@@ -230,7 +231,7 @@ const PentestHeader = () => (
               margin: 0,
               letterSpacing: '-0.5px'
             }}>
-              PACHA Security Platform
+              PACHA - Pentest Automation & Cybersecurity Hacking Assistant
             </h1>
             <p style={{
               color: theme.colors.text.muted,
@@ -310,7 +311,6 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
   const [scanType, setScanType] = useState('basic');
   const [isLoading, setIsLoading] = useState(false);
 
-  // RECONNAISSANCE = NMAP UNIQUEMENT
   const scanTypes = {
     basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (--top-ports 1000)' },
     stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
@@ -471,8 +471,12 @@ const ProgressBar = ({ progress, status }) => (
 );
 
 const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan, currentTool }) => {
-  // Filtrer les scans par outil actuel
-  const filteredScans = activeScans.filter(scan => scan.tool === currentTool);
+  // ✅ Fonction sécurisée pour filtrer les scans - CORRECTION CRITIQUE
+  const getSafeActiveScans = () => {
+    return Array.isArray(activeScans) ? activeScans : [];
+  };
+
+  const filteredScans = getSafeActiveScans().filter(scan => scan && scan.tool === currentTool);
   
   return (
     <Card>
@@ -516,10 +520,10 @@ const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan,
                       fontWeight: '600',
                       fontSize: '14px'
                     }}>
-                      {scan.tool.toUpperCase()}
+                      {scan.tool ? scan.tool.toUpperCase() : 'UNKNOWN'}
                     </span>
                     <Badge variant={scan.status === 'running' ? 'warning' : scan.status === 'completed' ? 'success' : 'error'}>
-                      {scan.status}
+                      {scan.status || 'unknown'}
                     </Badge>
                   </div>
                   {scan.status === 'running' && (
@@ -540,10 +544,10 @@ const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan,
                 <ProgressBar progress={progress} status={scan.status} />
                 
                 <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                  Target: {scan.target}
+                  Target: {scan.target || 'N/A'}
                 </div>
                 <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {scan.scan_type} • Started: {new Date(scan.start_time).toLocaleTimeString()}
+                  {scan.scan_type || 'N/A'} • Started: {scan.start_time ? new Date(scan.start_time).toLocaleTimeString() : 'N/A'}
                 </div>
               </div>
             );
@@ -569,31 +573,51 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
   const [output, setOutput] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const terminalRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (!isActive || !scanId) return;
+    if (!isActive || !scanId) {
+      setIsConnected(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
 
     setIsConnected(true);
-    const interval = setInterval(async () => {
+    intervalRef.current = setInterval(async () => {
       try {
         const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
         if (response.ok) {
           const data = await response.json();
-          if (data.new_lines && data.new_lines.length > 0) {
-            setOutput(prev => [...prev, ...data.new_lines]);
+          if (data.lines && Array.isArray(data.lines)) {
+            setOutput(data.lines);
           }
           if (!data.is_running) {
             setIsConnected(false);
-            clearInterval(interval);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
           }
         }
       } catch (error) {
+        console.error('Terminal fetch error:', error);
         setIsConnected(false);
-        clearInterval(interval);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [scanId, isActive]);
 
   useEffect(() => {
@@ -630,6 +654,7 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
       </div>
 
       <div
+        ref={terminalRef}
         style={{
           backgroundColor: '#000',
           borderRadius: theme.borderRadius.md,
@@ -669,106 +694,131 @@ const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
 };
 
 // Historique des scans
-const ScanHistory = ({ scans, onRefresh }) => (
-  <Card>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-        <FileText size={20} color={theme.colors.status.success} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Scan History
-        </h2>
-      </div>
-      <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
-        Refresh
-      </Button>
-    </div>
+const ScanHistory = ({ scans, onRefresh }) => {
+  // ✅ Fonction sécurisée pour les scans - CORRECTION CRITIQUE
+  const getSafeScans = () => {
+    return Array.isArray(scans) ? scans : [];
+  };
 
-    {scans.length > 0 ? (
-      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-        {scans.map(scan => (
-          <div
-            key={scan.scan_id}
-            style={{
-              backgroundColor: theme.colors.bg.tertiary,
-              border: `1px solid ${theme.colors.bg.accent}`,
-              borderRadius: theme.borderRadius.md,
-              padding: theme.spacing.md,
-              marginBottom: theme.spacing.md
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                  <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                    {scan.tool.toUpperCase()}
-                  </span>
-                  <Badge variant={
-                    scan.status === 'completed' ? 'success' :
-                    scan.status === 'error' ? 'error' : 'default'
-                  }>
-                    {scan.status}
-                  </Badge>
-                </div>
-                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                  Target: {scan.target}
-                </div>
-                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
-                </div>
-              </div>
-              {scan.report_filename && (
-                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Download}
-                    onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
-                  >
-                    TXT
-                  </Button>
-                  {scan.pdf_filename && (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      icon={Download}
-                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
-                    >
-                      PDF
-                    </Button>
+  const safeScans = getSafeScans();
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <FileText size={20} color={theme.colors.status.success} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Scan History ({safeScans.length})
+          </h2>
+        </div>
+        <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
+          Refresh
+        </Button>
+      </div>
+
+      {safeScans.length > 0 ? (
+        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+          {safeScans.map((scan, index) => (
+            <div
+              key={scan.scan_id || index}
+              style={{
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                marginBottom: theme.spacing.md
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                      {scan.tool ? scan.tool.toUpperCase() : 'UNKNOWN'}
+                    </span>
+                    <Badge variant={
+                      scan.status === 'completed' ? 'success' :
+                      scan.status === 'error' ? 'error' : 'default'
+                    }>
+                      {scan.status || 'unknown'}
+                    </Badge>
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                    Target: {scan.target || 'N/A'}
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                    {scan.scan_type || 'N/A'} • {scan.duration || 'N/A'} • {scan.start_time ? new Date(scan.start_time).toLocaleString() : 'N/A'}
+                  </div>
+                  {scan.error && (
+                    <div style={{ color: theme.colors.status.error, fontSize: '12px', marginTop: theme.spacing.xs }}>
+                      Error: {scan.error}
+                    </div>
                   )}
                 </div>
-              )}
+                {scan.report_filename && (
+                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Download}
+                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
+                    >
+                      TXT
+                    </Button>
+                    {scan.pdf_filename && (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        icon={Download}
+                        onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
+                      >
+                        PDF
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div style={{ 
-        textAlign: 'center', 
-        padding: theme.spacing.xl,
-        color: theme.colors.text.muted
-      }}>
-        <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>No scan history</p>
-        <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
-      </div>
-    )}
-  </Card>
-);
+          ))}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl,
+          color: theme.colors.text.muted
+        }}>
+          <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p>No scan history</p>
+          <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
+        </div>
+      )}
+    </Card>
+  );
+};
 
-// Composant principal
+// Composant principal - INTERFACE PROFESSIONNELLE CORRIGÉE
 const ProfessionalPentestInterface = () => {
   const [activeTab, setActiveTab] = useState('reconnaissance');
-  const [activeScans, setActiveScans] = useState([]);
-  const [scanHistory, setScanHistory] = useState([]);
+  const [activeScans, setActiveScans] = useState([]); // ✅ Initialisation sécurisée
+  const [scanHistory, setScanHistory] = useState([]); // ✅ Initialisation sécurisée
   const [toolsStatus, setToolsStatus] = useState({});
   const [selectedScan, setSelectedScan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ✅ Fonction sécurisée pour l'historique - CORRECTION CRITIQUE
+  const getSafeScanHistory = () => {
+    return Array.isArray(scanHistory) ? scanHistory : [];
+  };
+
+  // ✅ Fonction sécurisée pour les scans actifs - CORRECTION CRITIQUE
+  const getSafeActiveScans = () => {
+    return Array.isArray(activeScans) ? activeScans : [];
+  };
 
   // Chargement initial des données
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Initialiser les statuts des outils
         setToolsStatus({
           nmap: true,
           nikto: true,
@@ -778,13 +828,24 @@ const ProfessionalPentestInterface = () => {
           sqlmap: true
         });
 
+        // Charger l'historique avec vérification sécurisée
         const historyRes = await fetch(`${API_BASE}/scan/history`);
         if (historyRes.ok) {
           const history = await historyRes.json();
-          setScanHistory(history);
+          if (Array.isArray(history)) {
+            setScanHistory(history);
+            console.log('✅ History loaded:', history.length, 'scans');
+          } else {
+            console.warn('⚠️ History is not an array:', history);
+            setScanHistory([]);
+          }
+        } else {
+          console.warn('⚠️ Failed to load history');
+          setScanHistory([]);
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('❌ Error loading data:', error);
+        setScanHistory([]);
         setToolsStatus({
           nmap: true,
           nikto: true,
@@ -801,25 +862,36 @@ const ProfessionalPentestInterface = () => {
     loadData();
   }, []);
 
-  // Polling des scans actifs
+  // Polling des scans actifs avec vérification sécurisée
   useEffect(() => {
     const fetchActiveScans = async () => {
       try {
         const response = await fetch(`${API_BASE}/scan/active`);
         if (response.ok) {
           const scans = await response.json();
-          setActiveScans(scans);
-          
-          if (scans.length > 0 && !selectedScan) {
-            setSelectedScan(scans[0].scan_id);
-          }
-          
-          if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
-            setSelectedScan(null);
+          if (Array.isArray(scans)) {
+            setActiveScans(scans);
+            
+            // Sélectionner automatiquement un scan actif
+            if (scans.length > 0 && !selectedScan) {
+              const runningScan = scans.find(s => s.status === 'running');
+              if (runningScan) {
+                setSelectedScan(runningScan.scan_id);
+              }
+            }
+            
+            // Désélectionner si le scan n'existe plus
+            if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
+              setSelectedScan(null);
+            }
+          } else {
+            console.warn('⚠️ Active scans is not an array:', scans);
+            setActiveScans([]);
           }
         }
       } catch (error) {
-        console.error('Error fetching active scans:', error);
+        console.error('❌ Error fetching active scans:', error);
+        setActiveScans([]);
       }
     };
 
@@ -828,8 +900,11 @@ const ProfessionalPentestInterface = () => {
     return () => clearInterval(interval);
   }, [selectedScan]);
 
+  // Fonction pour démarrer un scan
   const handleScanStart = async (formData) => {
     try {
+      console.log('🚀 Starting scan:', formData);
+      
       const response = await fetch(`${API_BASE}/scan/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -838,39 +913,63 @@ const ProfessionalPentestInterface = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || 'Scan start failed');
+        throw new Error(error.error || 'Scan start failed');
       }
 
       const result = await response.json();
+      console.log('✅ Scan started:', result);
+      
       if (result.scan_id) {
         setSelectedScan(result.scan_id);
       }
     } catch (error) {
-      console.error('Error starting scan:', error);
+      console.error('❌ Error starting scan:', error);
       alert(`Error: ${error.message}`);
     }
   };
 
+  // Fonction pour arrêter un scan
   const handleStopScan = async (scanId) => {
     try {
-      await fetch(`${API_BASE}/scan/stop/${scanId}`, { method: 'POST' });
+      console.log('🛑 Stopping scan:', scanId);
+      
+      const response = await fetch(`${API_BASE}/scan/stop/${scanId}`, { 
+        method: 'POST' 
+      });
+      
+      if (response.ok) {
+        console.log('✅ Scan stopped successfully');
+        // Rafraîchir l'historique après arrêt
+        handleRefreshHistory();
+      }
     } catch (error) {
-      console.error('Error stopping scan:', error);
+      console.error('❌ Error stopping scan:', error);
     }
   };
 
+  // Fonction pour rafraîchir l'historique
   const handleRefreshHistory = async () => {
     try {
+      console.log('🔄 Refreshing history...');
+      
       const response = await fetch(`${API_BASE}/scan/history`);
       if (response.ok) {
         const history = await response.json();
-        setScanHistory(history);
+        if (Array.isArray(history)) {
+          setScanHistory(history);
+          console.log('✅ History refreshed:', history.length, 'scans');
+        } else {
+          console.warn('⚠️ Refresh: History is not an array:', history);
+          setScanHistory([]);
+        }
       }
     } catch (error) {
-      console.error('Error refreshing history:', error);
+      console.error('❌ Error refreshing history:', error);
+      setScanHistory([]);
     }
   };
 
+  // Écran de chargement
   if (isLoading) {
     return (
       <div style={{
@@ -896,12 +995,21 @@ const ProfessionalPentestInterface = () => {
       color: theme.colors.text.primary,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
+      
       <PentestHeader />
       <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: theme.spacing.lg }}>
         <div style={{ display: 'grid', gap: theme.spacing.lg }}>
           
+          {/* Onglet Reconnaissance */}
           {activeTab === 'reconnaissance' && (
             <>
               <ScanForm 
@@ -918,7 +1026,7 @@ const ProfessionalPentestInterface = () => {
                   currentTool="nmap"
                 />
                 <ScanHistory
-                  scans={scanHistory.filter(s => s.tool === 'nmap')}
+                  scans={getSafeScanHistory().filter(s => s.tool === 'nmap')}
                   onRefresh={handleRefreshHistory}
                 />
               </div>
@@ -931,6 +1039,7 @@ const ProfessionalPentestInterface = () => {
             </>
           )}
 
+          {/* Onglet Vulnerability Scanning */}
           {activeTab === 'scanning' && (
             <>
               <Card>
@@ -944,8 +1053,9 @@ const ProfessionalPentestInterface = () => {
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const target = e.target.elements.niktoTarget.value;
+                  const scanType = e.target.elements.niktoScanType.value;
                   if (target) {
-                    handleScanStart({ tool: 'nikto', target, scanType: 'comprehensive' });
+                    handleScanStart({ tool: 'nikto', target, scanType });
                     e.target.elements.niktoTarget.value = '';
                   }
                 }}>
@@ -991,6 +1101,7 @@ const ProfessionalPentestInterface = () => {
                         Scan Mode
                       </label>
                       <select
+                        name="niktoScanType"
                         defaultValue="comprehensive"
                         style={{
                           width: '100%',
@@ -1002,7 +1113,7 @@ const ProfessionalPentestInterface = () => {
                           fontSize: '14px'
                         }}
                       >
-                        <option value="fast">Fast Scan</option>
+                        <option value="basic">Fast Scan</option>
                         <option value="comprehensive">Deep Scan</option>
                       </select>
                     </div>
@@ -1044,7 +1155,7 @@ const ProfessionalPentestInterface = () => {
                   currentTool="nikto"
                 />
                 <ScanHistory
-                  scans={scanHistory.filter(s => s.tool === 'nikto')}
+                  scans={getSafeScanHistory().filter(s => s.tool === 'nikto')}
                   onRefresh={handleRefreshHistory}
                 />
               </div>
@@ -1057,6 +1168,7 @@ const ProfessionalPentestInterface = () => {
             </>
           )}
 
+          {/* Onglet Reports */}
           {activeTab === 'reports' && (
             <>
               <Card>
@@ -1075,7 +1187,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.status === 'completed').length}
+                      {getSafeScanHistory().filter(s => s.status === 'completed').length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
                   </div>
@@ -1086,7 +1198,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
-                      {activeScans.length}
+                      {getSafeActiveScans().length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
                   </div>
@@ -1097,7 +1209,7 @@ const ProfessionalPentestInterface = () => {
                     textAlign: 'center'
                   }}>
                     <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.report_filename).length}
+                      {getSafeScanHistory().filter(s => s.report_filename).length}
                     </div>
                     <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
                   </div>
@@ -1105,12 +1217,13 @@ const ProfessionalPentestInterface = () => {
               </Card>
               
               <ScanHistory
-                scans={scanHistory}
+                scans={getSafeScanHistory()}
                 onRefresh={handleRefreshHistory}
               />
             </>
           )}
 
+          {/* Onglet Settings */}
           {activeTab === 'settings' && (
             <Card>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
@@ -1150,11 +1263,11 @@ const ProfessionalPentestInterface = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
-                      <Badge variant="info">{activeScans.length}</Badge>
+                      <Badge variant="info">{getSafeActiveScans().length}</Badge>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: theme.colors.text.secondary }}>Total Scans</span>
-                      <Badge variant="default">{scanHistory.length}</Badge>
+                      <Badge variant="default">{getSafeScanHistory().length}</Badge>
                     </div>
                   </div>
                 </div>
