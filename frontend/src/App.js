@@ -3,7 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 // Configuration API
 const API_BASE = 'http://localhost:5000/api';
 
-// Icônes SVG complètes
+// ================================
+// ICÔNES SVG COMPLÈTES
+// ================================
+
 const Terminal = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <polyline points="4,17 10,11 4,5"></polyline>
@@ -44,44 +47,23 @@ const FileText = ({ size = 16, color = "#666" }) => (
 const Settings = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <circle cx="12" cy="12" r="3"></circle>
-    <path d="m19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    <path d="m12 1 2.09 6.26L22 12l-7.91 4.74L12 23l-2.09-6.26L2 12l7.91-4.74L12 1Z"></path>
   </svg>
 );
 
-const Play = ({ size = 16, color = "#666" }) => (
+const Crosshairs = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <polygon points="5,3 19,12 5,21 5,3"></polygon>
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="22" y1="12" x2="18" y2="12"></line>
+    <line x1="6" y1="12" x2="2" y2="12"></line>
+    <line x1="12" y1="6" x2="12" y2="2"></line>
+    <line x1="12" y1="22" x2="12" y2="18"></line>
   </svg>
 );
 
-const Square = ({ size = 16, color = "#666" }) => (
+const Zap = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-  </svg>
-);
-
-const Download = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="7,10 12,15 17,10"></polyline>
-    <line x1="12" y1="15" x2="12" y2="3"></line>
-  </svg>
-);
-
-const RefreshCw = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <polyline points="23,4 23,10 17,10"></polyline>
-    <polyline points="1,20 1,14 7,14"></polyline>
-    <path d="m23 10a8.5 8.5 0 0 0-14.5-6"></path>
-    <path d="m1 14a8.5 8.5 0 0 0 14.5 6"></path>
-  </svg>
-);
-
-const Wifi = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="m1 9 2-2c4.97-4.97 13.03-4.97 18 0l2 2"></path>
-    <path d="m5 13 2-2c2.76-2.76 7.24-2.76 10 0l2 2"></path>
-    <path d="m9 17 1-1c.55-.55 1.45-.55 2 0l1 1"></path>
+    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"></polygon>
   </svg>
 );
 
@@ -95,7 +77,27 @@ const Network = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
-// Thème professionnel
+const RefreshCw = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polyline points="23,4 23,10 17,10"></polyline>
+    <polyline points="1,20 1,14 7,14"></polyline>
+    <path d="m23 10a8.5 8.5 0 0 0-14.5-6"></path>
+    <path d="m1 14a8.5 8.5 0 0 0 14.5 6"></path>
+  </svg>
+);
+
+const Download = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7,10 12,15 17,10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+);
+
+// ================================
+// THÈME PROFESSIONNEL
+// ================================
+
 const theme = {
   colors: {
     bg: {
@@ -134,7 +136,10 @@ const theme = {
   }
 };
 
-// Composants UI
+// ================================
+// COMPOSANTS UI RÉUTILISABLES
+// ================================
+
 const Card = ({ children }) => (
   <div style={{
     backgroundColor: theme.colors.bg.secondary,
@@ -230,7 +235,10 @@ const Badge = ({ children, variant = 'default' }) => {
   );
 };
 
-// Header
+// ================================
+// HEADER PROFESSIONNEL
+// ================================
+
 const PentestHeader = () => (
   <header style={{
     backgroundColor: theme.colors.bg.secondary,
@@ -271,11 +279,15 @@ const PentestHeader = () => (
   </header>
 );
 
-// Navigation avec onglet Sniffing
+// ================================
+// NAVIGATION TABS
+// ================================
+
 const NavigationTabs = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'reconnaissance', label: 'Reconnaissance', icon: Target },
     { id: 'scanning', label: 'Vulnerability Scanning', icon: Activity },
+    { id: 'metasploit', label: 'Metasploit', icon: Crosshairs },
     { id: 'sniffing', label: 'Sniffing Réseau', icon: Network },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Configuration', icon: Settings }
@@ -324,93 +336,436 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
   );
 };
 
-// Formulaire de capture réseau
-const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
-  const [selectedInterface, setSelectedInterface] = useState('eth0');
-  const [filter, setFilter] = useState('');
-  const [duration, setDuration] = useState(60);
-  const [packetCount, setPacketCount] = useState(100);
-  const [isLoading, setIsLoading] = useState(false);
+// ================================
+// ONGLET METASPLOIT COMPLET
+// ================================
 
-  // Filtres prédéfinis
-  const predefinedFilters = {
-    'all': { name: 'Tout le trafic', filter: '', description: 'Capture tout le trafic réseau' },
-    'http': { name: 'HTTP', filter: 'tcp port 80', description: 'Trafic HTTP uniquement' },
-    'https': { name: 'HTTPS', filter: 'tcp port 443', description: 'Trafic HTTPS uniquement' },
-    'dns': { name: 'DNS', filter: 'udp port 53', description: 'Requêtes DNS uniquement' },
-    'ssh': { name: 'SSH', filter: 'tcp port 22', description: 'Connexions SSH uniquement' },
-    'smb': { name: 'SMB', filter: 'port 445 or port 139', description: 'Trafic SMB/CIFS (Print Nightmare)' },
-    'rpc': { name: 'RPC', filter: 'port 135', description: 'Remote Procedure Call' },
-    'web': { name: 'Web (HTTP/HTTPS)', filter: 'tcp port 80 or tcp port 443', description: 'Trafic web complet' },
-    'tcp': { name: 'TCP', filter: 'tcp', description: 'Tout le trafic TCP' },
-    'udp': { name: 'UDP', filter: 'udp', description: 'Tout le trafic UDP' }
+// METASPLOIT TAB ENHANCED - Compatible Metasploitable
+// Remplacer le composant MetasploitTab dans votre App.js
+
+// METASPLOIT TAB ENHANCED - Compatible Metasploitable (Version Corrigée)
+// Remplacer le composant MetasploitTab dans votre App.js
+
+const MetasploitTab = () => {
+  const [exploits, setExploits] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExploit, setSelectedExploit] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedScenario, setSelectedScenario] = useState(null);
+  const [exploitForm, setExploitForm] = useState({
+    exploit: '',
+    payload: '',
+    target: '',
+    port: '',
+    lhost: '192.168.1.100', // IP de l'attaquant
+    lport: '4444',
+    options: {}
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeExploits, setActiveExploits] = useState([]);
+  const [exploitOutput, setExploitOutput] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [autoTarget, setAutoTarget] = useState('192.168.1.101'); // IP Metasploitable par défaut
+
+  // Scénarios d'attaque prédéfinis
+  const attackScenarios = {
+    'quick_pwn': {
+      name: 'Quick Pwn Metasploitable',
+      description: 'Exploitation rapide des services les plus vulnérables',
+      icon: '⚡',
+      exploits: ['samba_usermap_script', 'vsftpd_234_backdoor', 'unreal_ircd_3281_backdoor'],
+      color: theme.colors.status.error
+    },
+    'web_attack': {
+      name: 'Web Application Attack',
+      description: 'Attaques ciblées sur les applications web',
+      icon: '🌐',
+      exploits: ['tomcat_mgr_upload', 'twiki_history', 'php_cgi_arg_injection'],
+      color: theme.colors.status.warning
+    },
+    'database_attack': {
+      name: 'Database Services Attack',
+      description: 'Exploitation des services de base de données',
+      icon: '🗄️',
+      exploits: ['postgres_payload', 'mysql_udf_payload'],
+      color: theme.colors.status.info
+    },
+    'network_services': {
+      name: 'Network Services Exploitation',
+      description: 'Attaques sur les services réseau divers',
+      icon: '🔗',
+      exploits: ['distcc_exec', 'java_rmi_server', 'rlogin_arg_injection'],
+      color: theme.colors.status.success
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedInterface) return;
+  // Filtres avancés
+  const filterOptions = {
+    'all': { name: 'All Exploits', icon: '🔍' },
+    'easy': { name: 'Easy Difficulty', icon: '🟢' },
+    'medium': { name: 'Medium Difficulty', icon: '🟡' },
+    'hard': { name: 'Hard Difficulty', icon: '🔴' },
+    'excellent': { name: 'Excellent Reliability', icon: '⭐' },
+    'ftp': { name: 'FTP Services', icon: '📁' },
+    'web': { name: 'Web Services', icon: '🌐' },
+    'database': { name: 'Database Services', icon: '🗄️' },
+    'samba': { name: 'SMB/Samba', icon: '🔗' },
+    'ssh': { name: 'SSH Services', icon: '🔐' }
+  };
+
+  // Exploits étendus pour Metasploitable
+  const metasploitableExploits = [
+    {
+      name: 'samba_usermap_script',
+      module: 'exploit/multi/samba/usermap_script',
+      description: 'Samba "username map script" Command Execution',
+      platform: 'Linux',
+      targets: ['Metasploitable', 'Samba 3.0.20-3.0.25rc3'],
+      rank: 'Excellent',
+      defaultPort: 139,
+      category: 'Remote',
+      cve: ['CVE-2007-2447'],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['cmd/unix/reverse', 'cmd/unix/reverse_netcat', 'cmd/unix/bind_netcat'],
+      color: '#22c55e'
+    },
+    {
+      name: 'vsftpd_234_backdoor',
+      module: 'exploit/unix/ftp/vsftpd_234_backdoor',
+      description: 'VSFTPD v2.3.4 Backdoor Command Execution',
+      platform: 'Linux',
+      targets: ['VSFTPD 2.3.4'],
+      rank: 'Excellent',
+      defaultPort: 21,
+      category: 'Remote',
+      cve: ['CVE-2011-2523'],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['cmd/unix/interact', 'cmd/unix/reverse', 'cmd/unix/reverse_netcat'],
+      color: '#3b82f6'
+    },
+    {
+      name: 'unreal_ircd_3281_backdoor',
+      module: 'exploit/unix/irc/unreal_ircd_3281_backdoor',
+      description: 'UnrealIRCd 3.2.8.1 Backdoor Command Execution',
+      platform: 'Linux',
+      targets: ['UnrealIRCd 3.2.8.1'],
+      rank: 'Excellent',
+      defaultPort: 6667,
+      category: 'Remote',
+      cve: ['CVE-2010-2075'],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
+      color: '#8b5cf6'
+    },
+    {
+      name: 'distcc_exec',
+      module: 'exploit/unix/misc/distcc_exec',
+      description: 'DistCC Daemon Command Execution',
+      platform: 'Linux',
+      targets: ['DistCC Daemon'],
+      rank: 'Excellent',
+      defaultPort: 3632,
+      category: 'Remote',
+      cve: ['CVE-2004-2687'],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
+      color: '#f59e0b'
+    },
+    {
+      name: 'postgres_payload',
+      module: 'exploit/linux/postgres/postgres_payload',
+      description: 'PostgreSQL for Linux Payload Execution',
+      platform: 'Linux',
+      targets: ['PostgreSQL on Linux'],
+      rank: 'Excellent',
+      defaultPort: 5432,
+      category: 'Remote',
+      cve: [],
+      difficulty: 'Medium',
+      reliability: 'Good',
+      payloads: ['linux/x86/meterpreter/reverse_tcp', 'linux/x86/shell/reverse_tcp', 'cmd/unix/reverse'],
+      color: '#06b6d4'
+    },
+    {
+      name: 'mysql_udf_payload',
+      module: 'exploit/linux/mysql/mysql_udf_payload',
+      description: 'Oracle MySQL UDF Dynamic Library Execution',
+      platform: 'Linux',
+      targets: ['MySQL on Linux'],
+      rank: 'Excellent',
+      defaultPort: 3306,
+      category: 'Remote',
+      cve: [],
+      difficulty: 'Medium',
+      reliability: 'Good',
+      payloads: ['linux/x86/meterpreter/reverse_tcp', 'linux/x86/shell/reverse_tcp'],
+      color: '#ef4444'
+    },
+    {
+      name: 'tomcat_mgr_upload',
+      module: 'exploit/multi/http/tomcat_mgr_upload',
+      description: 'Apache Tomcat Manager Application Deployer Upload',
+      platform: 'Multi',
+      targets: ['Apache Tomcat'],
+      rank: 'Excellent',
+      defaultPort: 8080,
+      category: 'Remote',
+      cve: [],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['java/meterpreter/reverse_tcp', 'java/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
+      color: '#10b981'
+    },
+    {
+      name: 'twiki_history',
+      module: 'exploit/unix/webapp/twiki_history',
+      description: 'TWiki History TWikiUsers rev Parameter Command Execution',
+      platform: 'Unix',
+      targets: ['TWiki'],
+      rank: 'Excellent',
+      defaultPort: 80,
+      category: 'Remote',
+      cve: ['CVE-2005-2877'],
+      difficulty: 'Easy',
+      reliability: 'Excellent',
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat'],
+      color: '#84cc16'
+    },
+    {
+      name: 'php_cgi_arg_injection',
+      module: 'exploit/multi/http/php_cgi_arg_injection',
+      description: 'PHP CGI Argument Injection',
+      platform: 'Multi',
+      targets: ['PHP CGI'],
+      rank: 'Excellent',
+      defaultPort: 80,
+      category: 'Remote',
+      cve: ['CVE-2012-1823'],
+      difficulty: 'Medium',
+      reliability: 'Good',
+      payloads: ['php/meterpreter/reverse_tcp', 'cmd/unix/reverse', 'generic/shell_reverse_tcp'],
+      color: '#f97316'
+    },
+    {
+      name: 'java_rmi_server',
+      module: 'exploit/multi/misc/java_rmi_server',
+      description: 'Java RMI Server Insecure Default Configuration',
+      platform: 'Multi',
+      targets: ['Java RMI'],
+      rank: 'Excellent',
+      defaultPort: 1099,
+      category: 'Remote',
+      cve: [],
+      difficulty: 'Medium',
+      reliability: 'Good',
+      payloads: ['java/meterpreter/reverse_tcp', 'java/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
+      color: '#ec4899'
+    },
+    {
+      name: 'bind_tsig',
+      module: 'exploit/unix/dns/bind_tsig',
+      description: 'ISC BIND < 9 TSIG Query Handling Buffer Overflow',
+      platform: 'Linux',
+      targets: ['ISC BIND 8', 'ISC BIND 9.0-9.2.1'],
+      rank: 'Good',
+      defaultPort: 53,
+      category: 'Remote',
+      cve: ['CVE-2002-0029'],
+      difficulty: 'Hard',
+      reliability: 'Average',
+      payloads: ['linux/x86/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
+      color: '#64748b'
+    },
+    {
+      name: 'rlogin_arg_injection',
+      module: 'exploit/unix/misc/rlogin_arg_injection',
+      description: 'rlogin Argument Injection',
+      platform: 'Linux',
+      targets: ['rlogin service'],
+      rank: 'Excellent',
+      defaultPort: 513,
+      category: 'Remote',
+      cve: [],
+      difficulty: 'Medium',
+      reliability: 'Good',
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat'],
+      color: '#06d6a0'
+    }
+  ];
+
+  useEffect(() => {
+    setExploits(metasploitableExploits);
+    loadActiveSessions();
+  }, []);
+
+  const loadActiveSessions = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions`);
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+    }
+  };
+
+  const startExploit = async () => {
+    if (!exploitForm.exploit || !exploitForm.target) {
+      alert('Veuillez sélectionner un exploit et spécifier une cible');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      await onCaptureStart({
-        interface: selectedInterface,
-        filter: filter,
-        duration: parseInt(duration),
-        packet_count: parseInt(packetCount)
+      const response = await fetch(`${API_BASE}/metasploit/exploit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: exploitForm.exploit,
+          payload: exploitForm.payload,
+          target: exploitForm.target,
+          port: exploitForm.port,
+          lhost: exploitForm.lhost,
+          lport: exploitForm.lport,
+          options: exploitForm.options
+        })
       });
+
+      if (response.ok) {
+        const result = await response.json();
+        setActiveExploits(prev => [...prev, result]);
+        setExploitOutput(prev => [...prev, `✅ Exploit ${exploitForm.exploit} lancé contre ${exploitForm.target}:${exploitForm.port}`]);
+        loadActiveSessions();
+      } else {
+        const error = await response.json();
+        setExploitOutput(prev => [...prev, `❌ Erreur: ${error.message || 'Échec du lancement'}`]);
+      }
+    } catch (error) {
+      console.error('Error starting exploit:', error);
+      setExploitOutput(prev => [...prev, `❌ Erreur de connexion: ${error.message}`]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleFilterSelect = (filterKey) => {
-    setFilter(predefinedFilters[filterKey].filter);
+  const selectExploit = (exploit) => {
+    setSelectedExploit(exploit);
+    setExploitForm({
+      ...exploitForm,
+      exploit: exploit.module,
+      payload: exploit.payloads[0],
+      port: exploit.defaultPort.toString(),
+      target: autoTarget
+    });
   };
 
+  const selectScenario = (scenarioKey) => {
+    const scenario = attackScenarios[scenarioKey];
+    setSelectedScenario(scenarioKey);
+    
+    // Auto-select first exploit from scenario
+    const firstExploit = metasploitableExploits.find(e => 
+      scenario.exploits.includes(e.name)
+    );
+    if (firstExploit) {
+      selectExploit(firstExploit);
+    }
+  };
+
+  const executeScenario = async () => {
+    if (!selectedScenario || !autoTarget) {
+      alert('Sélectionnez un scénario et spécifiez la cible Metasploitable');
+      return;
+    }
+
+    const scenario = attackScenarios[selectedScenario];
+    setIsLoading(true);
+    
+    try {
+      for (const exploitName of scenario.exploits) {
+        const exploit = metasploitableExploits.find(e => e.name === exploitName);
+        if (exploit) {
+          setExploitOutput(prev => [...prev, `🚀 Lancement automatique: ${exploit.description}`]);
+          
+          const response = await fetch(`${API_BASE}/metasploit/exploit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              module: exploit.module,
+              payload: exploit.payloads[0],
+              target: autoTarget,
+              port: exploit.defaultPort.toString(),
+              lhost: exploitForm.lhost,
+              lport: exploitForm.lport
+            })
+          });
+
+          if (response.ok) {
+            setExploitOutput(prev => [...prev, `✅ ${exploit.name} - Succès`]);
+          } else {
+            setExploitOutput(prev => [...prev, `❌ ${exploit.name} - Échec`]);
+          }
+          
+          // Délai entre exploits
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      
+      setExploitOutput(prev => [...prev, `✅ Scénario "${scenario.name}" terminé`]);
+      loadActiveSessions();
+    } catch (error) {
+      setExploitOutput(prev => [...prev, `❌ Erreur dans le scénario: ${error.message}`]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredExploits = exploits.filter(exploit => {
+    const matchesSearch = exploit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         exploit.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         exploit.platform.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (selectedFilter === 'all') return matchesSearch;
+    
+    // Filtres par difficulté
+    if (selectedFilter === 'easy') return matchesSearch && exploit.difficulty === 'Easy';
+    if (selectedFilter === 'medium') return matchesSearch && exploit.difficulty === 'Medium';
+    if (selectedFilter === 'hard') return matchesSearch && exploit.difficulty === 'Hard';
+    
+    // Filtres par fiabilité
+    if (selectedFilter === 'excellent') return matchesSearch && exploit.reliability === 'Excellent';
+    
+    // Filtres par service
+    if (selectedFilter === 'ftp') return matchesSearch && exploit.defaultPort === 21;
+    if (selectedFilter === 'web') return matchesSearch && [80, 8080].includes(exploit.defaultPort);
+    if (selectedFilter === 'database') return matchesSearch && [3306, 5432].includes(exploit.defaultPort);
+    if (selectedFilter === 'samba') return matchesSearch && [139, 445].includes(exploit.defaultPort);
+    
+    return matchesSearch;
+  });
+
   return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Network size={20} color={theme.colors.status.info} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Capture de Trafic Réseau - TCPDUMP
-        </h2>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+    <div style={{ padding: theme.spacing.lg }}>
+      {/* Header avec configuration Metasploitable */}
+      <Card style={{ marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <Crosshairs size={24} color={theme.colors.status.error} />
           <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Interface Réseau
-            </label>
-            <select
-              value={selectedInterface}
-              onChange={(e) => setSelectedInterface(e.target.value)}
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            >
-              {Array.isArray(interfaces) && interfaces.map(iface => (
-                <option key={iface.name} value={iface.name}>
-                  {iface.display}
-                </option>
-              ))}
-            </select>
+            <h1 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '24px', fontWeight: '700' }}>
+              Metasploit Framework - Metasploitable Edition
+            </h1>
+            <p style={{ color: theme.colors.text.muted, fontSize: '14px', margin: 0 }}>
+              🎯 Exploitation automatisée et manuelle de Metasploitable avec {metasploitableExploits.length} exploits
+            </p>
           </div>
+        </div>
 
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.md }}>
           <div>
             <label style={{ 
               display: 'block', 
@@ -418,16 +773,15 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               color: theme.colors.text.secondary,
               fontSize: '13px',
               fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              textTransform: 'uppercase'
             }}>
-              Filtre BPF (Berkeley Packet Filter)
+              🎯 Metasploitable IP
             </label>
             <input
               type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="e.g., tcp port 80, host 192.168.1.1"
+              value={autoTarget}
+              onChange={(e) => setAutoTarget(e.target.value)}
+              placeholder="192.168.1.101"
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -439,46 +793,7 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               }}
             />
           </div>
-        </div>
-
-        {/* Filtres prédéfinis */}
-        <div style={{ marginBottom: theme.spacing.lg }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: theme.spacing.sm, 
-            color: theme.colors.text.secondary,
-            fontSize: '13px',
-            fontWeight: '500',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Filtres Prédéfinis
-          </label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            {Object.entries(predefinedFilters).map(([key, info]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleFilterSelect(key)}
-                style={{
-                  backgroundColor: filter === info.filter ? theme.colors.status.info : theme.colors.bg.tertiary,
-                  color: filter === info.filter ? theme.colors.text.primary : theme.colors.text.secondary,
-                  border: `1px solid ${filter === info.filter ? theme.colors.status.info : theme.colors.bg.accent}`,
-                  borderRadius: theme.borderRadius.sm,
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
-                title={info.description}
-              >
-                {info.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: theme.spacing.md, alignItems: 'end' }}>
+          
           <div>
             <label style={{ 
               display: 'block', 
@@ -486,17 +801,15 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               color: theme.colors.text.secondary,
               fontSize: '13px',
               fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              textTransform: 'uppercase'
             }}>
-              Durée max (secondes)
+              🏠 Attacker IP (LHOST)
             </label>
             <input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              min="10"
-              max="600"
+              type="text"
+              value={exploitForm.lhost}
+              onChange={(e) => setExploitForm({...exploitForm, lhost: e.target.value})}
+              placeholder="192.168.1.100"
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -508,7 +821,7 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               }}
             />
           </div>
-
+          
           <div>
             <label style={{ 
               display: 'block', 
@@ -516,17 +829,15 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               color: theme.colors.text.secondary,
               fontSize: '13px',
               fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              textTransform: 'uppercase'
             }}>
-              Nb paquets max
+              🔌 Listen Port (LPORT)
             </label>
             <input
-              type="number"
-              value={packetCount}
-              onChange={(e) => setPacketCount(e.target.value)}
-              min="10"
-              max="10000"
+              type="text"
+              value={exploitForm.lport}
+              onChange={(e) => setExploitForm({...exploitForm, lport: e.target.value})}
+              placeholder="4444"
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -538,412 +849,79 @@ const NetworkCaptureForm = ({ interfaces, onCaptureStart }) => {
               }}
             />
           </div>
-
-          <Button
-            type="submit"
-            variant="success"
-            icon={Play}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Démarrage...' : 'Démarrer Capture'}
-          </Button>
         </div>
+      </Card>
 
-        <div style={{
-          marginTop: theme.spacing.lg,
-          padding: theme.spacing.md,
-          backgroundColor: theme.colors.bg.primary,
-          borderRadius: theme.borderRadius.md,
-          border: `1px solid ${theme.colors.status.info}33`
-        }}>
-          <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-            <strong>Capture de Trafic Réseau</strong>
-          </div>
-          <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-            • Capture en temps réel du trafic réseau avec tcpdump<br/>
-            • Filtrage avancé avec syntaxe BPF (Berkeley Packet Filter)<br/>
-            • Analyse des protocoles HTTP, HTTPS, SSH, DNS, SMB et plus<br/>
-            • Sauvegarde automatique au format PCAP pour analyse Wireshark
-          </div>
-        </div>
-      </form>
-    </Card>
-  );
-};
-
-// Panneau des captures actives
-const ActiveCapturesPanel = ({ activeCaptures, onStopCapture, onSelectCapture, selectedCapture }) => {
-  const getSafeActiveCaptures = () => {
-    return Array.isArray(activeCaptures) ? activeCaptures : [];
-  };
-
-  const safeCaptures = getSafeActiveCaptures();
-  
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Wifi size={20} color={theme.colors.status.warning} />
+      {/* Scénarios d'attaque prédéfinis */}
+      <Card style={{ marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <Zap size={20} color={theme.colors.status.warning} />
           <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Captures Actives ({safeCaptures.length})
+            🚀 Scénarios d'Attaque Automatisés
           </h2>
         </div>
-      </div>
 
-      {safeCaptures.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-          {safeCaptures.map(capture => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          {Object.entries(attackScenarios).map(([key, scenario]) => (
             <div
-              key={capture.capture_id}
-              onClick={() => onSelectCapture(capture.capture_id)}
+              key={key}
+              onClick={() => selectScenario(key)}
               style={{
-                backgroundColor: selectedCapture === capture.capture_id ? 
-                  `${theme.colors.status.info}20` : 
-                  theme.colors.bg.tertiary,
-                border: selectedCapture === capture.capture_id ? 
-                  `1px solid ${theme.colors.status.info}` : 
-                  `1px solid ${theme.colors.bg.accent}`,
+                backgroundColor: selectedScenario === key ? scenario.color + '20' : theme.colors.bg.tertiary,
+                border: `2px solid ${selectedScenario === key ? scenario.color : theme.colors.bg.accent}`,
                 borderRadius: theme.borderRadius.md,
                 padding: theme.spacing.md,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                  <span style={{ 
-                    color: theme.colors.text.primary,
-                    fontWeight: '600',
-                    fontSize: '14px'
-                  }}>
-                    {capture.interface || 'Unknown'}
-                  </span>
-                  <Badge variant={capture.status === 'running' ? 'warning' : capture.status === 'completed' ? 'success' : 'error'}>
-                    {capture.status || 'unknown'}
-                  </Badge>
-                </div>
-                {capture.status === 'running' && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon={Square}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStopCapture(capture.capture_id);
-                    }}
-                  >
-                    Stop
-                  </Button>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
+                <span style={{ fontSize: '20px' }}>{scenario.icon}</span>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
+                  {scenario.name}
+                </span>
               </div>
-              
-              <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                Filtre: {capture.filter || 'Aucun filtre'}
-              </div>
-              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                Paquets: {capture.packets_captured || 0} • 
-                Démarré: {capture.start_time ? new Date(capture.start_time).toLocaleTimeString() : 'N/A'}
+              <p style={{ color: theme.colors.text.secondary, fontSize: '12px', margin: 0, marginBottom: theme.spacing.sm }}>
+                {scenario.description}
+              </p>
+              <div style={{ fontSize: '11px', color: theme.colors.text.muted }}>
+                {scenario.exploits.length} exploit(s)
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: theme.spacing.xl,
-          color: theme.colors.text.muted
-        }}>
-          <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-          <p>Aucune capture réseau active</p>
-          <p style={{ fontSize: '13px' }}>Démarrez une capture pour monitorer le trafic en temps réel</p>
-        </div>
-      )}
-    </Card>
-  );
-};
 
-// Terminal pour les captures
-const CaptureTerminalView = ({ captureId, isActive, title = "Capture Output" }) => {
-  const [output, setOutput] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [packetsCount, setPacketsCount] = useState(0);
-  const terminalRef = useRef(null);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (!isActive || !captureId) {
-      setIsConnected(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    setIsConnected(true);
-    intervalRef.current = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_BASE}/network/capture/live/${captureId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.lines && Array.isArray(data.lines)) {
-            setOutput(data.lines);
-            setPacketsCount(data.packets_captured || 0);
-          }
-          if (!data.is_running) {
-            setIsConnected(false);
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Capture terminal fetch error:', error);
-        setIsConnected(false);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [captureId, isActive]);
-
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [output]);
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Terminal size={20} color={theme.colors.status.info} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            {title} {captureId && `- ${captureId}`}
-          </h2>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-            📦 {packetsCount} paquets
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
-            }} />
-            <span style={{ 
-              color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
-              fontSize: '12px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              {isConnected ? 'Live' : 'Standby'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={terminalRef}
-        style={{
-          backgroundColor: '#000',
-          borderRadius: theme.borderRadius.md,
-          padding: theme.spacing.md,
-          minHeight: '400px',
-          maxHeight: '600px',
-          overflowY: 'auto',
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: '13px',
-          lineHeight: '1.4',
-          border: `1px solid ${theme.colors.bg.accent}`
-        }}
-      >
-        {output.length > 0 ? (
-          output.map((line, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
-              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
-                [{new Date().toLocaleTimeString()}]
-              </span>
-              <span style={{ color: line.includes('TCP') ? '#00ff00' : 
-                                  line.includes('UDP') ? '#ffff00' :
-                                  line.includes('ARP') ? '#ff6600' :
-                                  line.includes('HTTP') ? '#00ffff' : 
-                                  line.includes('SMB') ? '#ff0066' :
-                                  line.includes('DNS') ? '#66ff00' : '#ffffff' }}>
-                {line}
-              </span>
-            </div>
-          ))
-        ) : (
-          <div style={{ 
-            color: theme.colors.text.muted,
-            textAlign: 'center',
-            padding: theme.spacing.xl
-          }}>
-            {isActive ? 'Initialisation de la capture...' : `${title} prêt. Démarrez une capture pour voir le trafic en temps réel.`}
-          </div>
+        {selectedScenario && (
+          <Button
+            variant="danger"
+            icon={Zap}
+            onClick={executeScenario}
+            disabled={isLoading || !autoTarget}
+            style={{ width: '100%' }}
+          >
+            {isLoading ? 'Exécution du scénario...' : `🚀 Lancer "${attackScenarios[selectedScenario].name}"`}
+          </Button>
         )}
-      </div>
-    </Card>
-  );
-};
+      </Card>
 
-// Historique des captures
-const CaptureHistory = ({ captures, onRefresh }) => {
-  const getSafeCaptures = () => {
-    return Array.isArray(captures) ? captures : [];
-  };
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+        
+        {/* Sélection d'Exploit avec filtres */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Crosshairs size={20} color={theme.colors.status.error} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              🗂️ Exploits Metasploitable ({filteredExploits.length})
+            </h2>
+          </div>
 
-  const safeCaptures = getSafeCaptures();
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <FileText size={20} color={theme.colors.status.success} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Historique des Captures ({safeCaptures.length})
-          </h2>
-        </div>
-        <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
-          Refresh
-        </Button>
-      </div>
-
-      {safeCaptures.length > 0 ? (
-        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-          {safeCaptures.map((capture, index) => (
-            <div
-              key={capture.capture_id || index}
-              style={{
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                marginBottom: theme.spacing.md
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {capture.interface || 'Unknown'}
-                    </span>
-                    <Badge variant={
-                      capture.status === 'completed' ? 'success' :
-                      capture.status === 'error' ? 'error' : 'default'
-                    }>
-                      {capture.status || 'unknown'}
-                    </Badge>
-                  </div>
-                  <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                    Filtre: {capture.filter || 'Aucun filtre'}
-                  </div>
-                  <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                    {capture.duration || 'N/A'} • {capture.packets_captured || 0} paquets • {capture.file_size || 'N/A'} • {capture.start_time ? new Date(capture.start_time).toLocaleString() : 'N/A'}
-                  </div>
-                  {capture.error && (
-                    <div style={{ color: theme.colors.status.error, fontSize: '12px', marginTop: theme.spacing.xs }}>
-                      Erreur: {capture.error}
-                    </div>
-                  )}
-                </div>
-                {capture.filename && (
-                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={Download}
-                      onClick={() => window.open(`${API_BASE}/network/capture/download/${capture.capture_id}`, '_blank')}
-                    >
-                      PCAP
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: theme.spacing.xl,
-          color: theme.colors.text.muted
-        }}>
-          <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-          <p>Aucun historique de capture</p>
-          <p style={{ fontSize: '13px' }}>Les captures terminées apparaîtront ici</p>
-        </div>
-      )}
-    </Card>
-  );
-};
-
-// Formulaire de scan existant (simplifié)
-const ScanForm = ({ toolsStatus, onScanStart }) => {
-  const [target, setTarget] = useState('');
-  const [scanType, setScanType] = useState('basic');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const scanTypes = {
-    basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (--top-ports 1000)' },
-    stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
-    comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
-    udp: { name: 'UDP Scan', description: 'UDP port discovery (--top-ports 100)' }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!target.trim()) return;
-
-    setIsLoading(true);
-    try {
-      await onScanStart({ tool: 'nmap', target, scanType });
-      setTarget('');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Target size={20} color={theme.colors.accent.primary} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Network Reconnaissance - NMAP
-        </h2>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Target
-            </label>
+          {/* Barre de recherche */}
+          <div style={{ marginBottom: theme.spacing.md }}>
             <input
               type="text"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="e.g., scanme.nmap.org, 192.168.1.1, 10.0.0.0/24"
+              placeholder="🔍 Rechercher un exploit..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -956,21 +934,428 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
             />
           </div>
 
-          <div>
+          {/* Filtres */}
+          <div style={{ display: 'flex', gap: theme.spacing.xs, marginBottom: theme.spacing.lg, flexWrap: 'wrap' }}>
+            {Object.entries(filterOptions).map(([key, filter]) => (
+              <button
+                key={key}
+                onClick={() => setSelectedFilter(key)}
+                style={{
+                  backgroundColor: selectedFilter === key ? theme.colors.accent.primary : theme.colors.bg.tertiary,
+                  color: selectedFilter === key ? theme.colors.text.primary : theme.colors.text.secondary,
+                  border: 'none',
+                  padding: '4px 8px',
+                  borderRadius: theme.borderRadius.sm,
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {filter.icon} {filter.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Liste des exploits */}
+          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            {filteredExploits.map((exploit, index) => (
+              <div
+                key={index}
+                onClick={() => selectExploit(exploit)}
+                style={{
+                  backgroundColor: selectedExploit?.name === exploit.name ? 
+                    exploit.color + '20' : theme.colors.bg.tertiary,
+                  border: `1px solid ${selectedExploit?.name === exploit.name ? exploit.color : theme.colors.bg.accent}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing.md,
+                  marginBottom: theme.spacing.sm,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.sm }}>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
+                    {exploit.name}
+                  </span>
+                  <div style={{ display: 'flex', gap: theme.spacing.xs }}>
+                    <Badge variant={
+                      exploit.rank === 'Excellent' ? 'success' :
+                      exploit.rank === 'Great' ? 'info' :
+                      exploit.rank === 'Good' ? 'warning' : 'default'
+                    }>
+                      {exploit.rank}
+                    </Badge>
+                    <Badge variant={
+                      exploit.difficulty === 'Easy' ? 'success' :
+                      exploit.difficulty === 'Medium' ? 'warning' : 'error'
+                    }>
+                      {exploit.difficulty}
+                    </Badge>
+                  </div>
+                </div>
+                <p style={{ color: theme.colors.text.secondary, fontSize: '13px', margin: 0, marginBottom: theme.spacing.sm }}>
+                  {exploit.description}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                    <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                      Port: {exploit.defaultPort}
+                    </span>
+                    {exploit.cve.length > 0 && (
+                      <span style={{ color: exploit.color, fontSize: '12px', fontWeight: '500' }}>
+                        {exploit.cve[0]}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ color: theme.colors.status.info, fontSize: '12px' }}>
+                    {exploit.payloads.length} payload(s)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Configuration d'Exploitation */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Zap size={20} color={theme.colors.status.warning} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              ⚙️ Configuration d'Exploitation
+            </h2>
+          </div>
+
+          {selectedExploit ? (
+            <div>
+              <div style={{ 
+                marginBottom: theme.spacing.lg, 
+                padding: theme.spacing.md, 
+                backgroundColor: selectedExploit.color + '10',
+                border: `1px solid ${selectedExploit.color}`,
+                borderRadius: theme.borderRadius.md 
+              }}>
+                <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.sm }}>
+                  {selectedExploit.name}
+                </h3>
+                <p style={{ color: theme.colors.text.secondary, fontSize: '13px', margin: 0, marginBottom: theme.spacing.sm }}>
+                  {selectedExploit.description}
+                </p>
+                <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                  {selectedExploit.cve.map(cve => (
+                    <Badge key={cve} variant="error">{cve}</Badge>
+                  ))}
+                  <Badge variant="info">Port {selectedExploit.defaultPort}</Badge>
+                  <Badge variant="default">{selectedExploit.platform}</Badge>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    textTransform: 'uppercase'
+                  }}>
+                    🎯 Target Host
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="192.168.1.101"
+                    value={exploitForm.target}
+                    onChange={(e) => setExploitForm({...exploitForm, target: e.target.value})}
+                    style={{
+                      width: '100%',
+                      backgroundColor: theme.colors.bg.tertiary,
+                      border: `1px solid ${theme.colors.bg.accent}`,
+                      borderRadius: theme.borderRadius.md,
+                      padding: theme.spacing.md,
+                      color: theme.colors.text.primary,
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    textTransform: 'uppercase'
+                  }}>
+                    🔌 Target Port
+                  </label>
+                  <input
+                    type="text"
+                    value={exploitForm.port}
+                    onChange={(e) => setExploitForm({...exploitForm, port: e.target.value})}
+                    style={{
+                      width: '100%',
+                      backgroundColor: theme.colors.bg.tertiary,
+                      border: `1px solid ${theme.colors.bg.accent}`,
+                      borderRadius: theme.borderRadius.md,
+                      padding: theme.spacing.md,
+                      color: theme.colors.text.primary,
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  textTransform: 'uppercase'
+                }}>
+                  💣 Payload
+                </label>
+                <select
+                  value={exploitForm.payload}
+                  onChange={(e) => setExploitForm({...exploitForm, payload: e.target.value})}
+                  style={{
+                    width: '100%',
+                    backgroundColor: theme.colors.bg.tertiary,
+                    border: `1px solid ${theme.colors.bg.accent}`,
+                    borderRadius: theme.borderRadius.md,
+                    padding: theme.spacing.md,
+                    color: theme.colors.text.primary,
+                    fontSize: '14px'
+                  }}
+                >
+                  {selectedExploit.payloads.map(payload => (
+                    <option key={payload} value={payload}>{payload}</option>
+                  ))}
+                </select>
+              </div>
+
+              <Button
+                variant="danger"
+                icon={Zap}
+                onClick={startExploit}
+                disabled={isLoading || !exploitForm.target}
+                style={{ width: '100%' }}
+              >
+                {isLoading ? 'Exploitation en cours...' : '🚀 Lancer l\'Exploitation'}
+              </Button>
+            </div>
+          ) : (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: theme.spacing.xl,
+              color: theme.colors.text.muted
+            }}>
+              <Crosshairs size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+              <p>Sélectionnez un exploit ou un scénario pour configurer l'exploitation</p>
+              <p style={{ fontSize: '13px' }}>💡 Essayez les scénarios automatisés pour Metasploitable</p>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Sessions Actives */}
+
+      <Card style={{ marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Terminal size={20} color={theme.colors.status.success} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              🖥️ Sessions Actives ({sessions.length})
+            </h2>
+          </div>
+          <Button variant="ghost" icon={RefreshCw} onClick={loadActiveSessions}>
+            Refresh
+          </Button>
+        </div>
+
+        {sessions.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.md }}>
+            {sessions.map((session, index) => (
+              <div
+                key={session.id || index}
+                style={{
+                  backgroundColor: theme.colors.bg.tertiary,
+                  border: `2px solid ${theme.colors.status.success}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing.md
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.sm }}>
+                  <div>
+                    <span style={{ color: theme.colors.status.success, fontWeight: '600' }}>
+                      🖥️ Session #{session.id || index + 1}
+                    </span>
+                    <div style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
+                      📍 {session.target || 'Unknown target'}
+                    </div>
+                  </div>
+                  <Badge variant="success">🟢 Active</Badge>
+                </div>
+                <div style={{ fontSize: '13px', color: theme.colors.text.muted, marginBottom: theme.spacing.sm }}>
+                  💻 Type: {session.type || 'meterpreter'} | 🐧 OS: {session.platform || 'Linux'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
+                  🚀 Via: {session.exploit_used || 'N/A'}
+                </div>
+                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                  <Button variant="secondary" size="sm">
+                    💬 Shell
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    📋 Info
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: theme.spacing.xl,
+            color: theme.colors.text.muted
+          }}>
+            <Terminal size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+            <p>🔍 Aucune session active</p>
+            <p style={{ fontSize: '13px' }}>Les sessions apparaîtront ici après une exploitation réussie de Metasploitable</p>
+          </div>
+        )}
+        
+      </Card>
+
+
+
+      {/* Console de Sortie */}
+      {exploitOutput.length > 0 && (
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Terminal size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              🖥️ Console Metasploit
+            </h2>
+          </div>
+
+          <div style={{
+            backgroundColor: '#000000',
+            border: `1px solid ${theme.colors.bg.accent}`,
+            borderRadius: theme.borderRadius.md,
+            padding: theme.spacing.md,
+            maxHeight: '400px',
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '13px'
+          }}>
+            {exploitOutput.map((line, index) => (
+              <div key={index} style={{ 
+                color: line.includes('✅') ? '#22c55e' : 
+                       line.includes('❌') ? '#dc2626' : 
+                       line.includes('🚀') ? '#3b82f6' :
+                       line.includes('⚠️') ? '#eab308' : '#e5e5e5',
+                marginBottom: '4px'
+              }}>
+                [{new Date().toLocaleTimeString()}] {line}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+// ================================
+// ONGLET SETTINGS COMPLET
+// ================================
+
+const SettingsTab = () => {
+  const [apiEndpoint, setApiEndpoint] = useState(API_BASE);
+  const [toolsStatus, setToolsStatus] = useState({
+    nmap: false,
+    nikto: false,
+    metasploit: false,
+    tcpdump: false
+  });
+  const [systemInfo, setSystemInfo] = useState({
+    version: '2.0.0',
+    uptime: 'Unknown',
+    memory: 'Unknown',
+    cpu: 'Unknown'
+  });
+
+  useEffect(() => {
+    checkToolsAvailability();
+    getSystemInfo();
+  }, []);
+
+  const checkToolsAvailability = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/system/tools`);
+      if (response.ok) {
+        const data = await response.json();
+        setToolsStatus(data.tools || {
+          nmap: true,
+          nikto: true,
+          metasploit: true,
+          tcpdump: true
+        });
+      }
+    } catch (error) {
+      console.error('Error checking tools:', error);
+      // Fallback - assume tools are available
+      setToolsStatus({
+        nmap: true,
+        nikto: true,
+        metasploit: true,
+        tcpdump: true
+      });
+    }
+  };
+
+  const getSystemInfo = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/system/info`);
+      if (response.ok) {
+        const data = await response.json();
+        setSystemInfo(data);
+      }
+    } catch (error) {
+      console.error('Error getting system info:', error);
+    }
+  };
+
+  return (
+    <div style={{ padding: theme.spacing.lg }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: theme.spacing.lg }}>
+        
+        {/* Configuration API */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Settings size={20} color={theme.colors.status.info} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              API Configuration
+            </h2>
+          </div>
+
+          <div style={{ marginBottom: theme.spacing.lg }}>
             <label style={{ 
               display: 'block', 
               marginBottom: theme.spacing.sm, 
               color: theme.colors.text.secondary,
               fontSize: '13px',
               fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              textTransform: 'uppercase'
             }}>
-              Scan Type
+              Backend Endpoint
             </label>
-            <select
-              value={scanType}
-              onChange={(e) => setScanType(e.target.value)}
+            <input
+              type="text"
+              value={apiEndpoint}
+              onChange={(e) => setApiEndpoint(e.target.value)}
               style={{
                 width: '100%',
                 backgroundColor: theme.colors.bg.tertiary,
@@ -980,781 +1365,256 @@ const ScanForm = ({ toolsStatus, onScanStart }) => {
                 color: theme.colors.text.primary,
                 fontSize: '14px'
               }}
-            >
-              {Object.entries(scanTypes).map(([key, config]) => (
-                <option key={key} value={key}>{config.name}</option>
-              ))}
-            </select>
+            />
           </div>
 
-          <Button
-            type="submit"
-            variant="primary"
-            icon={Play}
-            disabled={isLoading || !toolsStatus.nmap}
-          >
-            {isLoading ? 'Scanning...' : 'Execute'}
-          </Button>
-        </div>
-      </form>
-    </Card>
-  );
-};
-
-// Terminal pour les scans existants (simplifié)
-const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
-  const [output, setOutput] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const terminalRef = useRef(null);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (!isActive || !scanId) {
-      setIsConnected(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    setIsConnected(true);
-    intervalRef.current = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.lines && Array.isArray(data.lines)) {
-            setOutput(data.lines);
-          }
-          if (!data.is_running) {
-            setIsConnected(false);
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Terminal fetch error:', error);
-        setIsConnected(false);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [scanId, isActive]);
-
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [output]);
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Terminal size={20} color={theme.colors.accent.primary} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            {title} {scanId && `- ${scanId}`}
-          </h2>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
-          }} />
-          <span style={{ 
-            color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
-            fontSize: '12px',
-            fontWeight: '500',
-            textTransform: 'uppercase'
-          }}>
-            {isConnected ? 'Live' : 'Standby'}
-          </span>
-        </div>
-      </div>
-
-      <div
-        ref={terminalRef}
-        style={{
-          backgroundColor: '#000',
-          borderRadius: theme.borderRadius.md,
-          padding: theme.spacing.md,
-          minHeight: '400px',
-          maxHeight: '600px',
-          overflowY: 'auto',
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: '13px',
-          lineHeight: '1.4',
-          border: `1px solid ${theme.colors.bg.accent}`
-        }}
-      >
-        {output.length > 0 ? (
-          output.map((line, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
-              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
-                [{new Date().toLocaleTimeString()}]
-              </span>
-              <span style={{ color: '#00ff00' }}>
-                {line}
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase'
+            }}>
+              Connection Status
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: theme.colors.status.success
+              }} />
+              <span style={{ color: theme.colors.status.success, fontSize: '14px', fontWeight: '500' }}>
+                Connected
               </span>
             </div>
-          ))
-        ) : (
-          <div style={{ 
-            color: theme.colors.text.muted,
-            textAlign: 'center',
-            padding: theme.spacing.xl
-          }}>
-            {isActive ? 'Initializing scan...' : `${title} ready. Execute a scan to see live output.`}
           </div>
-        )}
+
+          <Button variant="secondary" onClick={checkToolsAvailability}>
+            Test Connection
+          </Button>
+        </Card>
+
+        {/* Outils Disponibles */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Target size={20} color={theme.colors.status.warning} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Security Tools
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+            {Object.entries(toolsStatus).map(([tool, available]) => (
+              <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '500', textTransform: 'uppercase' }}>
+                    {tool}
+                  </span>
+                  <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                    {tool === 'nmap' ? 'Network Scanner' :
+                     tool === 'nikto' ? 'Web Scanner' :
+                     tool === 'metasploit' ? 'Exploitation Framework' :
+                     tool === 'tcpdump' ? 'Packet Capture' : 'Security Tool'}
+                  </span>
+                </div>
+                <Badge variant={available ? 'success' : 'error'}>
+                  {available ? 'Available' : 'Missing'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: theme.spacing.lg }}>
+            <Button variant="ghost" onClick={checkToolsAvailability}>
+              Refresh Status
+            </Button>
+          </div>
+        </Card>
+
+        {/* Informations Système */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Activity size={20} color={theme.colors.status.info} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              System Information
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Platform Version</span>
+              <Badge variant="info">{systemInfo.version}</Badge>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>System Uptime</span>
+              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.uptime}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Memory Usage</span>
+              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.memory}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>CPU Usage</span>
+              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.cpu}</span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: theme.spacing.lg }}>
+            <Button variant="ghost" onClick={getSystemInfo}>
+              Refresh Info
+            </Button>
+          </div>
+        </Card>
+
+        {/* Configuration de Sécurité */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+            <Shield size={20} color={theme.colors.status.success} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Security Settings
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Auto-Save Reports</span>
+              <Badge variant="success">Enabled</Badge>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Scan Timeout</span>
+              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>300s</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Max Concurrent Scans</span>
+              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>5</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: theme.colors.text.secondary }}>Log Level</span>
+              <Badge variant="info">INFO</Badge>
+            </div>
+          </div>
+        </Card>
       </div>
-    </Card>
+    </div>
   );
 };
 
-// Composant principal
+// ================================
+// AUTRES ONGLETS (SIMPLIFIÉS)
+// ================================
+
+const ReconnaissanceTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Target size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Reconnaissance Module
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Target size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de reconnaissance en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : DNS enumeration, subdomain discovery, port scanning</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const ScanningTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Activity size={20} color={theme.colors.status.warning} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Vulnerability Scanning
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de scan de vulnérabilités en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : Nmap, Nikto, OpenVAS integration</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const SniffingTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Network size={20} color={theme.colors.status.success} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Network Sniffing
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de capture réseau en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : tcpdump, Wireshark integration, traffic analysis</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const ReportsTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <FileText size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Reports & Documentation
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de rapports en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : PDF generation, executive summaries, technical reports</p>
+      </div>
+    </Card>
+  </div>
+);
+
+// ================================
+// COMPOSANT PRINCIPAL
+// ================================
+
 const ProfessionalPentestInterface = () => {
   const [activeTab, setActiveTab] = useState('reconnaissance');
-  const [activeScans, setActiveScans] = useState([]);
-  const [scanHistory, setScanHistory] = useState([]);
-  const [activeCaptures, setActiveCaptures] = useState([]);
-  const [captureHistory, setCaptureHistory] = useState([]);
-  const [networkInterfaces, setNetworkInterfaces] = useState([]);
-  const [toolsStatus, setToolsStatus] = useState({});
-  const [selectedScan, setSelectedScan] = useState(null);
-  const [selectedCapture, setSelectedCapture] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Chargement initial des données
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Initialiser les statuts des outils
-        setToolsStatus({
-          nmap: true,
-          nikto: true,
-          tcpdump: true
-        });
-
-        // Charger les interfaces réseau
-        const interfacesRes = await fetch(`${API_BASE}/network/interfaces`);
-        if (interfacesRes.ok) {
-          const interfacesData = await interfacesRes.json();
-          setNetworkInterfaces(interfacesData.interfaces || []);
-        }
-
-        // Charger l'historique des scans
-        const historyRes = await fetch(`${API_BASE}/scan/history`);
-        if (historyRes.ok) {
-          const history = await historyRes.json();
-          if (Array.isArray(history)) {
-            setScanHistory(history);
-          }
-        }
-
-        // Charger l'historique des captures
-        const captureHistoryRes = await fetch(`${API_BASE}/network/capture/history`);
-        if (captureHistoryRes.ok) {
-          const captureHist = await captureHistoryRes.json();
-          if (Array.isArray(captureHist)) {
-            setCaptureHistory(captureHist);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error loading data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // Polling des scans actifs
-  useEffect(() => {
-    const fetchActiveScans = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/scan/active`);
-        if (response.ok) {
-          const scans = await response.json();
-          if (Array.isArray(scans)) {
-            setActiveScans(scans);
-            
-            if (scans.length > 0 && !selectedScan) {
-              const runningScan = scans.find(s => s.status === 'running');
-              if (runningScan) {
-                setSelectedScan(runningScan.scan_id);
-              }
-            }
-            
-            if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
-              setSelectedScan(null);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching active scans:', error);
-      }
-    };
-
-    fetchActiveScans();
-    const interval = setInterval(fetchActiveScans, 2000);
-    return () => clearInterval(interval);
-  }, [selectedScan]);
-
-  // Polling des captures actives
-  useEffect(() => {
-    const fetchActiveCaptures = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/network/capture/active`);
-        if (response.ok) {
-          const captures = await response.json();
-          if (Array.isArray(captures)) {
-            setActiveCaptures(captures);
-            
-            if (captures.length > 0 && !selectedCapture) {
-              const runningCapture = captures.find(c => c.status === 'running');
-              if (runningCapture) {
-                setSelectedCapture(runningCapture.capture_id);
-              }
-            }
-            
-            if (selectedCapture && !captures.find(c => c.capture_id === selectedCapture)) {
-              setSelectedCapture(null);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching active captures:', error);
-      }
-    };
-
-    if (activeTab === 'sniffing') {
-      fetchActiveCaptures();
-      const interval = setInterval(fetchActiveCaptures, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedCapture, activeTab]);
-
-  // Fonction pour démarrer un scan
-  const handleScanStart = async (formData) => {
-    try {
-      console.log('🚀 Starting scan:', formData);
-      
-      const response = await fetch(`${API_BASE}/scan/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Scan start failed');
-      }
-
-      const result = await response.json();
-      console.log('✅ Scan started:', result);
-      
-      if (result.scan_id) {
-        setSelectedScan(result.scan_id);
-      }
-    } catch (error) {
-      console.error('❌ Error starting scan:', error);
-      alert(`Error: ${error.message}`);
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'reconnaissance':
+        return <ReconnaissanceTab />;
+      case 'scanning':
+        return <ScanningTab />;
+      case 'metasploit':
+        return <MetasploitTab />;
+      case 'sniffing':
+        return <SniffingTab />;
+      case 'reports':
+        return <ReportsTab />;
+      case 'settings':
+        return <SettingsTab />;
+      default:
+        return <ReconnaissanceTab />;
     }
   };
-
-  
-  // Fonction pour démarrer une capture
-  const handleCaptureStart = async (formData) => {
-    try {
-      console.log('📡 Starting capture:', formData);
-      
-      const response = await fetch(`${API_BASE}/network/capture/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Capture start failed');
-      }
-
-      const result = await response.json();
-      console.log('✅ Capture started:', result);
-      
-      if (result.capture_id) {
-        setSelectedCapture(result.capture_id);
-      }
-    } catch (error) {
-      console.error('❌ Error starting capture:', error);
-      alert(`Error: ${error.message}`);
-    }
-  };
-
-  // Fonction pour arrêter une capture
-  const handleStopCapture = async (captureId) => {
-    try {
-      const response = await fetch(`${API_BASE}/network/capture/stop/${captureId}`, { 
-        method: 'POST' 
-      });
-      
-      if (response.ok) {
-        console.log('✅ Capture stopped successfully');
-        handleRefreshCaptureHistory();
-      }
-    } catch (error) {
-      console.error('❌ Error stopping capture:', error);
-    }
-  };
-
-  // Fonction pour rafraîchir l'historique des scans
-  const handleRefreshScanHistory = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/scan/history`);
-      if (response.ok) {
-        const history = await response.json();
-        if (Array.isArray(history)) {
-          setScanHistory(history);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error refreshing scan history:', error);
-    }
-  };
-
-  // Fonction pour rafraîchir l'historique des captures
-  const handleRefreshCaptureHistory = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/network/capture/history`);
-      if (response.ok) {
-        const history = await response.json();
-        if (Array.isArray(history)) {
-          setCaptureHistory(history);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error refreshing capture history:', error);
-    }
-  };
-
-  // Écran de chargement
-  if (isLoading) {
-    return (
-      <div style={{
-        backgroundColor: theme.colors.bg.primary,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: theme.colors.text.primary
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <Shield size={48} color={theme.colors.accent.primary} style={{ marginBottom: theme.spacing.md }} />
-          <div style={{ fontSize: '18px', fontWeight: '600' }}>Initializing Security Platform...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{
-      backgroundColor: theme.colors.bg.primary,
       minHeight: '100vh',
-      color: theme.colors.text.primary,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      backgroundColor: theme.colors.bg.primary,
+      color: theme.colors.text.primary
     }}>
-      <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
-      
       <PentestHeader />
       <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: theme.spacing.lg }}>
-        <div style={{ display: 'grid', gap: theme.spacing.lg }}>
-          
-          {/* Onglet Reconnaissance */}
-          {activeTab === 'reconnaissance' && (
-            <>
-              <ScanForm 
-                toolsStatus={toolsStatus} 
-                onScanStart={handleScanStart}
-              />
-              
-              <TerminalView
-                scanId={selectedScan}
-                isActive={!!selectedScan}
-                title="Reconnaissance Terminal"
-              />
-            </>
-          )}
-
-          {/* Onglet Vulnerability Scanning */}
-          {activeTab === 'scanning' && (
-            <>
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <Shield size={20} color={theme.colors.accent.primary} />
-                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                    Web Vulnerability Scanner - NIKTO
-                  </h2>
-                </div>
-                
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const target = e.target.elements.niktoTarget.value;
-                  const scanType = e.target.elements.niktoScanType.value;
-                  if (target) {
-                    handleScanStart({ tool: 'nikto', target, scanType });
-                    e.target.elements.niktoTarget.value = '';
-                  }
-                }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
-                    <div>
-                      <label style={{ 
-                        display: 'block', 
-                        marginBottom: theme.spacing.sm, 
-                        color: theme.colors.text.secondary,
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Web Target (URL)
-                      </label>
-                      <input
-                        name="niktoTarget"
-                        type="text"
-                        placeholder="e.g., http://testphp.vulnweb.com, https://example.com"
-                        style={{
-                          width: '100%',
-                          backgroundColor: theme.colors.bg.tertiary,
-                          border: `1px solid ${theme.colors.bg.accent}`,
-                          borderRadius: theme.borderRadius.md,
-                          padding: theme.spacing.md,
-                          color: theme.colors.text.primary,
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ 
-                        display: 'block', 
-                        marginBottom: theme.spacing.sm, 
-                        color: theme.colors.text.secondary,
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Scan Mode
-                      </label>
-                      <select
-                        name="niktoScanType"
-                        defaultValue="comprehensive"
-                        style={{
-                          width: '100%',
-                          backgroundColor: theme.colors.bg.tertiary,
-                          border: `1px solid ${theme.colors.bg.accent}`,
-                          borderRadius: theme.borderRadius.md,
-                          padding: theme.spacing.md,
-                          color: theme.colors.text.primary,
-                          fontSize: '14px'
-                        }}
-                      >
-                        <option value="basic">Fast Scan</option>
-                        <option value="comprehensive">Deep Scan</option>
-                      </select>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      variant="success"
-                      icon={Shield}
-                    >
-                      Scan Web App
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-              
-              <TerminalView
-                scanId={selectedScan}
-                isActive={!!selectedScan}
-                title="Web Vulnerability Scanner"
-              />
-            </>
-          )}
-
-          {/* Onglet Sniffing Réseau - NOUVEAU */}
-          {activeTab === 'sniffing' && (
-            <>
-              <NetworkCaptureForm 
-                interfaces={networkInterfaces} 
-                onCaptureStart={handleCaptureStart}
-              />
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <ActiveCapturesPanel
-                  activeCaptures={activeCaptures}
-                  onStopCapture={handleStopCapture}
-                  onSelectCapture={setSelectedCapture}
-                  selectedCapture={selectedCapture}
-                />
-                <CaptureHistory
-                  captures={captureHistory}
-                  onRefresh={handleRefreshCaptureHistory}
-                />
-              </div>
-              
-              <CaptureTerminalView
-                captureId={selectedCapture}
-                isActive={!!selectedCapture}
-                title="Network Capture Terminal"
-              />
-            </>
-          )}
-
-          {/* Onglet Reports */}
-          {activeTab === 'reports' && (
-            <>
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <FileText size={20} color={theme.colors.accent.primary} />
-                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                    Report Management
-                  </h2>
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.status === 'completed').length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
-                  </div>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
-                      {activeScans.length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
-                  </div>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
-                      {captureHistory.filter(c => c.status === 'completed').length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Network Captures</div>
-                  </div>
-                </div>
-              </Card>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <Card>
-                  <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
-                    📊 Scan Reports
-                  </h3>
-                  {scanHistory.length > 0 ? (
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {scanHistory.slice(0, 10).map((scan, index) => (
-                        <div
-                          key={scan.scan_id || index}
-                          style={{
-                            backgroundColor: theme.colors.bg.tertiary,
-                            border: `1px solid ${theme.colors.bg.accent}`,
-                            borderRadius: theme.borderRadius.md,
-                            padding: theme.spacing.sm,
-                            marginBottom: theme.spacing.sm
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
-                                {scan.tool?.toUpperCase() || 'UNKNOWN'} - {scan.target || 'N/A'}
-                              </div>
-                              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                                {scan.start_time ? new Date(scan.start_time).toLocaleString() : 'N/A'}
-                              </div>
-                            </div>
-                            <Badge variant={scan.status === 'completed' ? 'success' : 'error'}>
-                              {scan.status || 'unknown'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, color: theme.colors.text.muted }}>
-                      <p>No scan reports available</p>
-                    </div>
-                  )}
-                </Card>
-
-                <Card>
-                  <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
-                    📡 Network Captures
-                  </h3>
-                  {captureHistory.length > 0 ? (
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {captureHistory.slice(0, 10).map((capture, index) => (
-                        <div
-                          key={capture.capture_id || index}
-                          style={{
-                            backgroundColor: theme.colors.bg.tertiary,
-                            border: `1px solid ${theme.colors.bg.accent}`,
-                            borderRadius: theme.borderRadius.md,
-                            padding: theme.spacing.sm,
-                            marginBottom: theme.spacing.sm
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
-                                {capture.interface || 'Unknown'} - {capture.packets_captured || 0} packets
-                              </div>
-                              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                                {capture.start_time ? new Date(capture.start_time).toLocaleString() : 'N/A'}
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: theme.spacing.xs, alignItems: 'center' }}>
-                              <Badge variant={capture.status === 'completed' ? 'success' : 'error'}>
-                                {capture.status || 'unknown'}
-                              </Badge>
-                              {capture.filename && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  icon={Download}
-                                  onClick={() => window.open(`${API_BASE}/network/capture/download/${capture.capture_id}`, '_blank')}
-                                >
-                                  PCAP
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, color: theme.colors.text.muted }}>
-                      <p>No network captures available</p>
-                    </div>
-                  )}
-                </Card>
-              </div>
-            </>
-          )}
-
-          {/* Onglet Settings */}
-          {activeTab === 'settings' && (
-            <Card>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <Settings size={20} color={theme.colors.accent.primary} />
-                <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                  System Configuration
-                </h2>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.lg }}>
-                <div>
-                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
-                    Tool Availability
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-                    {Object.entries(toolsStatus).map(([tool, available]) => (
-                      <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: theme.colors.text.secondary, textTransform: 'uppercase' }}>
-                          {tool}
-                        </span>
-                        <Badge variant={available ? 'success' : 'error'}>
-                          {available ? 'Available' : 'Missing'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
-                    Network Interfaces
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-                    {networkInterfaces.slice(0, 5).map((iface, index) => (
-                      <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: theme.colors.text.secondary, fontSize: '14px' }}>
-                          {iface.name}
-                        </span>
-                        <Badge variant={iface.active ? 'success' : 'default'}>
-                          {iface.active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
-                    Platform Status
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>API Status</span>
-                      <Badge variant="success">Operational</Badge>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
-                      <Badge variant="info">{activeScans.length}</Badge>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Active Captures</span>
-                      <Badge variant="warning">{activeCaptures.length}</Badge>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Total Reports</span>
-                      <Badge variant="default">{scanHistory.length + captureHistory.length}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-        </div>
+        {renderTabContent()}
       </main>
     </div>
   );
