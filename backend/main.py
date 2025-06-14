@@ -1,4 +1,4 @@
-# backend/main.py - Backend avec module tcpdump intégré et optimisé
+backend/main.py - Backend avec module tcpdump intégré et optimisé + MODULE RAPPORTS
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -13,6 +13,7 @@ import uuid
 import signal
 import psutil
 import re
+from pathlib import Path
 
 app = Flask(__name__)
 CORS(app)
@@ -33,6 +34,29 @@ scan_history = []
 active_captures = {}
 capture_outputs = {}
 capture_history = []
+
+# Configuration des répertoires pour les rapports
+BASE_DIR = Path(__file__).parent.parent if Path(__file__).parent.parent.exists() else Path('/tmp')
+REPORTS_DIR = BASE_DIR / 'data' / 'reports'
+REPORTS_PDF_DIR = BASE_DIR / 'data' / 'reports' / 'pdf'
+TEMP_DIR = BASE_DIR / 'data' / 'temp'
+
+def ensure_reports_directories():
+    """Créer les répertoires pour les rapports"""
+    for directory in [REPORTS_DIR, REPORTS_PDF_DIR, TEMP_DIR]:
+        directory.mkdir(parents=True, exist_ok=True)
+        logger.info(f"📁 Répertoire rapports: {directory}")
+
+def format_file_size(size_bytes):
+    """Formatage de la taille des fichiers"""
+    if size_bytes == 0:
+        return "0 B"
+    size_units = ['B', 'KB', 'MB', 'GB']
+    i = 0
+    while size_bytes >= 1024 and i < len(size_units) - 1:
+        size_bytes /= 1024.0
+        i += 1
+    return f"{size_bytes:.1f} {size_units[i]}"
 
 # Cache pour éviter les logs répétitifs
 last_request_time = {}
@@ -206,18 +230,18 @@ def health_check():
         'total_history': len(scan_history),
         'capture_history': len(capture_history),
         'version': '2.1.0',
-        'modules': ['scans', 'network_capture', 'tcpdump']
+        'modules': ['scans', 'network_capture', 'tcpdump', 'reports']
     })
 
 @app.route('/', methods=['GET'])
 def root():
     """Route racine de l'API"""
     return jsonify({
-        'message': 'PACHA Security Platform API with Network Capture',
+        'message': 'PACHA Security Platform API with Network Capture + Reports',
         'version': '2.1.0',
         'status': 'operational',
         'timestamp': datetime.now().isoformat(),
-        'modules': ['scans', 'network_capture'],
+        'modules': ['scans', 'network_capture', 'reports'],
         'endpoints': {
             'health': '/api/health',
             'scans': {
@@ -235,6 +259,15 @@ def root():
                 'stop_capture': '/api/network/capture/stop/<capture_id>',
                 'live_capture': '/api/network/capture/live/<capture_id>',
                 'download_capture': '/api/network/capture/download/<capture_id>'
+            },
+            'reports': {
+                'list': '/api/reports/list',
+                'download': '/api/reports/download/<filename>',
+                'preview': '/api/reports/preview/<filename>',
+                'generate': '/api/reports/generate',
+                'stats': '/api/reports/stats',
+                'cleanup': '/api/reports/cleanup',
+                'test': '/api/reports/test'
             }
         }
     })
@@ -666,760 +699,311 @@ def download_capture(capture_id):
         logger.error(f"❌ Error downloading capture {capture_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ==================== FONCTIONS DE CONSTRUCTION DE COMMANDES ====================
+# ==================== ROUTES API RAPPORTS - NOUVEAU MODULE ====================
 
-def build_nmap_command(target, scan_type):
-    """Construire la commande Nmap selon le type de scan"""
-    base_cmd = ['nmap']
-    
-    if scan_type == 'basic':
-        base_cmd.extend(['--top-ports', '1000', '-T4', target])
-    elif scan_type == 'stealth':
-        base_cmd.extend(['-sS', '-T2', target])
-    elif scan_type == 'comprehensive':
-        base_cmd.extend(['-sC', '-sV', '-O', '-A', target])
-    elif scan_type == 'udp':
-        base_cmd.extend(['-sU', '--top-ports', '100', target])
-    else:
-        base_cmd.extend(['--top-ports', '1000', target])
-    
-    return base_cmd
-
-def build_nikto_command(target, scan_type):
-    """Construire la commande Nikto selon le type de scan"""
-    base_cmd = ['nikto', '-h', target]
-    
-    if scan_type == 'comprehensive':
-        base_cmd.extend(['-C', 'all', '-plugins', '@@ALL'])
-    else:
-        base_cmd.extend(['-C', 'all'])
-    
-    return base_cmd
-
-def build_tcpdump_command(interface, filter_expr, duration, packet_count, filepath):
-    """Construire la commande tcpdump"""
-    cmd = ['tcpdump', '-i', interface, '-w', filepath, '-v']
-    
-    # Ajouter la limite de paquets
-    cmd.extend(['-c', str(packet_count)])
-    
-    # Ajouter le timeout
-    cmd.extend(['-G', str(duration), '-W', '1'])
-    
-    # Ajouter le filtre si spécifié
-    if filter_expr.strip():
-        cmd.append(filter_expr.strip())
-    
-    return cmd
-
-# ==================== FONCTIONS D'EXÉCUTION ====================
-
-def execute_scan(command, scan_id, tool, target, scan_type):
-    """Exécuter un scan avec simulation si l'outil n'est pas disponible"""
+@app.route('/api/reports/test', methods=['GET'])
+def test_reports():
+    """Test de la fonctionnalité rapports"""
     try:
-        logger.info(f"🔄 Executing scan {scan_id}: {tool} {scan_type} on {target}")
+        ensure_reports_directories()
         
-        if scan_id in active_scans:
-            active_scans[scan_id]['status'] = 'running'
-        
-        tool_available = check_tool_availability(tool)
-        
-        if tool_available:
-            execute_real_scan(command, scan_id)
-        else:
-            if tool == 'nikto':
-                simulate_nikto_scan(scan_id, target, scan_type)
-            elif tool == 'nmap':
-                simulate_nmap_scan(scan_id, target, scan_type)
-        
-        finalize_scan(scan_id)
-        
-    except Exception as e:
-        logger.error(f"❌ Error executing scan {scan_id}: {e}")
-        handle_scan_error(scan_id, str(e))
-
-def execute_capture(command, capture_id, interface, filter_expr, duration, packet_count, filepath):
-    """Exécuter une capture tcpdump"""
-    try:
-        logger.info(f"📡 Executing capture {capture_id}: {interface} with filter '{filter_expr}'")
-        
-        if capture_id in active_captures:
-            active_captures[capture_id]['status'] = 'running'
-        
-        tool_available = check_tool_availability('tcpdump')
-        
-        if tool_available:
-            execute_real_capture(command, capture_id, filepath)
-        else:
-            simulate_tcpdump_capture(capture_id, interface, filter_expr, duration, packet_count)
-        
-        finalize_capture(capture_id, filepath)
-        
-    except Exception as e:
-        logger.error(f"❌ Error executing capture {capture_id}: {e}")
-        handle_capture_error(capture_id, str(e))
-
-def execute_real_capture(command, capture_id, filepath):
-    """Exécuter une capture tcpdump réelle"""
-    try:
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            universal_newlines=True
-        )
-        
-        # Stocker le processus pour pouvoir l'arrêter
-        if capture_id in active_captures:
-            active_captures[capture_id]['process'] = process
-        
-        packet_count = 0
-        for line in iter(process.stdout.readline, ''):
-            if line and capture_id in capture_outputs:
-                clean_line = line.strip()
-                if clean_line:
-                    capture_outputs[capture_id].append(clean_line)
-                    logger.info(f"📡 [{capture_id}] {clean_line}")
-                    
-                    # Compter les paquets capturés
-                    if any(keyword in clean_line.lower() for keyword in ['listening on', 'packets captured', 'received by filter']):
-                        # Extraire le nombre de paquets si possible
-                        numbers = re.findall(r'\d+', clean_line)
-                        if numbers:
-                            try:
-                                packet_count = int(numbers[0])
-                                if capture_id in active_captures:
-                                    active_captures[capture_id]['packets_captured'] = packet_count
-                            except:
-                                pass
-        
-        process.wait()
-        logger.info(f"✅ Real capture {capture_id} completed")
-        
-    except Exception as e:
-        logger.error(f"❌ Error in real capture execution: {e}")
-        raise
-
-def simulate_tcpdump_capture(capture_id, interface, filter_expr, duration, packet_count):
-    """Simuler une capture tcpdump avec output réaliste"""
-    logger.info(f"🎭 Simulating tcpdump capture for {capture_id}")
-    
-    # Messages d'initialisation
-    init_messages = [
-        f"tcpdump: verbose output suppressed, use -v or -vv for full protocol decode",
-        f"listening on {interface}, link-type EN10MB (Ethernet), capture size 262144 bytes"
-    ]
-    
-    for message in init_messages:
-        if capture_id in capture_outputs:
-            capture_outputs[capture_id].append(message)
-            logger.info(f"📡 [{capture_id}] {message}")
-            time.sleep(0.5)
-    
-    # Simuler la capture de paquets avec différents types de trafic
-    simulated_packets = []
-    
-    # Types de trafic simulés selon le filtre
-    if 'http' in filter_expr.lower() or 'port 80' in filter_expr.lower():
-        simulated_packets = [
-            "12:34:56.789012 IP 192.168.1.100.54321 > 93.184.216.34.80: Flags [S], seq 123456789, win 65535",
-            "12:34:56.790123 IP 93.184.216.34.80 > 192.168.1.100.54321: Flags [S.], seq 987654321, ack 123456790, win 65535",
-            "12:34:56.790456 IP 192.168.1.100.54321 > 93.184.216.34.80: Flags [.], ack 987654322, win 65535",
-            "12:34:56.791789 IP 192.168.1.100.54321 > 93.184.216.34.80: Flags [P.], seq 123456790:123456950, ack 987654322, win 65535: HTTP: GET / HTTP/1.1",
-            "12:34:56.830123 IP 93.184.216.34.80 > 192.168.1.100.54321: Flags [P.], seq 987654322:987655000, ack 123456950, win 65535: HTTP: HTTP/1.1 200 OK"
-        ]
-    elif 'smb' in filter_expr.lower() or 'port 445' in filter_expr.lower() or 'port 139' in filter_expr.lower():
-        simulated_packets = [
-            "12:34:56.789012 IP 192.168.1.100.54445 > 192.168.1.10.445: Flags [S], seq 111111111, win 65535",
-            "12:34:56.790123 IP 192.168.1.10.445 > 192.168.1.100.54445: Flags [S.], seq 222222222, ack 111111112, win 65535",
-            "12:34:56.791789 IP 192.168.1.100.54445 > 192.168.1.10.445: SMB2 0x0000 Negotiate Protocol Request",
-            "12:34:56.830123 IP 192.168.1.10.445 > 192.168.1.100.54445: SMB2 0x0000 Negotiate Protocol Response",
-            "12:34:56.831456 IP 192.168.1.100.54445 > 192.168.1.10.445: SMB2 0x0001 Session Setup Request",
-            "12:34:56.832789 IP 192.168.1.10.445 > 192.168.1.100.54445: SMB2 0x0001 Session Setup Response, Error: STATUS_MORE_PROCESSING_REQUIRED",
-            "12:34:56.833123 IP 192.168.1.100.54445 > 192.168.1.10.445: SMB2 0x0002 Tree Connect Request",
-            "12:34:56.890456 IP 192.168.1.10.445 > 192.168.1.100.54445: SMB2 0x0002 Tree Connect Response, Path: \\\\192.168.1.10\\C$"
-        ]
-    elif 'ssh' in filter_expr.lower() or 'port 22' in filter_expr.lower():
-        simulated_packets = [
-            "12:34:56.789012 IP 192.168.1.100.54322 > 192.168.1.10.22: Flags [S], seq 111111111, win 65535",
-            "12:34:56.790123 IP 192.168.1.10.22 > 192.168.1.100.54322: Flags [S.], seq 222222222, ack 111111112, win 65535",
-            "12:34:56.790456 IP 192.168.1.100.54322 > 192.168.1.10.22: Flags [.], ack 222222223, win 65535",
-            "12:34:56.791789 IP 192.168.1.100.54322 > 192.168.1.10.22: Flags [P.], seq 111111112:111111200, ack 222222223, win 65535: SSH-2.0-OpenSSH_8.2",
-            "12:34:56.830123 IP 192.168.1.10.22 > 192.168.1.100.54322: Flags [P.], seq 222222223:222222300, ack 111111200, win 65535: SSH-2.0-OpenSSH_8.9"
-        ]
-    elif 'dns' in filter_expr.lower() or 'port 53' in filter_expr.lower():
-        simulated_packets = [
-            "12:34:56.789012 IP 192.168.1.100.54323 > 8.8.8.8.53: 12345+ A? example.com. (29)",
-            "12:34:56.820123 IP 8.8.8.8.53 > 192.168.1.100.54323: 12345 1/0/0 A 93.184.216.34 (45)",
-            "12:34:56.821456 IP 192.168.1.100.54324 > 8.8.8.8.53: 12346+ AAAA? example.com. (29)",
-            "12:34:56.850789 IP 8.8.8.8.53 > 192.168.1.100.54324: 12346 0/1/0 (96)"
-        ]
-    else:
-        # Trafic mixte par défaut
-        simulated_packets = [
-            "12:34:56.789012 IP 192.168.1.100.54321 > 93.184.216.34.80: Flags [S], seq 123456789, win 65535",
-            "12:34:56.790123 IP 192.168.1.100.54322 > 192.168.1.10.22: Flags [S], seq 111111111, win 65535",
-            "12:34:56.791456 IP 192.168.1.100.54323 > 8.8.8.8.53: 12345+ A? example.com. (29)",
-            "12:34:56.792789 IP 192.168.1.100.49152 > 192.168.1.1.443: Flags [P.], seq 1000:1500, ack 2000, win 65535",
-            "12:34:56.800123 ARP, Request who-has 192.168.1.1 tell 192.168.1.100, length 28",
-            "12:34:56.801456 ARP, Reply 192.168.1.1 is-at aa:bb:cc:dd:ee:ff, length 28",
-            "12:34:56.810789 IP6 fe80::1%eth0 > ff02::1%eth0: ICMP6, router advertisement, length 64"
-        ]
-    
-    # Ajouter les paquets simulés progressivement
-    packets_added = 0
-    max_packets = min(packet_count, len(simulated_packets) * 3)  # Répéter les patterns
-    
-    for i in range(max_packets):
-        if capture_id not in capture_outputs:
-            break
+        # Création de rapports de test
+        test_reports = []
+        for i in range(3):
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"report_test_{i+1}_{timestamp}.html"
+            content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Rapport de Test {i+1}</title>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                    h1 {{ color: #333; }}
+                    .info {{ background: #f0f0f0; padding: 10px; border-radius: 5px; }}
+                </style>
+            </head>
+            <body>
+                <h1>Rapport de Test {i+1}</h1>
+                <div class="info">
+                    <p><strong>Généré le:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p><strong>Système:</strong> Pacha Toolbox v2.1</p>
+                    <p><strong>Type:</strong> Test automatique</p>
+                </div>
+                <h2>Contenu du rapport</h2>
+                <p>Ce rapport de test a été généré automatiquement pour valider le système de rapports.</p>
+            </body>
+            </html>
+            """
             
-        packet = simulated_packets[i % len(simulated_packets)]
-        # Varier les timestamps
-        timestamp_variation = f"12:34:{56 + (i // 10):02d}.{789012 + (i * 1000):06d}"
-        packet_with_time = packet.replace("12:34:56.789012", timestamp_variation)
+            file_path = REPORTS_DIR / filename
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            test_reports.append({
+                'filename': filename,
+                'path': str(file_path),
+                'download_url': f'/api/reports/download/{filename}'
+            })
         
-        capture_outputs[capture_id].append(packet_with_time)
-        logger.info(f"📡 [{capture_id}] {packet_with_time}")
-        
-        packets_added += 1
-        if capture_id in active_captures:
-            active_captures[capture_id]['packets_captured'] = packets_added
-        
-        time.sleep(0.1)  # Simuler la capture en temps réel
-    
-    # Messages de finalisation
-    final_messages = [
-        f"{packets_added} packets captured",
-        f"{packets_added} packets received by filter",
-        f"0 packets dropped by kernel"
-    ]
-    
-    for message in final_messages:
-        if capture_id in capture_outputs:
-            capture_outputs[capture_id].append(message)
-            logger.info(f"📡 [{capture_id}] {message}")
-            time.sleep(0.5)
-
-def execute_real_scan(command, scan_id):
-    """Exécuter une commande réelle"""
-    try:
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            universal_newlines=True
-        )
-        
-        for line in iter(process.stdout.readline, ''):
-            if line and scan_id in scan_outputs:
-                clean_line = line.strip()
-                if clean_line:
-                    scan_outputs[scan_id].append(clean_line)
-                    logger.info(f"📟 [{scan_id}] {clean_line}")
-        
-        process.wait()
-        logger.info(f"✅ Real scan {scan_id} completed")
-        
-    except Exception as e:
-        logger.error(f"❌ Error in real scan execution: {e}")
-        raise
-
-def simulate_nikto_scan(scan_id, target, scan_type):
-    """Simuler un scan Nikto avec output réaliste"""
-    logger.info(f"🎭 Simulating Nikto scan for {scan_id}")
-    
-    init_messages = [
-        f"- Nikto v2.5.0",
-        f"+ Target IP: {target}",
-        f"+ Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        f"+ Server: nginx/1.18.0 (Ubuntu)",
-        f"+ Retrieved x-powered-by header: PHP/8.1.2",
-        f"+ Checking for HTTP methods..."
-    ]
-    
-    for message in init_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(0.5)
-    
-    progress_messages = [
-        "+ Scanning for common files/directories...",
-        "+ Checking /admin/",
-        "+ Checking /backup/",
-        "+ Checking /config/",
-        "+ Analyzing response headers...",
-        "+ Testing for XSS vulnerabilities...",
-        "+ Testing for SQL injection...",
-        "+ Checking SSL/TLS configuration..."
-    ]
-    
-    for message in progress_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(1)
-    
-    if scan_type == 'comprehensive':
-        result_messages = [
-            "+ OSVDB-3233: /icons/README: Apache default file found.",
-            "+ OSVDB-3268: /admin/: Directory indexing found.",
-            "+ OSVDB-3092: /admin/: This might be interesting...",
-            "+ Server may leak inodes via ETags, header found with file /, inode: 12345",
-            "+ The anti-clickjacking X-Frame-Options header is not present.",
-            "+ The X-XSS-Protection header is not defined.",
-            "+ The X-Content-Type-Options header is not set.",
-            "+ Cookie not set with HttpOnly flag",
-            "+ Missing Strict-Transport-Security header",
-            "+ Entry '/admin/login.php' in robots.txt returned a non-forbidden status.",
-            "+ Retrieved x-frame-options header: DENY",
-            "+ /config/database.yml: Configuration file found",
-            "+ /backup/backup.sql: Backup file found"
-        ]
-    else:
-        result_messages = [
-            "+ OSVDB-3233: /icons/README: Apache default file found.",
-            "+ The anti-clickjacking X-Frame-Options header is not present.",
-            "+ The X-XSS-Protection header is not defined.",
-            "+ Server may leak inodes via ETags"
-        ]
-    
-    for message in result_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(0.8)
-    
-    final_messages = [
-        f"+ {len(result_messages)} host(s) tested",
-        f"+ {len(result_messages)} item(s) reported on remote host",
-        f"+ End Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ({len(result_messages) + 10} seconds)"
-    ]
-    
-    for message in final_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(0.5)
-
-def simulate_nmap_scan(scan_id, target, scan_type):
-    """Simuler un scan Nmap avec output réaliste"""
-    logger.info(f"🗺️ Simulating Nmap scan for {scan_id}")
-    
-    init_messages = [
-        f"Starting Nmap 7.91 ( https://nmap.org ) at {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC",
-        f"Nmap scan report for {target}",
-        f"Host is up (0.00050s latency)."
-    ]
-    
-    for message in init_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(0.5)
-    
-    if scan_type == 'comprehensive':
-        scan_messages = [
-            "Not shown: 996 closed ports",
-            "PORT     STATE SERVICE VERSION",
-            "22/tcp   open  ssh     OpenSSH 8.2p1 Ubuntu",
-            "80/tcp   open  http    nginx 1.18.0 (Ubuntu)",
-            "443/tcp  open  https   nginx 1.18.0 (Ubuntu)",
-            "3306/tcp open  mysql   MySQL 8.0.25",
-            "Device type: general purpose",
-            "Running: Linux 5.X",
-            "OS fingerprint: Linux 5.4 - 5.10"
-        ]
-    elif scan_type == 'stealth':
-        scan_messages = [
-            "Not shown: 998 closed ports",
-            "PORT   STATE SERVICE",
-            "22/tcp open  ssh",
-            "80/tcp open  http",
-            "443/tcp open  https"
-        ]
-    elif scan_type == 'udp':
-        scan_messages = [
-            "Not shown: 97 closed ports",
-            "PORT    STATE SERVICE",
-            "53/udp  open  domain",
-            "67/udp  open  dhcps",
-            "123/udp open  ntp"
-        ]
-    else:  # basic
-        scan_messages = [
-            "Not shown: 997 closed ports",
-            "PORT   STATE SERVICE",
-            "22/tcp open  ssh",
-            "80/tcp open  http",
-            "443/tcp open  https"
-        ]
-    
-    for message in scan_messages:
-        if scan_id in scan_outputs:
-            scan_outputs[scan_id].append(message)
-            logger.info(f"📟 [{scan_id}] {message}")
-            time.sleep(0.7)
-    
-    final_message = f"Nmap done: 1 IP address (1 host up) scanned in {len(scan_messages) + 5}.00 seconds"
-    if scan_id in scan_outputs:
-        scan_outputs[scan_id].append(final_message)
-        logger.info(f"📟 [{scan_id}] {final_message}")
-
-def finalize_scan(scan_id):
-    """Finaliser un scan terminé"""
-    if scan_id in active_scans:
-        start_time = active_scans[scan_id]['start_time']
-        end_time = datetime.now().isoformat()
-        duration = calculate_duration(start_time, end_time)
-        
-        active_scans[scan_id]['status'] = 'completed'
-        active_scans[scan_id]['end_time'] = end_time
-        active_scans[scan_id]['duration'] = duration
-        active_scans[scan_id]['output_lines'] = len(scan_outputs.get(scan_id, []))
-        
-        add_scan_to_history(active_scans[scan_id])
-        
-        def auto_cleanup():
-            time.sleep(120)
-            active_scans.pop(scan_id, None)
-            def cleanup_output():
-                time.sleep(300)
-                scan_outputs.pop(scan_id, None)
-            threading.Thread(target=cleanup_output, daemon=True).start()
-        
-        threading.Thread(target=auto_cleanup, daemon=True).start()
-        
-        logger.info(f"✅ Scan {scan_id} completed successfully")
-
-def finalize_capture(capture_id, filepath):
-    """Finaliser une capture terminée"""
-    if capture_id in active_captures:
-        start_time = active_captures[capture_id]['start_time']
-        end_time = datetime.now().isoformat()
-        duration = calculate_duration(start_time, end_time)
-        
-        active_captures[capture_id]['status'] = 'completed'
-        active_captures[capture_id]['end_time'] = end_time
-        active_captures[capture_id]['duration'] = duration
-        
-        # Obtenir la taille du fichier si elle existe
-        if os.path.exists(filepath):
-            file_size = os.path.getsize(filepath)
-            active_captures[capture_id]['file_size'] = f"{file_size / 1024:.1f} KB"
-        else:
-            active_captures[capture_id]['file_size'] = "N/A"
-        
-        add_capture_to_history(active_captures[capture_id])
-        
-        def auto_cleanup():
-            time.sleep(120)
-            active_captures.pop(capture_id, None)
-            def cleanup_output():
-                time.sleep(300)
-                capture_outputs.pop(capture_id, None)
-            threading.Thread(target=cleanup_output, daemon=True).start()
-        
-        threading.Thread(target=auto_cleanup, daemon=True).start()
-        
-        logger.info(f"✅ Capture {capture_id} completed successfully")
-
-def handle_scan_error(scan_id, error_message):
-    """Gérer les erreurs de scan"""
-    if scan_id in active_scans:
-        active_scans[scan_id]['status'] = 'error'
-        active_scans[scan_id]['error'] = error_message
-        active_scans[scan_id]['end_time'] = datetime.now().isoformat()
-        
-        if 'start_time' in active_scans[scan_id]:
-            duration = calculate_duration(active_scans[scan_id]['start_time'], active_scans[scan_id]['end_time'])
-            active_scans[scan_id]['duration'] = duration
-        
-        add_scan_to_history(active_scans[scan_id])
-
-def handle_capture_error(capture_id, error_message):
-    """Gérer les erreurs de capture"""
-    if capture_id in active_captures:
-        active_captures[capture_id]['status'] = 'error'
-        active_captures[capture_id]['error'] = error_message
-        active_captures[capture_id]['end_time'] = datetime.now().isoformat()
-        
-        if 'start_time' in active_captures[capture_id]:
-            duration = calculate_duration(active_captures[capture_id]['start_time'], active_captures[capture_id]['end_time'])
-            active_captures[capture_id]['duration'] = duration
-        
-        add_capture_to_history(active_captures[capture_id])
-
-def initialize_test_data():
-    """Initialiser des données de test"""
-    test_scans = [
-        {
-            'scan_id': 'test_nmap_001',
-            'tool': 'nmap',
-            'target': '127.0.0.1',
-            'scan_type': 'basic',
-            'status': 'completed',
-            'start_time': datetime.now().isoformat(),
-            'end_time': datetime.now().isoformat(),
-            'duration': '5s'
-        },
-        {
-            'scan_id': 'test_nikto_001',
-            'tool': 'nikto',
-            'target': 'http://localhost',
-            'scan_type': 'comprehensive',
-            'status': 'completed',
-            'start_time': datetime.now().isoformat(),
-            'end_time': datetime.now().isoformat(),
-            'duration': '12s'
-        }
-    ]
-    
-    test_captures = [
-        {
-            'capture_id': 'test_capture_001',
-            'interface': 'eth0',
-            'filter': 'tcp port 80',
-            'status': 'completed',
-            'start_time': datetime.now().isoformat(),
-            'end_time': datetime.now().isoformat(),
-            'duration': '30s',
-            'packets_captured': 147,
-            'file_size': '2.3 MB',
-            'filename': 'capture_001.pcap'
-        },
-        {
-            'capture_id': 'test_capture_002',
-            'interface': 'eth0',
-            'filter': 'port 445 or port 139',
-            'status': 'completed',
-            'start_time': datetime.now().isoformat(),
-            'end_time': datetime.now().isoformat(),
-            'duration': '60s',
-            'packets_captured': 89,
-            'file_size': '1.8 MB',
-            'filename': 'capture_002.pcap'
-        }
-    ]
-    
-    for scan in test_scans:
-        add_scan_to_history(scan)
-    
-    for capture in test_captures:
-        add_capture_to_history(capture)
-    
-    logger.info(f"🧪 Added {len(test_scans)} test scans and {len(test_captures)} test captures")
-
-# ==================== ENDPOINTS DE TEST ====================
-
-@app.route('/api/test/history', methods=['GET'])
-def test_history():
-    """Endpoint de test pour ajouter des scans à l'historique"""
-    try:
-        test_scans = [
-            {
-                'scan_id': 'demo_nmap_001',
-                'tool': 'nmap',
-                'target': 'scanme.nmap.org',
-                'scan_type': 'basic',
-                'status': 'completed',
-                'start_time': datetime.now().isoformat(),
-                'end_time': datetime.now().isoformat(),
-                'duration': '8s'
-            },
-            {
-                'scan_id': 'demo_nikto_001',
-                'tool': 'nikto',
-                'target': 'http://testphp.vulnweb.com',
-                'scan_type': 'comprehensive',
-                'status': 'completed',
-                'start_time': datetime.now().isoformat(),
-                'end_time': datetime.now().isoformat(),
-                'duration': '15s'
-            }
-        ]
-        
-        for scan in test_scans:
-            add_scan_to_history(scan)
+        logger.info(f"✅ {len(test_reports)} rapports de test créés")
         
         return jsonify({
-            'message': 'Test scans added to history',
-            'total': len(scan_history),
-            'added': len(test_scans)
+            'status': 'success',
+            'message': f'{len(test_reports)} rapports de test créés',
+            'reports': test_reports,
+            'reports_directory': str(REPORTS_DIR)
         })
+        
     except Exception as e:
-        logger.error(f"❌ Error in test_history: {e}")
+        logger.error(f"❌ Erreur test rapports: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/test/capture', methods=['GET'])
-def test_capture_history():
-    """Endpoint de test pour ajouter des captures à l'historique"""
+@app.route('/api/reports/list', methods=['GET'])
+def list_reports():
+    """Liste des rapports disponibles"""
     try:
-        test_captures = [
-            {
-                'capture_id': 'demo_capture_001',
-                'interface': 'eth0',
-                'filter': 'tcp port 80',
-                'status': 'completed',
-                'start_time': datetime.now().isoformat(),
-                'end_time': datetime.now().isoformat(),
-                'duration': '60s',
-                'packets_captured': 245,
-                'file_size': '1.2 MB',
-                'filename': 'demo_capture_001.pcap'
-            },
-            {
-                'capture_id': 'demo_capture_002',
-                'interface': 'wlan0',
-                'filter': 'port 445 or port 139',
-                'status': 'completed',
-                'start_time': datetime.now().isoformat(),
-                'end_time': datetime.now().isoformat(),
-                'duration': '45s',
-                'packets_captured': 123,
-                'file_size': '890 KB',
-                'filename': 'demo_capture_002.pcap'
-            }
-        ]
+        ensure_reports_directories()
+        reports = []
         
-        for capture in test_captures:
-            add_capture_to_history(capture)
+        # Parcourir les deux répertoires
+        for directory in [REPORTS_DIR, REPORTS_PDF_DIR]:
+            if directory.exists():
+                for file_path in directory.glob('report_*'):
+                    if file_path.is_file():
+                        stat = file_path.stat()
+                        reports.append({
+                            'filename': file_path.name,
+                            'size': stat.st_size,
+                            'size_formatted': format_file_size(stat.st_size),
+                            'created_at': datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                            'modified_at': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                            'format': file_path.suffix.upper().replace('.', ''),
+                            'download_url': f"/api/reports/download/{file_path.name}",
+                            'preview_url': f"/api/reports/preview/{file_path.name}"
+                        })
         
-        return jsonify({
-            'message': 'Test captures added to history',
-            'total': len(capture_history),
-            'added': len(test_captures)
-        })
-    except Exception as e:
-        logger.error(f"❌ Error in test_capture_history: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES UTILITAIRES ====================
-
-@app.route('/api/system/info', methods=['GET'])
-def get_system_info():
-    """Obtenir des informations système"""
-    try:
-        info = {
-            'timestamp': datetime.now().isoformat(),
-            'platform': {
-                'system': os.name,
-                'python_version': f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
-            },
-            'tools': {
-                'nmap': check_tool_availability('nmap'),
-                'nikto': check_tool_availability('nikto'),
-                'tcpdump': check_tool_availability('tcpdump'),
-                'tshark': check_tool_availability('tshark')
-            },
-            'resources': {
-                'cpu_percent': psutil.cpu_percent() if 'psutil' in globals() else 'N/A',
-                'memory_percent': psutil.virtual_memory().percent if 'psutil' in globals() else 'N/A',
-                'disk_usage': psutil.disk_usage('/').percent if 'psutil' in globals() else 'N/A'
-            },
-            'network_interfaces': len(get_network_interfaces()),
-            'active_processes': {
-                'scans': len(active_scans),
-                'captures': len(active_captures)
-            }
+        # Tri par date de création (plus récent en premier)
+        reports.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        # Statistiques
+        stats = {
+            'total': len(reports),
+            'by_format': {},
+            'total_size': sum(r['size'] for r in reports),
+            'total_size_formatted': format_file_size(sum(r['size'] for r in reports))
         }
         
-        return jsonify(info)
-    except Exception as e:
-        logger.error(f"❌ Error getting system info: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/cleanup', methods=['POST'])
-def cleanup_resources():
-    """Nettoyer les ressources (scans et captures terminés)"""
-    try:
-        cleaned_scans = 0
-        cleaned_captures = 0
-        
-        # Nettoyer les scans terminés
-        for scan_id in list(active_scans.keys()):
-            if active_scans[scan_id]['status'] in ['completed', 'error', 'stopped']:
-                active_scans.pop(scan_id, None)
-                scan_outputs.pop(scan_id, None)
-                cleaned_scans += 1
-        
-        # Nettoyer les captures terminées
-        for capture_id in list(active_captures.keys()):
-            if active_captures[capture_id]['status'] in ['completed', 'error', 'stopped']:
-                active_captures.pop(capture_id, None)
-                capture_outputs.pop(capture_id, None)
-                cleaned_captures += 1
-        
-        logger.info(f"🧹 Cleaned {cleaned_scans} scans and {cleaned_captures} captures")
+        for fmt in ['HTML', 'PDF', 'JSON', 'TXT']:
+            stats['by_format'][fmt] = len([r for r in reports if r['format'] == fmt])
         
         return jsonify({
-            'message': 'Cleanup completed',
-            'cleaned_scans': cleaned_scans,
-            'cleaned_captures': cleaned_captures,
-            'remaining_scans': len(active_scans),
-            'remaining_captures': len(active_captures)
+            "total": len(reports),
+            "reports": reports,
+            "stats": stats,
+            "message": f"{len(reports)} rapports disponibles"
         })
+        
     except Exception as e:
-        logger.error(f"❌ Error during cleanup: {e}")
+        logger.error(f"❌ Erreur liste rapports: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/reports/download/<filename>', methods=['GET'])
+def download_report(filename):
+    """Téléchargement d'un rapport"""
+    try:
+        ensure_reports_directories()
+        safe_filename = os.path.basename(filename)
+        
+        # Chercher dans les deux répertoires
+        for directory in [REPORTS_DIR, REPORTS_PDF_DIR]:
+            file_path = directory / safe_filename
+            if file_path.exists():
+                logger.info(f"📥 Téléchargement: {safe_filename}")
+                return send_file(file_path, as_attachment=True, download_name=safe_filename)
+        
+        return jsonify({"error": "Rapport non trouvé"}), 404
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur téléchargement rapport: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/reports/preview/<filename>', methods=['GET'])
+def preview_report(filename):
+    """Prévisualisation d'un rapport"""
+    try:
+        ensure_reports_directories()
+        safe_filename = os.path.basename(filename)
+        
+        # Chercher dans les répertoires
+        for directory in [REPORTS_DIR, REPORTS_PDF_DIR]:
+            file_path = directory / safe_filename
+            if file_path.exists():
+                if safe_filename.endswith('.html'):
+                    logger.info(f"👁️ Prévisualisation HTML: {safe_filename}")
+                    return send_file(file_path, mimetype='text/html')
+                elif safe_filename.endswith('.json'):
+                    logger.info(f"👁️ Prévisualisation JSON: {safe_filename}")
+                    return send_file(file_path, mimetype='application/json')
+                else:
+                    return jsonify({"error": "Type de fichier non prévisualisable"}), 400
+        
+        return jsonify({"error": "Rapport non trouvé"}), 404
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur prévisualisation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/reports/generate', methods=['POST'])
+def generate_report():
+    """Génération d'un nouveau rapport"""
+    try:
+        data = request.get_json() or {}
+        report_type = data.get('type', 'test')
+        title = data.get('title', 'Rapport généré')
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"report_{report_type}_{timestamp}.html"
+        
+        content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{title}</title>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #333; }}
+                .info {{ background: #f0f0f0; padding: 10px; border-radius: 5px; }}
+            </style>
+        </head>
+        <body>
+            <h1>{title}</h1>
+            <div class="info">
+                <p><strong>Type:</strong> {report_type}</p>
+                <p><strong>Généré le:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                <p><strong>Système:</strong> Pacha Toolbox v2.1</p>
+            </div>
+            <h2>Contenu du rapport</h2>
+            <p>Ce rapport a été généré automatiquement par le système Pacha Toolbox.</p>
+        </body>
+        </html>
+        """
+        
+        file_path = REPORTS_DIR / filename
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        logger.info(f"✅ Rapport généré: {filename}")
+        
+        return jsonify({
+            'status': 'success',
+            'filename': filename,
+            'download_url': f'/api/reports/download/{filename}',
+            'preview_url': f'/api/reports/preview/{filename}',
+            'message': f'Rapport {filename} généré avec succès'
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur génération rapport: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ==================== DÉMARRAGE DE L'APPLICATION ====================
+@app.route('/api/reports/stats', methods=['GET'])
+def get_reports_stats():
+    """Statistiques des rapports"""
+    try:
+        ensure_reports_directories()
+        
+        stats = {
+            'total_files': 0,
+            'total_size': 0,
+            'total_size_formatted': '0 B',
+            'by_format': {'HTML': 0, 'PDF': 0, 'JSON': 0, 'TXT': 0},
+            'by_date': {},
+            'oldest_report': None,
+            'newest_report': None
+        }
+        
+        all_files = []
+        
+        # Analyser tous les fichiers
+        for directory in [REPORTS_DIR, REPORTS_PDF_DIR]:
+            if directory.exists():
+                for file_path in directory.glob('report_*'):
+                    if file_path.is_file():
+                        stat = file_path.stat()
+                        
+                        file_info = {
+                            'filename': file_path.name,
+                            'size': stat.st_size,
+                            'created': datetime.fromtimestamp(stat.st_ctime),
+                            'format': file_path.suffix.upper().replace('.', '') or 'TXT'
+                        }
+                        
+                        all_files.append(file_info)
+                        stats['total_files'] += 1
+                        stats['total_size'] += stat.st_size
+                        
+                        # Compter par format
+                        fmt = file_info['format']
+                        if fmt in stats['by_format']:
+                            stats['by_format'][fmt] += 1
+        
+        # Formatage de la taille totale
+        stats['total_size_formatted'] = format_file_size(stats['total_size'])
+        
+        # Fichiers les plus anciens/récents
+        if all_files:
+            all_files.sort(key=lambda x: x['created'])
+            stats['oldest_report'] = {
+                'filename': all_files[0]['filename'],
+                'created': all_files[0]['created'].isoformat()
+            }
+            stats['newest_report'] = {
+                'filename': all_files[-1]['filename'],
+                'created': all_files[-1]['created'].isoformat()
+            }
+        
+        return jsonify({
+            'stats': stats,
+            'message': f"Statistiques de {stats['total_files']} rapports"
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur statistiques rapports: {e}")
+        return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    logger.info("🚀 PACHA Security Platform Backend Starting...")
-    logger.info("🛡️ Professional Penetration Testing Suite")
-    logger.info("📡 Network Capture Module Enabled")
-    logger.info("🔧 Tcpdump Integration Active")
-    logger.info("📊 Ready to handle security scans and network captures")
-    
-    # Créer les répertoires nécessaires
-    os.makedirs('/tmp/captures', exist_ok=True)
-    os.makedirs('/tmp/reports', exist_ok=True)
-    
-    # Vérifier la disponibilité des outils
-    tools_status = {
-        'nmap': check_tool_availability('nmap'),
-        'nikto': check_tool_availability('nikto'),
-        'tcpdump': check_tool_availability('tcpdump'),
-        'tshark': check_tool_availability('tshark')
-    }
-    
-    logger.info("🔍 Tool availability check:")
-    for tool, available in tools_status.items():
-        status = "✅ Available" if available else "❌ Missing"
-        logger.info(f"  {tool.upper()}: {status}")
-    
-    # Vérifier les interfaces réseau
-    interfaces = get_network_interfaces()
-    logger.info(f"🌐 Network interfaces detected: {len(interfaces)}")
-    for iface in interfaces[:3]:  # Afficher les 3 premières
-        logger.info(f"  - {iface['name']}: {iface['display']}")
-    
-    # Initialiser quelques données de test
-    logger.info("🧪 Initializing test data...")
-    initialize_test_data()
-    
-    logger.info("🎯 PACHA Platform Features:")
-    logger.info("  ✅ Network reconnaissance with Nmap")
-    logger.info("  ✅ Web vulnerability scanning with Nikto")
-    logger.info("  ✅ Real-time network packet capture with tcpdump")
-    logger.info("  ✅ Advanced BPF filtering (HTTP, HTTPS, SMB, DNS, etc.)")
-    logger.info("  ✅ PCAP file generation and download")
-    logger.info("  ✅ Live capture monitoring and analysis")
-    logger.info("  ✅ Professional pentest reporting")
-    logger.info("")
-    logger.info("🚀 Perfect for Print Nightmare analysis and SMB traffic monitoring!")
-    logger.info("📡 Ready to capture and analyze network communications")
-    logger.info("")
-    logger.info("🌐 API accessible on: http://localhost:5000")
-    logger.info("📋 Health check: http://localhost:5000/api/health")
-    logger.info("🔗 Full API documentation: http://localhost:5000/")
-    
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-    
+@app.route('/api/reports/cleanup', methods=['POST'])
+def cleanup_reports():
+    """Nettoyage des anciens rapports"""
+    try:
+        data = request.get_json() or {}
+        days_old = data.get('days_old', 30)
+        
+        ensure_reports_directories()
+        deleted_files = []
+        cutoff_date = datetime.now().timestamp() - (days_old * 24 * 3600)
+        
+        for directory in [REPORTS_DIR, REPORTS_PDF_DIR]:
+            if directory.exists():
+                for file_path in directory.glob('report_*'):
+                    if file_path.is_file():
+                        if file_path.stat().st_ctime < cutoff_date:
+                            try:
+                                file_path.unlink()
+                                deleted_files.append(file_path.name)
+                                logger.info(f"🗑️ Supprimé: {file_path.name}")
+                            except Exception as e:
+                                logger.error(f"❌ Erreur suppression {file_path.name}: {e}")
+        
+        return jsonify({
+            'status': 'success',
+            'deleted_count': len(deleted_files),
+            'deleted_files': deleted_files,
+            'message': f'{len(deleted_files)} fichiers supprimés (plus anciens que {days_old} jours)'
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur nettoyage rapports: {e}")
+        return jsonify({'error': str(e)}), 500
