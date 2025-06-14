@@ -1278,22 +1278,7 @@ const ProfessionalPentestInterface = () => {
     }
   };
 
-  // Fonction pour arrêter un scan
-  const handleStopScan = async (scanId) => {
-    try {
-      const response = await fetch(`${API_BASE}/scan/stop/${scanId}`, { 
-        method: 'POST' 
-      });
-      
-      if (response.ok) {
-        console.log('✅ Scan stopped successfully');
-        handleRefreshScanHistory();
-      }
-    } catch (error) {
-      console.error('❌ Error stopping scan:', error);
-    }
-  };
-
+  
   // Fonction pour démarrer une capture
   const handleCaptureStart = async (formData) => {
     try {
