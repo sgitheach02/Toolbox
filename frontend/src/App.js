@@ -94,6 +94,33 @@ const Download = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
+const Play = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <polygon points="5,3 19,12 5,21 5,3"></polygon>
+  </svg>
+);
+
+const X = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const Plus = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+);
+
+const Eye = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
 // ================================
 // THÈME PROFESSIONNEL
 // ================================
@@ -140,18 +167,19 @@ const theme = {
 // COMPOSANTS UI RÉUTILISABLES
 // ================================
 
-const Card = ({ children }) => (
+const Card = ({ children, style = {} }) => (
   <div style={{
     backgroundColor: theme.colors.bg.secondary,
     border: `1px solid ${theme.colors.bg.tertiary}`,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg
+    padding: theme.spacing.lg,
+    ...style
   }}>
     {children}
   </div>
 );
 
-const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick, type = 'button' }) => {
+const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick, type = 'button', fullWidth = false }) => {
   const variants = {
     primary: {
       backgroundColor: theme.colors.accent.primary,
@@ -197,9 +225,11 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
         opacity: disabled ? 0.6 : 1,
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: theme.spacing.sm,
         fontWeight: '500',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        width: fullWidth ? '100%' : 'auto'
       }}
       disabled={disabled}
       onClick={onClick}
@@ -234,6 +264,50 @@ const Badge = ({ children, variant = 'default' }) => {
     </span>
   );
 };
+
+const Input = ({ type = 'text', placeholder, value, onChange, style = {} }) => (
+  <input
+    type={type}
+    placeholder={placeholder}
+    value={value}
+    onChange={onChange}
+    style={{
+      width: '100%',
+      backgroundColor: theme.colors.bg.tertiary,
+      border: `1px solid ${theme.colors.bg.accent}`,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      color: theme.colors.text.primary,
+      fontSize: '14px',
+      outline: 'none',
+      ...style
+    }}
+  />
+);
+
+const Select = ({ options, value, onChange, placeholder = "Sélectionnez..." }) => (
+  <select
+    value={value}
+    onChange={onChange}
+    style={{
+      width: '100%',
+      backgroundColor: theme.colors.bg.tertiary,
+      border: `1px solid ${theme.colors.bg.accent}`,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      color: theme.colors.text.primary,
+      fontSize: '14px',
+      outline: 'none'
+    }}
+  >
+    <option value="">{placeholder}</option>
+    {options.map((option, index) => (
+      <option key={index} value={option.value}>
+        {option.label}
+      </option>
+    ))}
+  </select>
+);
 
 // ================================
 // HEADER PROFESSIONNEL
@@ -278,6 +352,855 @@ const PentestHeader = () => (
     </div>
   </header>
 );
+
+// ================================
+// COMPOSANT TERMINAL INTERACTIF
+// ================================
+
+const InteractiveTerminal = ({ sessionId, session, onClose }) => {
+  const [output, setOutput] = useState([]);
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const outputRef = useRef(null);
+
+  useEffect(() => {
+    // Messages d'accueil
+    setOutput([
+      `🖥️ Session #${sessionId} shell opened`,
+      `📍 Target: ${session?.target || 'Unknown'}`,
+      `💻 Type: ${session?.type || 'meterpreter'}`,
+      `🐧 Platform: ${session?.platform || 'linux'}`,
+      ``,
+      `💡 Tapez 'help' pour voir les commandes disponibles`,
+      `💡 Tapez 'exit' pour fermer le shell`,
+      `💡 Utilisez ↑/↓ pour naviguer dans l'historique`,
+      ``
+    ]);
+  }, [sessionId, session]);
+
+  useEffect(() => {
+    // Auto-scroll vers le bas
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  const executeCommand = async () => {
+    if (!input.trim() || isExecuting) return;
+    
+    const command = input.trim();
+    setOutput(prev => [...prev, `${getPrompt()}${command}`]);
+    
+    // Ajouter à l'historique
+    if (command !== 'exit' && command !== '') {
+      setHistory(prev => [...prev, command]);
+      setHistoryIndex(-1);
+    }
+    
+    // Commandes locales
+    if (command === 'exit') {
+      onClose();
+      return;
+    }
+    
+    if (command === 'clear') {
+      setOutput([]);
+      setInput('');
+      return;
+    }
+    
+    if (command === 'help') {
+      setOutput(prev => [...prev,
+        `🔧 Commandes disponibles:`,
+        ``,
+        `📁 Système:`,
+        `  pwd           - Répertoire courant`,
+        `  ls / dir      - Lister fichiers`,
+        `  cd <dir>      - Changer répertoire`,
+        `  cat <file>    - Lire fichier`,
+        `  whoami        - Utilisateur courant`,
+        `  id            - Informations utilisateur`,
+        `  ps            - Processus en cours`,
+        `  netstat -an   - Connexions réseau`,
+        ``,
+        `🔍 Reconnaissance:`,
+        `  uname -a      - Informations système`,
+        `  cat /etc/passwd   - Liste utilisateurs`,
+        `  find / -perm -4000 2>/dev/null  - Binaires SUID`,
+        ``,
+        `🌐 Réseau:`,
+        `  ifconfig      - Configuration réseau`,
+        `  arp -a        - Table ARP`,
+        `  route -n      - Table routage`,
+        ``,
+        `🔧 Utilitaires:`,
+        `  clear         - Effacer console`,
+        `  exit          - Fermer shell`,
+        `  help          - Cette aide`,
+        ``
+      ]);
+      setInput('');
+      return;
+    }
+    
+    setIsExecuting(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions/${sessionId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: command })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const commandOutput = result.output || `Commande '${command}' exécutée`;
+        
+        // Ajouter l'output ligne par ligne pour un meilleur affichage
+        const lines = commandOutput.split('\n');
+        setOutput(prev => [...prev, ...lines]);
+      } else {
+        setOutput(prev => [...prev, `❌ Erreur: Impossible d'exécuter la commande`]);
+      }
+    } catch (error) {
+      setOutput(prev => [...prev, `❌ Erreur de connexion: ${error.message}`]);
+    }
+    
+    setIsExecuting(false);
+    setInput('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeCommand();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length > 0 && historyIndex < history.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setInput('');
+      }
+    }
+  };
+
+  const getPrompt = () => {
+    const user = session?.type === 'meterpreter' ? 'meterpreter' : 'distccd';
+    const host = 'metasploitable';
+    return `${user}@${host}:~$ `;
+  };
+
+  const quickCommands = [
+    { cmd: 'whoami', desc: '👤 Utilisateur' },
+    { cmd: 'pwd', desc: '📁 Répertoire' },
+    { cmd: 'ls -la', desc: '📋 Fichiers' },
+    { cmd: 'ps aux', desc: '⚡ Processus' },
+    { cmd: 'netstat -an', desc: '🌐 Réseau' },
+    { cmd: 'uname -a', desc: '💻 Système' },
+    { cmd: 'cat /etc/passwd', desc: '👥 Utilisateurs' },
+    { cmd: 'ifconfig', desc: '🔌 Interfaces' }
+  ];
+
+  return (
+    <Card style={{ marginTop: theme.spacing.lg }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Terminal size={20} color={theme.colors.status.info} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            💻 Shell Interactif - Session #{sessionId}
+          </h2>
+          {isExecuting && (
+            <Badge variant="warning">Executing...</Badge>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" icon={X} onClick={onClose}>
+          Fermer
+        </Button>
+      </div>
+
+      {/* Terminal */}
+      <div
+        ref={outputRef}
+        style={{
+          backgroundColor: '#000000',
+          border: `1px solid ${theme.colors.bg.accent}`,
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          minHeight: '400px',
+          maxHeight: '500px',
+          overflowY: 'auto',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: '13px',
+          lineHeight: '1.4'
+        }}
+      >
+        {/* Output */}
+        <div style={{ marginBottom: theme.spacing.md }}>
+          {output.map((line, index) => (
+            <div key={index} style={{ 
+              color: line.includes('$') && (line.includes('@') || line.includes(':')) ? '#22c55e' : 
+                    line.startsWith('❌') ? '#dc2626' : 
+                    line.includes('🖥️') || line.includes('📍') || line.includes('💻') || line.includes('🐧') ? '#3b82f6' :
+                    line.includes('💡') ? '#eab308' :
+                    line.includes('🔧') || line.includes('📁') || line.includes('🔍') || line.includes('🌐') ? '#8b5cf6' :
+                    '#e5e5e5',
+              marginBottom: '2px',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {line}
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <span style={{ color: '#22c55e', fontWeight: 'bold' }}>
+            {getPrompt()}
+          </span>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Tapez votre commande..."
+            disabled={isExecuting}
+            style={{
+              flex: 1,
+              backgroundColor: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: '#e5e5e5',
+              fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+              fontSize: '13px'
+            }}
+            autoFocus
+          />
+        </div>
+      </div>
+
+      {/* Actions rapides */}
+      <div style={{ 
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+        gap: theme.spacing.sm, 
+        marginTop: theme.spacing.md
+      }}>
+        {quickCommands.map((action, index) => (
+          <button
+            key={index}
+            onClick={() => {
+              setInput(action.cmd);
+              setTimeout(() => executeCommand(), 100);
+            }}
+            disabled={isExecuting}
+            style={{
+              backgroundColor: theme.colors.bg.tertiary,
+              color: theme.colors.text.secondary,
+              border: `1px solid ${theme.colors.bg.accent}`,
+              borderRadius: theme.borderRadius.sm,
+              padding: '6px 8px',
+              fontSize: '11px',
+              cursor: isExecuting ? 'not-allowed' : 'pointer',
+              opacity: isExecuting ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {action.desc}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+// ================================
+// COMPOSANT EXPLOIT METASPLOIT
+// ================================
+
+const ExploitLauncher = ({ onExploitLaunched }) => {
+  const [selectedExploit, setSelectedExploit] = useState('');
+  const [target, setTarget] = useState('192.168.1.10');
+  const [port, setPort] = useState('445');
+  const [payload, setPayload] = useState('');
+  const [lhost, setLhost] = useState('192.168.1.5');
+  const [lport, setLport] = useState('4444');
+  const [isLaunching, setIsLaunching] = useState(false);
+
+  const exploits = [
+    {
+      name: 'samba_usermap_script',
+      module: 'exploit/multi/samba/usermap_script',
+      description: 'Samba "username map script" Command Execution',
+      defaultPort: 139,
+      payloads: ['cmd/unix/reverse', 'cmd/unix/reverse_netcat', 'cmd/unix/bind_netcat']
+    },
+    {
+      name: 'vsftpd_234_backdoor',
+      module: 'exploit/unix/ftp/vsftpd_234_backdoor',
+      description: 'VSFTPD v2.3.4 Backdoor Command Execution',
+      defaultPort: 21,
+      payloads: ['cmd/unix/interact', 'cmd/unix/reverse', 'cmd/unix/reverse_netcat']
+    },
+    {
+      name: 'unreal_ircd_3281_backdoor',
+      module: 'exploit/unix/irc/unreal_ircd_3281_backdoor',
+      description: 'UnrealIRCd 3.2.8.1 Backdoor Command Execution',
+      defaultPort: 6667,
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat']
+    },
+    {
+      name: 'distcc_exec',
+      module: 'exploit/unix/misc/distcc_exec',
+      description: 'DistCC Daemon Command Execution',
+      defaultPort: 3632,
+      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat']
+    }
+  ];
+
+  const selectedExploitData = exploits.find(e => e.module === selectedExploit);
+
+  useEffect(() => {
+    if (selectedExploitData) {
+      setPort(selectedExploitData.defaultPort.toString());
+      setPayload(selectedExploitData.payloads[0]);
+    }
+  }, [selectedExploit, selectedExploitData]);
+
+  const launchExploit = async () => {
+    if (!selectedExploit || !target || !payload) {
+      alert('Veuillez remplir tous les champs requis');
+      return;
+    }
+
+    setIsLaunching(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/exploit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module: selectedExploit,
+          target: target,
+          port: port,
+          payload: payload,
+          lhost: lhost,
+          lport: lport
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        onExploitLaunched && onExploitLaunched(result);
+        
+        // Reset form
+        setSelectedExploit('');
+        setTarget('192.168.1.10');
+        setPort('445');
+        setPayload('');
+        setLhost('192.168.1.5');
+        setLport('4444');
+      } else {
+        alert('Erreur lors du lancement de l\'exploit');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur de connexion');
+    }
+
+    setIsLaunching(false);
+  };
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Zap size={20} color={theme.colors.status.warning} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Lancer un Exploit
+        </h2>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            Module d'Exploit
+          </label>
+          <Select
+            options={exploits.map(e => ({ value: e.module, label: e.name }))}
+            value={selectedExploit}
+            onChange={(e) => setSelectedExploit(e.target.value)}
+            placeholder="Sélectionnez un exploit"
+          />
+          {selectedExploitData && (
+            <div style={{ marginTop: theme.spacing.sm, fontSize: '12px', color: theme.colors.text.muted }}>
+              {selectedExploitData.description}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            Target IP
+          </label>
+          <Input
+            type="text"
+            placeholder="192.168.1.10"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            Port
+          </label>
+          <Input
+            type="text"
+            placeholder="445"
+            value={port}
+            onChange={(e) => setPort(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            Payload
+          </label>
+          <Select
+            options={selectedExploitData ? selectedExploitData.payloads.map(p => ({ value: p, label: p })) : []}
+            value={payload}
+            onChange={(e) => setPayload(e.target.value)}
+            placeholder="Sélectionnez un payload"
+          />
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            LHOST (Listener IP)
+          </label>
+          <Input
+            type="text"
+            placeholder="192.168.1.5"
+            value={lhost}
+            onChange={(e) => setLhost(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: theme.spacing.sm, 
+            color: theme.colors.text.secondary,
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            LPORT (Listener Port)
+          </label>
+          <Input
+            type="text"
+            placeholder="4444"
+            value={lport}
+            onChange={(e) => setLport(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: theme.spacing.lg }}>
+        <Button 
+          variant="danger" 
+          icon={Play}
+          onClick={launchExploit}
+          disabled={!selectedExploit || !target || !payload || isLaunching}
+          fullWidth
+        >
+          {isLaunching ? 'Lancement en cours...' : 'Lancer l\'Exploit'}
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+// ================================
+// COMPOSANT SESSION MANAGER
+// ================================
+
+const SessionManager = ({ sessions, onSessionUpdate, onOpenShell }) => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshSessions = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions`);
+      if (response.ok) {
+        const data = await response.json();
+        onSessionUpdate(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement des sessions:', error);
+    }
+    setRefreshing(false);
+  };
+
+  const killSession = async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions/${sessionId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        await refreshSessions();
+      } else {
+        alert('Erreur lors de la fermeture de la session');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur de connexion');
+    }
+  };
+
+  const getSessionInfo = async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions/${sessionId}/info`);
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Session Info:\nTarget: ${data.target}\nType: ${data.type}\nPlatform: ${data.platform}\nHostname: ${data.host_info?.hostname || 'Unknown'}\nOS: ${data.host_info?.os || 'Unknown'}`);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Crosshairs size={20} color={theme.colors.status.info} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Sessions Actives ({sessions.length})
+          </h2>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          icon={RefreshCw}
+          onClick={refreshSessions}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Actualisation...' : 'Actualiser'}
+        </Button>
+      </div>
+
+      {sessions.length === 0 ? (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl, 
+          color: theme.colors.text.muted,
+          backgroundColor: theme.colors.bg.tertiary,
+          borderRadius: theme.borderRadius.md,
+          border: `2px dashed ${theme.colors.bg.accent}`
+        }}>
+          <Target size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>Aucune session active</p>
+          <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: '14px' }}>
+            Lancez un exploit pour créer une session
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+          {sessions.map(session => (
+            <div 
+              key={session.id} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                border: `1px solid ${theme.colors.bg.accent}`
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                  <Badge variant="info">#{session.id}</Badge>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
+                    {session.target}
+                  </span>
+                  <Badge variant={session.status === 'active' ? 'success' : 'warning'}>
+                    {session.status}
+                  </Badge>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted }}>
+                  <span>💻 {session.type}</span>
+                  <span>🐧 {session.platform}</span>
+                  <span>📅 {new Date(session.opened_at).toLocaleString()}</span>
+                  {session.exploit_used && (
+                    <span>🎯 {session.exploit_used.split('/').pop()}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  icon={Eye}
+                  onClick={() => getSessionInfo(session.id)}
+                >
+                  Info
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  icon={Terminal}
+                  onClick={() => onOpenShell(session.id)}
+                >
+                  Shell
+                </Button>
+                <Button 
+                  variant="danger" 
+                  size="sm"
+                  icon={X}
+                  onClick={() => killSession(session.id)}
+                >
+                  Kill
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// ================================
+// COMPOSANT EXPLOIT OUTPUT
+// ================================
+
+const ExploitOutput = ({ exploitId, onClose }) => {
+  const [output, setOutput] = useState([]);
+  const [isRunning, setIsRunning] = useState(true);
+  const outputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchOutput = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/metasploit/exploit/${exploitId}/output`);
+        if (response.ok) {
+          const data = await response.json();
+          setOutput(data.output || []);
+          setIsRunning(data.is_running || false);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération de l\'output:', error);
+      }
+    };
+
+    fetchOutput();
+    
+    // Poll pour les mises à jour en temps réel
+    const interval = setInterval(fetchOutput, 2000);
+    
+    return () => clearInterval(interval);
+  }, [exploitId]);
+
+  useEffect(() => {
+    // Auto-scroll vers le bas
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  return (
+    <Card style={{ marginTop: theme.spacing.lg }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Zap size={20} color={theme.colors.status.warning} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Exploit Output - {exploitId}
+          </h2>
+          {isRunning && (
+            <Badge variant="warning">Running...</Badge>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" icon={X} onClick={onClose}>
+          Fermer
+        </Button>
+      </div>
+
+      <div
+        ref={outputRef}
+        style={{
+          backgroundColor: '#000000',
+          border: `1px solid ${theme.colors.bg.accent}`,
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          minHeight: '300px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: '13px',
+          lineHeight: '1.4'
+        }}
+      >
+        {output.length === 0 ? (
+          <div style={{ color: theme.colors.text.muted, fontStyle: 'italic' }}>
+            En attente de l'output de l'exploit...
+          </div>
+        ) : (
+          output.map((line, index) => (
+            <div key={index} style={{ 
+              color: line.includes('[*]') ? '#3b82f6' :
+                    line.includes('[+]') ? '#22c55e' :
+                    line.includes('[-]') || line.includes('[!]') ? '#dc2626' :
+                    line.includes('[DEBUG]') ? '#8b5cf6' :
+                    '#e5e5e5',
+              marginBottom: '2px',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {line}
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  );
+};
+
+// ================================
+// ONGLET METASPLOIT PRINCIPAL
+// ================================
+
+const MetasploitTab = () => {
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [shellVisible, setShellVisible] = useState(false);
+  const [exploitOutput, setExploitOutput] = useState(null);
+  const [exploitOutputVisible, setExploitOutputVisible] = useState(false);
+
+  useEffect(() => {
+    // Charger les sessions au démarrage
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/metasploit/sessions`);
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des sessions:', error);
+      setSessions([]);
+    }
+  };
+
+  const handleExploitLaunched = (result) => {
+    if (result.exploit_id) {
+      setExploitOutput(result.exploit_id);
+      setExploitOutputVisible(true);
+      
+      // Rafraîchir les sessions après quelques secondes
+      setTimeout(() => {
+        fetchSessions();
+      }, 5000);
+    }
+  };
+
+  const handleOpenShell = (sessionId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    setSelectedSession(session);
+    setShellVisible(true);
+  };
+
+  const handleCloseShell = () => {
+    setShellVisible(false);
+    setSelectedSession(null);
+  };
+
+  const handleCloseExploitOutput = () => {
+    setExploitOutputVisible(false);
+    setExploitOutput(null);
+  };
+
+  return (
+    <div style={{ padding: theme.spacing.lg }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+        
+        {/* Exploit Launcher */}
+        <ExploitLauncher onExploitLaunched={handleExploitLaunched} />
+        
+        {/* Session Manager */}
+        <SessionManager 
+          sessions={sessions} 
+          onSessionUpdate={setSessions}
+          onOpenShell={handleOpenShell}
+        />
+        
+        {/* Exploit Output */}
+        {exploitOutputVisible && exploitOutput && (
+          <ExploitOutput 
+            exploitId={exploitOutput}
+            onClose={handleCloseExploitOutput}
+          />
+        )}
+        
+        {/* Interactive Terminal */}
+        {shellVisible && selectedSession && (
+          <InteractiveTerminal
+            sessionId={selectedSession.id}
+            session={selectedSession}
+            onClose={handleCloseShell}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ================================
 // NAVIGATION TABS
@@ -337,1253 +1260,878 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
 };
 
 // ================================
-// ONGLET METASPLOIT COMPLET
-// ================================
-
-// METASPLOIT TAB ENHANCED - Compatible Metasploitable
-// Remplacer le composant MetasploitTab dans votre App.js
-
-// METASPLOIT TAB ENHANCED - Compatible Metasploitable (Version Corrigée)
-// Remplacer le composant MetasploitTab dans votre App.js
-
-const MetasploitTab = () => {
-  const [exploits, setExploits] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedExploit, setSelectedExploit] = useState(null);
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [selectedScenario, setSelectedScenario] = useState(null);
-  const [exploitForm, setExploitForm] = useState({
-    exploit: '',
-    payload: '',
-    target: '',
-    port: '',
-    lhost: '192.168.1.100', // IP de l'attaquant
-    lport: '4444',
-    options: {}
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeExploits, setActiveExploits] = useState([]);
-  const [exploitOutput, setExploitOutput] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [autoTarget, setAutoTarget] = useState('192.168.1.101'); // IP Metasploitable par défaut
-
-  // Scénarios d'attaque prédéfinis
-  const attackScenarios = {
-    'quick_pwn': {
-      name: 'Quick Pwn Metasploitable',
-      description: 'Exploitation rapide des services les plus vulnérables',
-      icon: '⚡',
-      exploits: ['samba_usermap_script', 'vsftpd_234_backdoor', 'unreal_ircd_3281_backdoor'],
-      color: theme.colors.status.error
-    },
-    'web_attack': {
-      name: 'Web Application Attack',
-      description: 'Attaques ciblées sur les applications web',
-      icon: '🌐',
-      exploits: ['tomcat_mgr_upload', 'twiki_history', 'php_cgi_arg_injection'],
-      color: theme.colors.status.warning
-    },
-    'database_attack': {
-      name: 'Database Services Attack',
-      description: 'Exploitation des services de base de données',
-      icon: '🗄️',
-      exploits: ['postgres_payload', 'mysql_udf_payload'],
-      color: theme.colors.status.info
-    },
-    'network_services': {
-      name: 'Network Services Exploitation',
-      description: 'Attaques sur les services réseau divers',
-      icon: '🔗',
-      exploits: ['distcc_exec', 'java_rmi_server', 'rlogin_arg_injection'],
-      color: theme.colors.status.success
-    }
-  };
-
-  // Filtres avancés
-  const filterOptions = {
-    'all': { name: 'All Exploits', icon: '🔍' },
-    'easy': { name: 'Easy Difficulty', icon: '🟢' },
-    'medium': { name: 'Medium Difficulty', icon: '🟡' },
-    'hard': { name: 'Hard Difficulty', icon: '🔴' },
-    'excellent': { name: 'Excellent Reliability', icon: '⭐' },
-    'ftp': { name: 'FTP Services', icon: '📁' },
-    'web': { name: 'Web Services', icon: '🌐' },
-    'database': { name: 'Database Services', icon: '🗄️' },
-    'samba': { name: 'SMB/Samba', icon: '🔗' },
-    'ssh': { name: 'SSH Services', icon: '🔐' }
-  };
-
-  // Exploits étendus pour Metasploitable
-  const metasploitableExploits = [
-    {
-      name: 'samba_usermap_script',
-      module: 'exploit/multi/samba/usermap_script',
-      description: 'Samba "username map script" Command Execution',
-      platform: 'Linux',
-      targets: ['Metasploitable', 'Samba 3.0.20-3.0.25rc3'],
-      rank: 'Excellent',
-      defaultPort: 139,
-      category: 'Remote',
-      cve: ['CVE-2007-2447'],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['cmd/unix/reverse', 'cmd/unix/reverse_netcat', 'cmd/unix/bind_netcat'],
-      color: '#22c55e'
-    },
-    {
-      name: 'vsftpd_234_backdoor',
-      module: 'exploit/unix/ftp/vsftpd_234_backdoor',
-      description: 'VSFTPD v2.3.4 Backdoor Command Execution',
-      platform: 'Linux',
-      targets: ['VSFTPD 2.3.4'],
-      rank: 'Excellent',
-      defaultPort: 21,
-      category: 'Remote',
-      cve: ['CVE-2011-2523'],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['cmd/unix/interact', 'cmd/unix/reverse', 'cmd/unix/reverse_netcat'],
-      color: '#3b82f6'
-    },
-    {
-      name: 'unreal_ircd_3281_backdoor',
-      module: 'exploit/unix/irc/unreal_ircd_3281_backdoor',
-      description: 'UnrealIRCd 3.2.8.1 Backdoor Command Execution',
-      platform: 'Linux',
-      targets: ['UnrealIRCd 3.2.8.1'],
-      rank: 'Excellent',
-      defaultPort: 6667,
-      category: 'Remote',
-      cve: ['CVE-2010-2075'],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
-      color: '#8b5cf6'
-    },
-    {
-      name: 'distcc_exec',
-      module: 'exploit/unix/misc/distcc_exec',
-      description: 'DistCC Daemon Command Execution',
-      platform: 'Linux',
-      targets: ['DistCC Daemon'],
-      rank: 'Excellent',
-      defaultPort: 3632,
-      category: 'Remote',
-      cve: ['CVE-2004-2687'],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
-      color: '#f59e0b'
-    },
-    {
-      name: 'postgres_payload',
-      module: 'exploit/linux/postgres/postgres_payload',
-      description: 'PostgreSQL for Linux Payload Execution',
-      platform: 'Linux',
-      targets: ['PostgreSQL on Linux'],
-      rank: 'Excellent',
-      defaultPort: 5432,
-      category: 'Remote',
-      cve: [],
-      difficulty: 'Medium',
-      reliability: 'Good',
-      payloads: ['linux/x86/meterpreter/reverse_tcp', 'linux/x86/shell/reverse_tcp', 'cmd/unix/reverse'],
-      color: '#06b6d4'
-    },
-    {
-      name: 'mysql_udf_payload',
-      module: 'exploit/linux/mysql/mysql_udf_payload',
-      description: 'Oracle MySQL UDF Dynamic Library Execution',
-      platform: 'Linux',
-      targets: ['MySQL on Linux'],
-      rank: 'Excellent',
-      defaultPort: 3306,
-      category: 'Remote',
-      cve: [],
-      difficulty: 'Medium',
-      reliability: 'Good',
-      payloads: ['linux/x86/meterpreter/reverse_tcp', 'linux/x86/shell/reverse_tcp'],
-      color: '#ef4444'
-    },
-    {
-      name: 'tomcat_mgr_upload',
-      module: 'exploit/multi/http/tomcat_mgr_upload',
-      description: 'Apache Tomcat Manager Application Deployer Upload',
-      platform: 'Multi',
-      targets: ['Apache Tomcat'],
-      rank: 'Excellent',
-      defaultPort: 8080,
-      category: 'Remote',
-      cve: [],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['java/meterpreter/reverse_tcp', 'java/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
-      color: '#10b981'
-    },
-    {
-      name: 'twiki_history',
-      module: 'exploit/unix/webapp/twiki_history',
-      description: 'TWiki History TWikiUsers rev Parameter Command Execution',
-      platform: 'Unix',
-      targets: ['TWiki'],
-      rank: 'Excellent',
-      defaultPort: 80,
-      category: 'Remote',
-      cve: ['CVE-2005-2877'],
-      difficulty: 'Easy',
-      reliability: 'Excellent',
-      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat'],
-      color: '#84cc16'
-    },
-    {
-      name: 'php_cgi_arg_injection',
-      module: 'exploit/multi/http/php_cgi_arg_injection',
-      description: 'PHP CGI Argument Injection',
-      platform: 'Multi',
-      targets: ['PHP CGI'],
-      rank: 'Excellent',
-      defaultPort: 80,
-      category: 'Remote',
-      cve: ['CVE-2012-1823'],
-      difficulty: 'Medium',
-      reliability: 'Good',
-      payloads: ['php/meterpreter/reverse_tcp', 'cmd/unix/reverse', 'generic/shell_reverse_tcp'],
-      color: '#f97316'
-    },
-    {
-      name: 'java_rmi_server',
-      module: 'exploit/multi/misc/java_rmi_server',
-      description: 'Java RMI Server Insecure Default Configuration',
-      platform: 'Multi',
-      targets: ['Java RMI'],
-      rank: 'Excellent',
-      defaultPort: 1099,
-      category: 'Remote',
-      cve: [],
-      difficulty: 'Medium',
-      reliability: 'Good',
-      payloads: ['java/meterpreter/reverse_tcp', 'java/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
-      color: '#ec4899'
-    },
-    {
-      name: 'bind_tsig',
-      module: 'exploit/unix/dns/bind_tsig',
-      description: 'ISC BIND < 9 TSIG Query Handling Buffer Overflow',
-      platform: 'Linux',
-      targets: ['ISC BIND 8', 'ISC BIND 9.0-9.2.1'],
-      rank: 'Good',
-      defaultPort: 53,
-      category: 'Remote',
-      cve: ['CVE-2002-0029'],
-      difficulty: 'Hard',
-      reliability: 'Average',
-      payloads: ['linux/x86/shell/reverse_tcp', 'generic/shell_reverse_tcp'],
-      color: '#64748b'
-    },
-    {
-      name: 'rlogin_arg_injection',
-      module: 'exploit/unix/misc/rlogin_arg_injection',
-      description: 'rlogin Argument Injection',
-      platform: 'Linux',
-      targets: ['rlogin service'],
-      rank: 'Excellent',
-      defaultPort: 513,
-      category: 'Remote',
-      cve: [],
-      difficulty: 'Medium',
-      reliability: 'Good',
-      payloads: ['cmd/unix/reverse', 'cmd/unix/bind_netcat'],
-      color: '#06d6a0'
-    }
-  ];
-
-  useEffect(() => {
-    setExploits(metasploitableExploits);
-    loadActiveSessions();
-  }, []);
-
-  const loadActiveSessions = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/metasploit/sessions`);
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-    }
-  };
-
-  const startExploit = async () => {
-    if (!exploitForm.exploit || !exploitForm.target) {
-      alert('Veuillez sélectionner un exploit et spécifier une cible');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/metasploit/exploit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module: exploitForm.exploit,
-          payload: exploitForm.payload,
-          target: exploitForm.target,
-          port: exploitForm.port,
-          lhost: exploitForm.lhost,
-          lport: exploitForm.lport,
-          options: exploitForm.options
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setActiveExploits(prev => [...prev, result]);
-        setExploitOutput(prev => [...prev, `✅ Exploit ${exploitForm.exploit} lancé contre ${exploitForm.target}:${exploitForm.port}`]);
-        loadActiveSessions();
-      } else {
-        const error = await response.json();
-        setExploitOutput(prev => [...prev, `❌ Erreur: ${error.message || 'Échec du lancement'}`]);
-      }
-    } catch (error) {
-      console.error('Error starting exploit:', error);
-      setExploitOutput(prev => [...prev, `❌ Erreur de connexion: ${error.message}`]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const selectExploit = (exploit) => {
-    setSelectedExploit(exploit);
-    setExploitForm({
-      ...exploitForm,
-      exploit: exploit.module,
-      payload: exploit.payloads[0],
-      port: exploit.defaultPort.toString(),
-      target: autoTarget
-    });
-  };
-
-  const selectScenario = (scenarioKey) => {
-    const scenario = attackScenarios[scenarioKey];
-    setSelectedScenario(scenarioKey);
-    
-    // Auto-select first exploit from scenario
-    const firstExploit = metasploitableExploits.find(e => 
-      scenario.exploits.includes(e.name)
-    );
-    if (firstExploit) {
-      selectExploit(firstExploit);
-    }
-  };
-
-  const executeScenario = async () => {
-    if (!selectedScenario || !autoTarget) {
-      alert('Sélectionnez un scénario et spécifiez la cible Metasploitable');
-      return;
-    }
-
-    const scenario = attackScenarios[selectedScenario];
-    setIsLoading(true);
-    
-    try {
-      for (const exploitName of scenario.exploits) {
-        const exploit = metasploitableExploits.find(e => e.name === exploitName);
-        if (exploit) {
-          setExploitOutput(prev => [...prev, `🚀 Lancement automatique: ${exploit.description}`]);
-          
-          const response = await fetch(`${API_BASE}/metasploit/exploit`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              module: exploit.module,
-              payload: exploit.payloads[0],
-              target: autoTarget,
-              port: exploit.defaultPort.toString(),
-              lhost: exploitForm.lhost,
-              lport: exploitForm.lport
-            })
-          });
-
-          if (response.ok) {
-            setExploitOutput(prev => [...prev, `✅ ${exploit.name} - Succès`]);
-          } else {
-            setExploitOutput(prev => [...prev, `❌ ${exploit.name} - Échec`]);
-          }
-          
-          // Délai entre exploits
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-      
-      setExploitOutput(prev => [...prev, `✅ Scénario "${scenario.name}" terminé`]);
-      loadActiveSessions();
-    } catch (error) {
-      setExploitOutput(prev => [...prev, `❌ Erreur dans le scénario: ${error.message}`]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredExploits = exploits.filter(exploit => {
-    const matchesSearch = exploit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exploit.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exploit.platform.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (selectedFilter === 'all') return matchesSearch;
-    
-    // Filtres par difficulté
-    if (selectedFilter === 'easy') return matchesSearch && exploit.difficulty === 'Easy';
-    if (selectedFilter === 'medium') return matchesSearch && exploit.difficulty === 'Medium';
-    if (selectedFilter === 'hard') return matchesSearch && exploit.difficulty === 'Hard';
-    
-    // Filtres par fiabilité
-    if (selectedFilter === 'excellent') return matchesSearch && exploit.reliability === 'Excellent';
-    
-    // Filtres par service
-    if (selectedFilter === 'ftp') return matchesSearch && exploit.defaultPort === 21;
-    if (selectedFilter === 'web') return matchesSearch && [80, 8080].includes(exploit.defaultPort);
-    if (selectedFilter === 'database') return matchesSearch && [3306, 5432].includes(exploit.defaultPort);
-    if (selectedFilter === 'samba') return matchesSearch && [139, 445].includes(exploit.defaultPort);
-    
-    return matchesSearch;
-  });
-
-  return (
-    <div style={{ padding: theme.spacing.lg }}>
-      {/* Header avec configuration Metasploitable */}
-      <Card style={{ marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Crosshairs size={24} color={theme.colors.status.error} />
-          <div>
-            <h1 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '24px', fontWeight: '700' }}>
-              Metasploit Framework - Metasploitable Edition
-            </h1>
-            <p style={{ color: theme.colors.text.muted, fontSize: '14px', margin: 0 }}>
-              🎯 Exploitation automatisée et manuelle de Metasploitable avec {metasploitableExploits.length} exploits
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: theme.spacing.md }}>
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              🎯 Metasploitable IP
-            </label>
-            <input
-              type="text"
-              value={autoTarget}
-              onChange={(e) => setAutoTarget(e.target.value)}
-              placeholder="192.168.1.101"
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              🏠 Attacker IP (LHOST)
-            </label>
-            <input
-              type="text"
-              value={exploitForm.lhost}
-              onChange={(e) => setExploitForm({...exploitForm, lhost: e.target.value})}
-              placeholder="192.168.1.100"
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              🔌 Listen Port (LPORT)
-            </label>
-            <input
-              type="text"
-              value={exploitForm.lport}
-              onChange={(e) => setExploitForm({...exploitForm, lport: e.target.value})}
-              placeholder="4444"
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Scénarios d'attaque prédéfinis */}
-      <Card style={{ marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Zap size={20} color={theme.colors.status.warning} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            🚀 Scénarios d'Attaque Automatisés
-          </h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          {Object.entries(attackScenarios).map(([key, scenario]) => (
-            <div
-              key={key}
-              onClick={() => selectScenario(key)}
-              style={{
-                backgroundColor: selectedScenario === key ? scenario.color + '20' : theme.colors.bg.tertiary,
-                border: `2px solid ${selectedScenario === key ? scenario.color : theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
-                <span style={{ fontSize: '20px' }}>{scenario.icon}</span>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
-                  {scenario.name}
-                </span>
-              </div>
-              <p style={{ color: theme.colors.text.secondary, fontSize: '12px', margin: 0, marginBottom: theme.spacing.sm }}>
-                {scenario.description}
-              </p>
-              <div style={{ fontSize: '11px', color: theme.colors.text.muted }}>
-                {scenario.exploits.length} exploit(s)
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {selectedScenario && (
-          <Button
-            variant="danger"
-            icon={Zap}
-            onClick={executeScenario}
-            disabled={isLoading || !autoTarget}
-            style={{ width: '100%' }}
-          >
-            {isLoading ? 'Exécution du scénario...' : `🚀 Lancer "${attackScenarios[selectedScenario].name}"`}
-          </Button>
-        )}
-      </Card>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
-        
-        {/* Sélection d'Exploit avec filtres */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Crosshairs size={20} color={theme.colors.status.error} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              🗂️ Exploits Metasploitable ({filteredExploits.length})
-            </h2>
-          </div>
-
-          {/* Barre de recherche */}
-          <div style={{ marginBottom: theme.spacing.md }}>
-            <input
-              type="text"
-              placeholder="🔍 Rechercher un exploit..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          {/* Filtres */}
-          <div style={{ display: 'flex', gap: theme.spacing.xs, marginBottom: theme.spacing.lg, flexWrap: 'wrap' }}>
-            {Object.entries(filterOptions).map(([key, filter]) => (
-              <button
-                key={key}
-                onClick={() => setSelectedFilter(key)}
-                style={{
-                  backgroundColor: selectedFilter === key ? theme.colors.accent.primary : theme.colors.bg.tertiary,
-                  color: selectedFilter === key ? theme.colors.text.primary : theme.colors.text.secondary,
-                  border: 'none',
-                  padding: '4px 8px',
-                  borderRadius: theme.borderRadius.sm,
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {filter.icon} {filter.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Liste des exploits */}
-          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-            {filteredExploits.map((exploit, index) => (
-              <div
-                key={index}
-                onClick={() => selectExploit(exploit)}
-                style={{
-                  backgroundColor: selectedExploit?.name === exploit.name ? 
-                    exploit.color + '20' : theme.colors.bg.tertiary,
-                  border: `1px solid ${selectedExploit?.name === exploit.name ? exploit.color : theme.colors.bg.accent}`,
-                  borderRadius: theme.borderRadius.md,
-                  padding: theme.spacing.md,
-                  marginBottom: theme.spacing.sm,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.sm }}>
-                  <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
-                    {exploit.name}
-                  </span>
-                  <div style={{ display: 'flex', gap: theme.spacing.xs }}>
-                    <Badge variant={
-                      exploit.rank === 'Excellent' ? 'success' :
-                      exploit.rank === 'Great' ? 'info' :
-                      exploit.rank === 'Good' ? 'warning' : 'default'
-                    }>
-                      {exploit.rank}
-                    </Badge>
-                    <Badge variant={
-                      exploit.difficulty === 'Easy' ? 'success' :
-                      exploit.difficulty === 'Medium' ? 'warning' : 'error'
-                    }>
-                      {exploit.difficulty}
-                    </Badge>
-                  </div>
-                </div>
-                <p style={{ color: theme.colors.text.secondary, fontSize: '13px', margin: 0, marginBottom: theme.spacing.sm }}>
-                  {exploit.description}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                    <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                      Port: {exploit.defaultPort}
-                    </span>
-                    {exploit.cve.length > 0 && (
-                      <span style={{ color: exploit.color, fontSize: '12px', fontWeight: '500' }}>
-                        {exploit.cve[0]}
-                      </span>
-                    )}
-                  </div>
-                  <span style={{ color: theme.colors.status.info, fontSize: '12px' }}>
-                    {exploit.payloads.length} payload(s)
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Configuration d'Exploitation */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Zap size={20} color={theme.colors.status.warning} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              ⚙️ Configuration d'Exploitation
-            </h2>
-          </div>
-
-          {selectedExploit ? (
-            <div>
-              <div style={{ 
-                marginBottom: theme.spacing.lg, 
-                padding: theme.spacing.md, 
-                backgroundColor: selectedExploit.color + '10',
-                border: `1px solid ${selectedExploit.color}`,
-                borderRadius: theme.borderRadius.md 
-              }}>
-                <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.sm }}>
-                  {selectedExploit.name}
-                </h3>
-                <p style={{ color: theme.colors.text.secondary, fontSize: '13px', margin: 0, marginBottom: theme.spacing.sm }}>
-                  {selectedExploit.description}
-                </p>
-                <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-                  {selectedExploit.cve.map(cve => (
-                    <Badge key={cve} variant="error">{cve}</Badge>
-                  ))}
-                  <Badge variant="info">Port {selectedExploit.defaultPort}</Badge>
-                  <Badge variant="default">{selectedExploit.platform}</Badge>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: theme.spacing.sm, 
-                    color: theme.colors.text.secondary,
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    textTransform: 'uppercase'
-                  }}>
-                    🎯 Target Host
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="192.168.1.101"
-                    value={exploitForm.target}
-                    onChange={(e) => setExploitForm({...exploitForm, target: e.target.value})}
-                    style={{
-                      width: '100%',
-                      backgroundColor: theme.colors.bg.tertiary,
-                      border: `1px solid ${theme.colors.bg.accent}`,
-                      borderRadius: theme.borderRadius.md,
-                      padding: theme.spacing.md,
-                      color: theme.colors.text.primary,
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: theme.spacing.sm, 
-                    color: theme.colors.text.secondary,
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    textTransform: 'uppercase'
-                  }}>
-                    🔌 Target Port
-                  </label>
-                  <input
-                    type="text"
-                    value={exploitForm.port}
-                    onChange={(e) => setExploitForm({...exploitForm, port: e.target.value})}
-                    style={{
-                      width: '100%',
-                      backgroundColor: theme.colors.bg.tertiary,
-                      border: `1px solid ${theme.colors.bg.accent}`,
-                      borderRadius: theme.borderRadius.md,
-                      padding: theme.spacing.md,
-                      color: theme.colors.text.primary,
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: theme.spacing.lg }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  textTransform: 'uppercase'
-                }}>
-                  💣 Payload
-                </label>
-                <select
-                  value={exploitForm.payload}
-                  onChange={(e) => setExploitForm({...exploitForm, payload: e.target.value})}
-                  style={{
-                    width: '100%',
-                    backgroundColor: theme.colors.bg.tertiary,
-                    border: `1px solid ${theme.colors.bg.accent}`,
-                    borderRadius: theme.borderRadius.md,
-                    padding: theme.spacing.md,
-                    color: theme.colors.text.primary,
-                    fontSize: '14px'
-                  }}
-                >
-                  {selectedExploit.payloads.map(payload => (
-                    <option key={payload} value={payload}>{payload}</option>
-                  ))}
-                </select>
-              </div>
-
-              <Button
-                variant="danger"
-                icon={Zap}
-                onClick={startExploit}
-                disabled={isLoading || !exploitForm.target}
-                style={{ width: '100%' }}
-              >
-                {isLoading ? 'Exploitation en cours...' : '🚀 Lancer l\'Exploitation'}
-              </Button>
-            </div>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: theme.spacing.xl,
-              color: theme.colors.text.muted
-            }}>
-              <Crosshairs size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-              <p>Sélectionnez un exploit ou un scénario pour configurer l'exploitation</p>
-              <p style={{ fontSize: '13px' }}>💡 Essayez les scénarios automatisés pour Metasploitable</p>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Sessions Actives */}
-
-      <Card style={{ marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-            <Terminal size={20} color={theme.colors.status.success} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              🖥️ Sessions Actives ({sessions.length})
-            </h2>
-          </div>
-          <Button variant="ghost" icon={RefreshCw} onClick={loadActiveSessions}>
-            Refresh
-          </Button>
-        </div>
-
-        {sessions.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.md }}>
-            {sessions.map((session, index) => (
-              <div
-                key={session.id || index}
-                style={{
-                  backgroundColor: theme.colors.bg.tertiary,
-                  border: `2px solid ${theme.colors.status.success}`,
-                  borderRadius: theme.borderRadius.md,
-                  padding: theme.spacing.md
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.sm }}>
-                  <div>
-                    <span style={{ color: theme.colors.status.success, fontWeight: '600' }}>
-                      🖥️ Session #{session.id || index + 1}
-                    </span>
-                    <div style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
-                      📍 {session.target || 'Unknown target'}
-                    </div>
-                  </div>
-                  <Badge variant="success">🟢 Active</Badge>
-                </div>
-                <div style={{ fontSize: '13px', color: theme.colors.text.muted, marginBottom: theme.spacing.sm }}>
-                  💻 Type: {session.type || 'meterpreter'} | 🐧 OS: {session.platform || 'Linux'}
-                </div>
-                <div style={{ fontSize: '12px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
-                  🚀 Via: {session.exploit_used || 'N/A'}
-                </div>
-                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                  <Button variant="secondary" size="sm">
-                    💬 Shell
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    📋 Info
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: theme.spacing.xl,
-            color: theme.colors.text.muted
-          }}>
-            <Terminal size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-            <p>🔍 Aucune session active</p>
-            <p style={{ fontSize: '13px' }}>Les sessions apparaîtront ici après une exploitation réussie de Metasploitable</p>
-          </div>
-        )}
-        
-      </Card>
-
-
-
-      {/* Console de Sortie */}
-      {exploitOutput.length > 0 && (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Terminal size={20} color={theme.colors.accent.primary} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              🖥️ Console Metasploit
-            </h2>
-          </div>
-
-          <div style={{
-            backgroundColor: '#000000',
-            border: `1px solid ${theme.colors.bg.accent}`,
-            borderRadius: theme.borderRadius.md,
-            padding: theme.spacing.md,
-            maxHeight: '400px',
-            overflowY: 'auto',
-            fontFamily: 'monospace',
-            fontSize: '13px'
-          }}>
-            {exploitOutput.map((line, index) => (
-              <div key={index} style={{ 
-                color: line.includes('✅') ? '#22c55e' : 
-                       line.includes('❌') ? '#dc2626' : 
-                       line.includes('🚀') ? '#3b82f6' :
-                       line.includes('⚠️') ? '#eab308' : '#e5e5e5',
-                marginBottom: '4px'
-              }}>
-                [{new Date().toLocaleTimeString()}] {line}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-};
-// ================================
-// ONGLET SETTINGS COMPLET
-// ================================
-
-const SettingsTab = () => {
-  const [apiEndpoint, setApiEndpoint] = useState(API_BASE);
-  const [toolsStatus, setToolsStatus] = useState({
-    nmap: false,
-    nikto: false,
-    metasploit: false,
-    tcpdump: false
-  });
-  const [systemInfo, setSystemInfo] = useState({
-    version: '2.0.0',
-    uptime: 'Unknown',
-    memory: 'Unknown',
-    cpu: 'Unknown'
-  });
-
-  useEffect(() => {
-    checkToolsAvailability();
-    getSystemInfo();
-  }, []);
-
-  const checkToolsAvailability = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/system/tools`);
-      if (response.ok) {
-        const data = await response.json();
-        setToolsStatus(data.tools || {
-          nmap: true,
-          nikto: true,
-          metasploit: true,
-          tcpdump: true
-        });
-      }
-    } catch (error) {
-      console.error('Error checking tools:', error);
-      // Fallback - assume tools are available
-      setToolsStatus({
-        nmap: true,
-        nikto: true,
-        metasploit: true,
-        tcpdump: true
-      });
-    }
-  };
-
-  const getSystemInfo = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/system/info`);
-      if (response.ok) {
-        const data = await response.json();
-        setSystemInfo(data);
-      }
-    } catch (error) {
-      console.error('Error getting system info:', error);
-    }
-  };
-
-  return (
-    <div style={{ padding: theme.spacing.lg }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: theme.spacing.lg }}>
-        
-        {/* Configuration API */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Settings size={20} color={theme.colors.status.info} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              API Configuration
-            </h2>
-          </div>
-
-          <div style={{ marginBottom: theme.spacing.lg }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              Backend Endpoint
-            </label>
-            <input
-              type="text"
-              value={apiEndpoint}
-              onChange={(e) => setApiEndpoint(e.target.value)}
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: theme.spacing.lg }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              Connection Status
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                backgroundColor: theme.colors.status.success
-              }} />
-              <span style={{ color: theme.colors.status.success, fontSize: '14px', fontWeight: '500' }}>
-                Connected
-              </span>
-            </div>
-          </div>
-
-          <Button variant="secondary" onClick={checkToolsAvailability}>
-            Test Connection
-          </Button>
-        </Card>
-
-        {/* Outils Disponibles */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Target size={20} color={theme.colors.status.warning} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              Security Tools
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            {Object.entries(toolsStatus).map(([tool, available]) => (
-              <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-                  <span style={{ color: theme.colors.text.primary, fontWeight: '500', textTransform: 'uppercase' }}>
-                    {tool}
-                  </span>
-                  <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                    {tool === 'nmap' ? 'Network Scanner' :
-                     tool === 'nikto' ? 'Web Scanner' :
-                     tool === 'metasploit' ? 'Exploitation Framework' :
-                     tool === 'tcpdump' ? 'Packet Capture' : 'Security Tool'}
-                  </span>
-                </div>
-                <Badge variant={available ? 'success' : 'error'}>
-                  {available ? 'Available' : 'Missing'}
-                </Badge>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: theme.spacing.lg }}>
-            <Button variant="ghost" onClick={checkToolsAvailability}>
-              Refresh Status
-            </Button>
-          </div>
-        </Card>
-
-        {/* Informations Système */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Activity size={20} color={theme.colors.status.info} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              System Information
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Platform Version</span>
-              <Badge variant="info">{systemInfo.version}</Badge>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>System Uptime</span>
-              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.uptime}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Memory Usage</span>
-              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.memory}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>CPU Usage</span>
-              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>{systemInfo.cpu}</span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: theme.spacing.lg }}>
-            <Button variant="ghost" onClick={getSystemInfo}>
-              Refresh Info
-            </Button>
-          </div>
-        </Card>
-
-        {/* Configuration de Sécurité */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-            <Shield size={20} color={theme.colors.status.success} />
-            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              Security Settings
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Auto-Save Reports</span>
-              <Badge variant="success">Enabled</Badge>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Scan Timeout</span>
-              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>300s</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Max Concurrent Scans</span>
-              <span style={{ color: theme.colors.text.primary, fontSize: '14px' }}>5</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: theme.colors.text.secondary }}>Log Level</span>
-              <Badge variant="info">INFO</Badge>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-// ================================
 // AUTRES ONGLETS (SIMPLIFIÉS)
 // ================================
+// Formulaire de scan
+const ScanForm = ({ toolsStatus, onScanStart }) => {
+  const [target, setTarget] = useState('');
+  const [scanType, setScanType] = useState('basic');
+  const [isLoading, setIsLoading] = useState(false);
 
-const ReconnaissanceTab = () => (
-  <div style={{ padding: theme.spacing.lg }}>
+  // RECONNAISSANCE = NMAP UNIQUEMENT
+  const scanTypes = {
+    basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (--top-ports 1000)' },
+    stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
+    comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
+    udp: { name: 'UDP Scan', description: 'UDP port discovery (--top-ports 100)' }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!target.trim()) return;
+
+    setIsLoading(true);
+    try {
+      await onScanStart({ tool: 'nmap', target, scanType });
+      setTarget('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Target size={20} color={theme.colors.status.info} />
+        <Target size={20} color={theme.colors.accent.primary} />
         <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Reconnaissance Module
+          Network Reconnaissance - NMAP
         </h2>
       </div>
-      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
-        <Target size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>Module de reconnaissance en développement</p>
-        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : DNS enumeration, subdomain discovery, port scanning</p>
-      </div>
+
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Target
+            </label>
+            <input
+              type="text"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="e.g., scanme.nmap.org, 192.168.1.1, 10.0.0.0/24"
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Scan Type
+            </label>
+            <select
+              value={scanType}
+              onChange={(e) => setScanType(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: theme.colors.bg.tertiary,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                color: theme.colors.text.primary,
+                fontSize: '14px'
+              }}
+            >
+              {Object.entries(scanTypes).map(([key, config]) => (
+                <option key={key} value={key}>{config.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            icon={Play}
+            disabled={isLoading || !toolsStatus.nmap}
+          >
+            {isLoading ? 'Scanning...' : 'Execute'}
+          </Button>
+        </div>
+
+        {scanTypes[scanType] && (
+          <div style={{
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.bg.primary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.accent.primary}33`
+          }}>
+            <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
+              <strong>{scanTypes[scanType].name}</strong>
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+              {scanTypes[scanType].description}
+            </div>
+          </div>
+        )}
+
+        {!toolsStatus.nmap && (
+          <div style={{
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.md,
+            backgroundColor: `${theme.colors.status.error}20`,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.status.error}`,
+            color: theme.colors.status.error,
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            ⚠️ NMAP is not available on this system
+          </div>
+        )}
+      </form>
     </Card>
+  );
+};
+
+// Panneau des scans actifs
+const ProgressBar = ({ progress, status }) => (
+  <div style={{
+    width: '100%',
+    height: '8px',
+    backgroundColor: theme.colors.bg.tertiary,
+    borderRadius: '4px',
+    overflow: 'hidden',
+    marginBottom: theme.spacing.md
+  }}>
+    <div style={{
+      height: '100%',
+      backgroundColor: status === 'completed' ? theme.colors.status.success : 
+                      status === 'error' ? theme.colors.status.error : 
+                      theme.colors.accent.primary,
+      width: `${progress}%`,
+      transition: 'width 0.3s ease',
+      animation: status === 'running' ? 'pulse 2s infinite' : 'none'
+    }} />
   </div>
 );
 
-const ScanningTab = () => (
-  <div style={{ padding: theme.spacing.lg }}>
+const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan, currentTool }) => {
+  // Filtrer les scans par outil actuel
+  const filteredScans = activeScans.filter(scan => scan.tool === currentTool);
+  
+  return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Activity size={20} color={theme.colors.status.warning} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Vulnerability Scanning
-        </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Activity size={20} color={theme.colors.status.warning} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Active {currentTool.toUpperCase()} Scans ({filteredScans.length})
+          </h2>
+        </div>
       </div>
-      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
-        <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>Module de scan de vulnérabilités en développement</p>
-        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : Nmap, Nikto, OpenVAS integration</p>
+
+      {filteredScans.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+          {filteredScans.map(scan => {
+            const progress = scan.status === 'completed' ? 100 : 
+                           scan.status === 'running' ? 75 : 
+                           scan.status === 'error' ? 100 : 25;
+            
+            return (
+              <div
+                key={scan.scan_id}
+                onClick={() => onSelectScan(scan.scan_id)}
+                style={{
+                  backgroundColor: selectedScan === scan.scan_id ? 
+                    `${theme.colors.accent.primary}20` : 
+                    theme.colors.bg.tertiary,
+                  border: selectedScan === scan.scan_id ? 
+                    `1px solid ${theme.colors.accent.primary}` : 
+                    `1px solid ${theme.colors.bg.accent}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing.md,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                    <span style={{ 
+                      color: theme.colors.text.primary,
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      {scan.tool.toUpperCase()}
+                    </span>
+                    <Badge variant={scan.status === 'running' ? 'warning' : scan.status === 'completed' ? 'success' : 'error'}>
+                      {scan.status}
+                    </Badge>
+                  </div>
+                  {scan.status === 'running' && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={Square}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStopScan(scan.scan_id);
+                      }}
+                    >
+                      Stop
+                    </Button>
+                  )}
+                </div>
+                
+                <ProgressBar progress={progress} status={scan.status} />
+                
+                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                  Target: {scan.target}
+                </div>
+                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                  {scan.scan_type} • Started: {new Date(scan.start_time).toLocaleTimeString()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: theme.spacing.xl,
+          color: theme.colors.text.muted
+        }}>
+          <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+          <p>No active {currentTool.toUpperCase()} scans</p>
+          <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// Terminal
+const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
+  const [output, setOutput] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const terminalRef = useRef(null);
+
+  useEffect(() => {
+    if (!isActive || !scanId) return;
+
+    setIsConnected(true);
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.new_lines && data.new_lines.length > 0) {
+            setOutput(prev => [...prev, ...data.new_lines]);
+          }
+          if (!data.is_running) {
+            setIsConnected(false);
+            clearInterval(interval);
+          }
+        }
+      } catch (error) {
+        setIsConnected(false);
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [scanId, isActive]);
+
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <Terminal size={20} color={theme.colors.accent.primary} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            {title} {scanId && `- ${scanId}`}
+          </h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
+          }} />
+          <span style={{ 
+            color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
+            fontSize: '12px',
+            fontWeight: '500',
+            textTransform: 'uppercase'
+          }}>
+            {isConnected ? 'Live' : 'Standby'}
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#000',
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          minHeight: '400px',
+          maxHeight: '600px',
+          overflowY: 'auto',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+          fontSize: '13px',
+          lineHeight: '1.4',
+          border: `1px solid ${theme.colors.bg.accent}`
+        }}
+      >
+        {output.length > 0 ? (
+          output.map((line, index) => (
+            <div key={index} style={{ marginBottom: '2px' }}>
+              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
+                [{new Date().toLocaleTimeString()}]
+              </span>
+              <span style={{ color: '#00ff00' }}>
+                {line}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div style={{ 
+            color: theme.colors.text.muted,
+            textAlign: 'center',
+            padding: theme.spacing.xl
+          }}>
+            {isActive ? 'Initializing scan...' : `${title} ready. Execute a scan to see live output.`}
+          </div>
+        )}
       </div>
     </Card>
-  </div>
-);
+  );
+};
 
-const SniffingTab = () => (
-  <div style={{ padding: theme.spacing.lg }}>
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Network size={20} color={theme.colors.status.success} />
+// Historique des scans
+const ScanHistory = ({ scans, onRefresh }) => (
+  <Card>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+        <FileText size={20} color={theme.colors.status.success} />
         <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Network Sniffing
+          Scan History
         </h2>
       </div>
-      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
-        <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>Module de capture réseau en développement</p>
-        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : tcpdump, Wireshark integration, traffic analysis</p>
-      </div>
-    </Card>
-  </div>
-);
+      <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
+        Refresh
+      </Button>
+    </div>
 
-const ReportsTab = () => (
-  <div style={{ padding: theme.spacing.lg }}>
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <FileText size={20} color={theme.colors.status.info} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Reports & Documentation
-        </h2>
+    {scans.length > 0 ? (
+      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+        {scans.map(scan => (
+          <div
+            key={scan.scan_id}
+            style={{
+              backgroundColor: theme.colors.bg.tertiary,
+              border: `1px solid ${theme.colors.bg.accent}`,
+              borderRadius: theme.borderRadius.md,
+              padding: theme.spacing.md,
+              marginBottom: theme.spacing.md
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                    {scan.tool.toUpperCase()}
+                  </span>
+                  <Badge variant={
+                    scan.status === 'completed' ? 'success' :
+                    scan.status === 'error' ? 'error' : 'default'
+                  }>
+                    {scan.status}
+                  </Badge>
+                </div>
+                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
+                  Target: {scan.target}
+                </div>
+                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                  {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
+                </div>
+              </div>
+              {scan.report_filename && (
+                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={Download}
+                    onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
+                  >
+                    TXT
+                  </Button>
+                  {scan.pdf_filename && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      icon={Download}
+                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
+                    >
+                      PDF
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
-      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+    ) : (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: theme.spacing.xl,
+        color: theme.colors.text.muted
+      }}>
         <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>Module de rapports en développement</p>
-        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : PDF generation, executive summaries, technical reports</p>
+        <p>No scan history</p>
+        <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
       </div>
-    </Card>
-  </div>
+    )}
+  </Card>
 );
+
+// Composant principal
+const ProfessionalPentestInterface = () => {
+  const [activeTab, setActiveTab] = useState('reconnaissance');
+  const [activeScans, setActiveScans] = useState([]);
+  const [scanHistory, setScanHistory] = useState([]);
+  const [toolsStatus, setToolsStatus] = useState({});
+  const [selectedScan, setSelectedScan] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Chargement initial des données
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setToolsStatus({
+          nmap: true,
+          nikto: true,
+          masscan: true,
+          dirb: true,
+          gobuster: true,
+          sqlmap: true
+        });
+
+        const historyRes = await fetch(`${API_BASE}/scan/history`);
+        if (historyRes.ok) {
+          const history = await historyRes.json();
+          setScanHistory(history);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setToolsStatus({
+          nmap: true,
+          nikto: true,
+          masscan: true,
+          dirb: true,
+          gobuster: true,
+          sqlmap: true
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Polling des scans actifs
+  useEffect(() => {
+    const fetchActiveScans = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/scan/active`);
+        if (response.ok) {
+          const scans = await response.json();
+          setActiveScans(scans);
+          
+          if (scans.length > 0 && !selectedScan) {
+            setSelectedScan(scans[0].scan_id);
+          }
+          
+          if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
+            setSelectedScan(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching active scans:', error);
+      }
+    };
+
+    fetchActiveScans();
+    const interval = setInterval(fetchActiveScans, 2000);
+    return () => clearInterval(interval);
+  }, [selectedScan]);
+
+  const handleScanStart = async (formData) => {
+    try {
+      const response = await fetch(`${API_BASE}/scan/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Scan start failed');
+      }
+
+      const result = await response.json();
+      if (result.scan_id) {
+        setSelectedScan(result.scan_id);
+      }
+    } catch (error) {
+      console.error('Error starting scan:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleStopScan = async (scanId) => {
+    try {
+      await fetch(`${API_BASE}/scan/stop/${scanId}`, { method: 'POST' });
+    } catch (error) {
+      console.error('Error stopping scan:', error);
+    }
+  };
+
+  const handleRefreshHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/scan/history`);
+      if (response.ok) {
+        const history = await response.json();
+        setScanHistory(history);
+      }
+    } catch (error) {
+      console.error('Error refreshing history:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{
+        backgroundColor: theme.colors.bg.primary,
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.colors.text.primary
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <Shield size={48} color={theme.colors.accent.primary} style={{ marginBottom: theme.spacing.md }} />
+          <div style={{ fontSize: '18px', fontWeight: '600' }}>Initializing Security Platform...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      backgroundColor: theme.colors.bg.primary,
+      minHeight: '100vh',
+      color: theme.colors.text.primary,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <PentestHeader />
+      <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: theme.spacing.lg }}>
+        <div style={{ display: 'grid', gap: theme.spacing.lg }}>
+          
+          {activeTab === 'reconnaissance' && (
+            <>
+              <ScanForm 
+                toolsStatus={toolsStatus} 
+                onScanStart={handleScanStart}
+              />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <ActiveScansPanel
+                  activeScans={activeScans}
+                  onStopScan={handleStopScan}
+                  onSelectScan={setSelectedScan}
+                  selectedScan={selectedScan}
+                  currentTool="nmap"
+                />
+                <ScanHistory
+                  scans={scanHistory.filter(s => s.tool === 'nmap')}
+                  onRefresh={handleRefreshHistory}
+                />
+              </div>
+              
+              <TerminalView
+                scanId={selectedScan}
+                isActive={!!selectedScan}
+                title="Reconnaissance Terminal"
+              />
+            </>
+          )}
+
+          {activeTab === 'scanning' && (
+            <>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <Shield size={20} color={theme.colors.accent.primary} />
+                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                    Web Vulnerability Scanner - NIKTO
+                  </h2>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const target = e.target.elements.niktoTarget.value;
+                  if (target) {
+                    handleScanStart({ tool: 'nikto', target, scanType: 'comprehensive' });
+                    e.target.elements.niktoTarget.value = '';
+                  }
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: theme.spacing.sm, 
+                        color: theme.colors.text.secondary,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Web Target (URL)
+                      </label>
+                      <input
+                        name="niktoTarget"
+                        type="text"
+                        placeholder="e.g., http://testphp.vulnweb.com, https://example.com"
+                        style={{
+                          width: '100%',
+                          backgroundColor: theme.colors.bg.tertiary,
+                          border: `1px solid ${theme.colors.bg.accent}`,
+                          borderRadius: theme.borderRadius.md,
+                          padding: theme.spacing.md,
+                          color: theme.colors.text.primary,
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: theme.spacing.sm, 
+                        color: theme.colors.text.secondary,
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Scan Mode
+                      </label>
+                      <select
+                        defaultValue="comprehensive"
+                        style={{
+                          width: '100%',
+                          backgroundColor: theme.colors.bg.tertiary,
+                          border: `1px solid ${theme.colors.bg.accent}`,
+                          borderRadius: theme.borderRadius.md,
+                          padding: theme.spacing.md,
+                          color: theme.colors.text.primary,
+                          fontSize: '14px'
+                        }}
+                      >
+                        <option value="fast">Fast Scan</option>
+                        <option value="comprehensive">Deep Scan</option>
+                      </select>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="success"
+                      icon={Shield}
+                    >
+                      Scan Web App
+                    </Button>
+                  </div>
+                </form>
+                
+                <div style={{
+                  marginTop: theme.spacing.lg,
+                  padding: theme.spacing.md,
+                  backgroundColor: theme.colors.bg.primary,
+                  borderRadius: theme.borderRadius.md,
+                  border: `1px solid ${theme.colors.status.success}33`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
+                    <strong>Web Vulnerability Assessment</strong>
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+                    • Comprehensive web application security testing<br/>
+                    • Detection of common vulnerabilities (XSS, SQLi, etc.)<br/>
+                    • Server configuration issues and outdated software
+                  </div>
+                </div>
+              </Card>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
+                <ActiveScansPanel
+                  activeScans={activeScans}
+                  onStopScan={handleStopScan}
+                  onSelectScan={setSelectedScan}
+                  selectedScan={selectedScan}
+                  currentTool="nikto"
+                />
+                <ScanHistory
+                  scans={scanHistory.filter(s => s.tool === 'nikto')}
+                  onRefresh={handleRefreshHistory}
+                />
+              </div>
+              
+              <TerminalView
+                scanId={selectedScan}
+                isActive={!!selectedScan}
+                title="Web Vulnerability Scanner"
+              />
+            </>
+          )}
+
+          {activeTab === 'reports' && (
+            <>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <FileText size={20} color={theme.colors.accent.primary} />
+                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                    Report Management
+                  </h2>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
+                      {scanHistory.filter(s => s.status === 'completed').length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
+                  </div>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
+                      {activeScans.length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
+                  </div>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
+                      {scanHistory.filter(s => s.report_filename).length}
+                    </div>
+                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
+                  </div>
+                </div>
+              </Card>
+              
+              <ScanHistory
+                scans={scanHistory}
+                onRefresh={handleRefreshHistory}
+              />
+            </>
+          )}
+
+          {activeTab === 'settings' && (
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                <Settings size={20} color={theme.colors.accent.primary} />
+                <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                  System Configuration
+                </h2>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.lg }}>
+                <div>
+                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
+                    Tool Availability
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                    {Object.entries(toolsStatus).map(([tool, available]) => (
+                      <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: theme.colors.text.secondary, textTransform: 'uppercase' }}>
+                          {tool}
+                        </span>
+                        <Badge variant={available ? 'success' : 'error'}>
+                          {available ? 'Available' : 'Missing'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
+                    Platform Status
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>API Status</span>
+                      <Badge variant="success">Operational</Badge>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
+                      <Badge variant="info">{activeScans.length}</Badge>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: theme.colors.text.secondary }}>Total Scans</span>
+                      <Badge variant="default">{scanHistory.length}</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+        </div>
+      </main>
+    </div>
+  );
+};
 
 // ================================
 // COMPOSANT PRINCIPAL
 // ================================
 
-const ProfessionalPentestInterface = () => {
-  const [activeTab, setActiveTab] = useState('reconnaissance');
+const EnhancedMetasploitInterface = () => {
+  const [activeTab, setActiveTab] = useState('metasploit');
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -1600,7 +2148,7 @@ const ProfessionalPentestInterface = () => {
       case 'settings':
         return <SettingsTab />;
       default:
-        return <ReconnaissanceTab />;
+        return <MetasploitTab />;
     }
   };
 
@@ -1620,4 +2168,4 @@ const ProfessionalPentestInterface = () => {
   );
 };
 
-export default ProfessionalPentestInterface;
+export default EnhancedMetasploitInterface;
