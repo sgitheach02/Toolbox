@@ -86,14 +86,6 @@ const RefreshCw = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
-const Download = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="7,10 12,15 17,10"></polyline>
-    <line x1="12" y1="15" x2="12" y2="3"></line>
-  </svg>
-);
-
 const Play = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <polygon points="5,3 19,12 5,21 5,3"></polygon>
@@ -107,17 +99,53 @@ const X = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
-const Plus = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-);
-
 const Eye = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
     <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
+const Key = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+  </svg>
+);
+
+const Users = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+    <circle cx="9" cy="7" r="4"></circle>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </svg>
+);
+
+const Clock = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <polyline points="12,6 12,12 16,14"></polyline>
+  </svg>
+);
+
+const Square = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+  </svg>
+);
+
+const CheckCircle = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+    <polyline points="22,4 12,14.01 9,11.01"></polyline>
+  </svg>
+);
+
+const AlertTriangle = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+    <line x1="12" y1="9" x2="12" y2="13"></line>
+    <line x1="12" y1="17" x2="12.01" y2="17"></line>
   </svg>
 );
 
@@ -366,7 +394,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
   const outputRef = useRef(null);
 
   useEffect(() => {
-    // Messages d'accueil
     setOutput([
       `🖥️ Session #${sessionId} shell opened`,
       `📍 Target: ${session?.target || 'Unknown'}`,
@@ -381,7 +408,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
   }, [sessionId, session]);
 
   useEffect(() => {
-    // Auto-scroll vers le bas
     if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
@@ -393,13 +419,11 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
     const command = input.trim();
     setOutput(prev => [...prev, `${getPrompt()}${command}`]);
     
-    // Ajouter à l'historique
     if (command !== 'exit' && command !== '') {
       setHistory(prev => [...prev, command]);
       setHistoryIndex(-1);
     }
     
-    // Commandes locales
     if (command === 'exit') {
       onClose();
       return;
@@ -457,8 +481,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
       if (response.ok) {
         const result = await response.json();
         const commandOutput = result.output || `Commande '${command}' exécutée`;
-        
-        // Ajouter l'output ligne par ligne pour un meilleur affichage
         const lines = commandOutput.split('\n');
         setOutput(prev => [...prev, ...lines]);
       } else {
@@ -530,7 +552,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
         </Button>
       </div>
 
-      {/* Terminal */}
       <div
         ref={outputRef}
         style={{
@@ -546,7 +567,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
           lineHeight: '1.4'
         }}
       >
-        {/* Output */}
         <div style={{ marginBottom: theme.spacing.md }}>
           {output.map((line, index) => (
             <div key={index} style={{ 
@@ -564,7 +584,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
           ))}
         </div>
 
-        {/* Input */}
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
           <span style={{ color: '#22c55e', fontWeight: 'bold' }}>
             {getPrompt()}
@@ -590,7 +609,6 @@ const InteractiveTerminal = ({ sessionId, session, onClose }) => {
         </div>
       </div>
 
-      {/* Actions rapides */}
       <div style={{ 
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -704,7 +722,6 @@ const ExploitLauncher = ({ onExploitLaunched }) => {
         const result = await response.json();
         onExploitLaunched && onExploitLaunched(result);
         
-        // Reset form
         setSelectedExploit('');
         setTarget('192.168.1.10');
         setPort('445');
@@ -1017,96 +1034,873 @@ const SessionManager = ({ sessions, onSessionUpdate, onOpenShell }) => {
 };
 
 // ================================
-// COMPOSANT EXPLOIT OUTPUT
+// COMPOSANT HYDRA TAB
 // ================================
 
-const ExploitOutput = ({ exploitId, onClose }) => {
-  const [output, setOutput] = useState([]);
-  const [isRunning, setIsRunning] = useState(true);
-  const outputRef = useRef(null);
+const HydraTab = () => {
+  const [activeSubTab, setActiveSubTab] = useState('brute-force');
+  const [attacks, setAttacks] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [selectedAttack, setSelectedAttack] = useState(null);
+
+  const [attackConfig, setAttackConfig] = useState({
+    target: '',
+    service: 'ssh',
+    port: '22',
+    username: '',
+    userlist: '',
+    password: '',
+    passlist: '',
+    threads: '4',
+    timeout: '30',
+    args: ''
+  });
+
+  const services = [
+    { value: 'ssh', label: 'SSH', port: '22' },
+    { value: 'ftp', label: 'FTP', port: '21' },
+    { value: 'telnet', label: 'Telnet', port: '23' },
+    { value: 'http-get', label: 'HTTP GET', port: '80' },
+    { value: 'https-get', label: 'HTTPS GET', port: '443' },
+    { value: 'mysql', label: 'MySQL', port: '3306' },
+    { value: 'rdp', label: 'RDP', port: '3389' },
+    { value: 'smb', label: 'SMB', port: '445' },
+    { value: 'vnc', label: 'VNC', port: '5900' }
+  ];
+
+  const wordlists = {
+    users: [
+      { value: '/usr/share/wordlists/metasploit/unix_users.txt', label: 'unix_users.txt' },
+      { value: '/usr/share/wordlists/seclists/Usernames/top-usernames-shortlist.txt', label: 'top-usernames-shortlist.txt' }
+    ],
+    passwords: [
+      { value: '/usr/share/wordlists/rockyou.txt', label: 'rockyou.txt' },
+      { value: '/usr/share/wordlists/metasploit/common_passwords.txt', label: 'common_passwords.txt' }
+    ]
+  };
 
   useEffect(() => {
-    const fetchOutput = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/metasploit/exploit/${exploitId}/output`);
-        if (response.ok) {
-          const data = await response.json();
-          setOutput(data.output || []);
-          setIsRunning(data.is_running || false);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la récupération de l\'output:', error);
+    fetchAttacks();
+  }, []);
+
+  const fetchAttacks = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/hydra/attacks`);
+      if (response.ok) {
+        const data = await response.json();
+        setAttacks(data.attacks || []);
       }
-    };
-
-    fetchOutput();
-    
-    // Poll pour les mises à jour en temps réel
-    const interval = setInterval(fetchOutput, 2000);
-    
-    return () => clearInterval(interval);
-  }, [exploitId]);
-
-  useEffect(() => {
-    // Auto-scroll vers le bas
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    } catch (error) {
+      console.error('Erreur lors du chargement des attaques:', error);
     }
-  }, [output]);
+  };
+
+  const startAttack = async () => {
+    if (!attackConfig.target || !attackConfig.service) {
+      alert('Veuillez spécifier au moins une cible et un service');
+      return;
+    }
+
+    setIsRunning(true);
+    try {
+      const response = await fetch(`${API_BASE}/hydra/attack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attackConfig)
+      });
+
+      if (response.ok) {
+        setTimeout(fetchAttacks, 2000);
+      } else {
+        alert('Erreur lors du lancement de l\'attaque');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur de connexion à l\'API');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const stopAttack = async (attackId) => {
+    try {
+      const response = await fetch(`${API_BASE}/hydra/attack/${attackId}/stop`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        fetchAttacks();
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'arrêt:', error);
+    }
+  };
+
+  const handleServiceChange = (service) => {
+    const selectedService = services.find(s => s.value === service);
+    setAttackConfig(prev => ({
+      ...prev,
+      service,
+      port: selectedService ? selectedService.port : prev.port
+    }));
+  };
+
+  const subTabs = [
+    { id: 'brute-force', label: 'Configuration', icon: Key },
+    { id: 'attacks', label: 'Attaques', icon: Target },
+    { id: 'wordlists', label: 'Wordlists', icon: Users }
+  ];
 
   return (
-    <Card style={{ marginTop: theme.spacing.lg }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Zap size={20} color={theme.colors.status.warning} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Exploit Output - {exploitId}
-          </h2>
-          {isRunning && (
-            <Badge variant="warning">Running...</Badge>
-          )}
-        </div>
-        <Button variant="ghost" size="sm" icon={X} onClick={onClose}>
-          Fermer
-        </Button>
-      </div>
-
-      <div
-        ref={outputRef}
-        style={{
-          backgroundColor: '#000000',
-          border: `1px solid ${theme.colors.bg.accent}`,
-          borderRadius: theme.borderRadius.md,
-          padding: theme.spacing.md,
-          minHeight: '300px',
-          maxHeight: '400px',
-          overflowY: 'auto',
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: '13px',
-          lineHeight: '1.4'
-        }}
-      >
-        {output.length === 0 ? (
-          <div style={{ color: theme.colors.text.muted, fontStyle: 'italic' }}>
-            En attente de l'output de l'exploit...
-          </div>
-        ) : (
-          output.map((line, index) => (
-            <div key={index} style={{ 
-              color: line.includes('[*]') ? '#3b82f6' :
-                    line.includes('[+]') ? '#22c55e' :
-                    line.includes('[-]') || line.includes('[!]') ? '#dc2626' :
-                    line.includes('[DEBUG]') ? '#8b5cf6' :
-                    '#e5e5e5',
-              marginBottom: '2px',
-              whiteSpace: 'pre-wrap'
+    <div style={{ padding: theme.spacing.lg }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: theme.spacing.md, 
+            marginBottom: theme.spacing.lg 
+          }}>
+            <Shield size={20} color={theme.colors.status.error} />
+            <h2 style={{ 
+              color: theme.colors.text.primary, 
+              margin: 0, 
+              fontSize: '18px', 
+              fontWeight: '600' 
             }}>
-              {line}
+              Hydra - Force Brute Attacks
+            </h2>
+          </div>
+          
+          <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+            {subTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeSubTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSubTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.sm,
+                    padding: '10px 16px',
+                    backgroundColor: isActive ? theme.colors.accent.primary : theme.colors.bg.secondary,
+                    color: isActive ? theme.colors.text.primary : theme.colors.text.secondary,
+                    border: `1px solid ${isActive ? theme.colors.accent.primary : theme.colors.bg.tertiary}`,
+                    borderRadius: theme.borderRadius.md,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeSubTab === 'brute-force' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Key size={20} color={theme.colors.status.error} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Configuration de l'attaque par force brute
+              </h3>
             </div>
-          ))
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+              gap: theme.spacing.lg 
+            }}>
+              <div>
+                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: '14px', fontWeight: '600' }}>
+                  Cible
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <Input
+                    placeholder="IP ou nom d'hôte (ex: 192.168.1.100)"
+                    value={attackConfig.target}
+                    onChange={(e) => setAttackConfig(prev => ({ ...prev, target: e.target.value }))}
+                  />
+                  
+                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                    <Select
+                      options={services}
+                      value={attackConfig.service}
+                      onChange={(e) => handleServiceChange(e.target.value)}
+                      placeholder="Service"
+                    />
+                    
+                    <Input
+                      placeholder="Port"
+                      value={attackConfig.port}
+                      onChange={(e) => setAttackConfig(prev => ({ ...prev, port: e.target.value }))}
+                      style={{ width: '80px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: '14px', fontWeight: '600' }}>
+                  Utilisateurs
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <Input
+                    placeholder="Utilisateur unique (ex: admin)"
+                    value={attackConfig.username}
+                    onChange={(e) => setAttackConfig(prev => ({ ...prev, username: e.target.value }))}
+                  />
+                  
+                  <Select
+                    options={wordlists.users}
+                    value={attackConfig.userlist}
+                    onChange={(e) => setAttackConfig(prev => ({ ...prev, userlist: e.target.value }))}
+                    placeholder="Ou sélectionner une wordlist"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: '14px', fontWeight: '600' }}>
+                  Mots de passe
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <Input
+                    placeholder="Mot de passe unique (ex: password123)"
+                    value={attackConfig.password}
+                    onChange={(e) => setAttackConfig(prev => ({ ...prev, password: e.target.value }))}
+                  />
+                  
+                  <Select
+                    options={wordlists.passwords}
+                    value={attackConfig.passlist}
+                    onChange={(e) => setAttackConfig(prev => ({ ...prev, passlist: e.target.value }))}
+                    placeholder="Ou sélectionner une wordlist"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ 
+              marginTop: theme.spacing.lg, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.lg 
+            }}>
+              <Button
+                onClick={startAttack}
+                disabled={isRunning}
+                variant="danger"
+                icon={isRunning ? Square : Play}
+              >
+                {isRunning ? 'Attaque en cours...' : 'Lancer l\'attaque'}
+              </Button>
+              
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: theme.spacing.sm,
+                color: theme.colors.status.warning,
+                fontSize: '13px'
+              }}>
+                <AlertTriangle size={16} />
+                Usage autorisé uniquement
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'attacks' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <Clock size={20} color={theme.colors.status.info} />
+                <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                  Attaques Hydra ({attacks.length})
+                </h3>
+              </div>
+              <Button onClick={fetchAttacks} size="sm" variant="ghost" icon={RefreshCw}>
+                Actualiser
+              </Button>
+            </div>
+
+            {attacks.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: theme.spacing.xl,
+                color: theme.colors.text.muted
+              }}>
+                <Shield size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+                <p>Aucune attaque lancée</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                {attacks.map((attack, index) => (
+                  <div
+                    key={attack.id || index}
+                    style={{
+                      padding: theme.spacing.md,
+                      backgroundColor: theme.colors.bg.tertiary,
+                      borderRadius: theme.borderRadius.md,
+                      border: `1px solid ${theme.colors.bg.accent}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs }}>
+                        <Badge variant="info">#{attack.id}</Badge>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                          {attack.target}:{attack.port}
+                        </span>
+                        <Badge variant="default">{attack.service}</Badge>
+                        <Badge variant={attack.status === 'running' ? 'warning' : 'success'}>
+                          {attack.status}
+                        </Badge>
+                      </div>
+                      
+                      {attack.credentials && attack.credentials.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                          <CheckCircle size={16} color={theme.colors.status.success} />
+                          <span style={{ color: theme.colors.status.success, fontSize: '14px' }}>
+                            {attack.credentials.length} credential(s) trouvé(s)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                      {attack.status === 'running' && (
+                        <Button onClick={() => stopAttack(attack.id)} size="sm" variant="danger" icon={Square} />
+                      )}
+                      <Button onClick={() => setSelectedAttack(attack)} size="sm" variant="ghost" icon={Eye} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeSubTab === 'wordlists' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Users size={20} color={theme.colors.status.info} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Gestion des Wordlists
+              </h3>
+            </div>
+            
+            <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+              <Users size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+              <p>Configuration des wordlists disponibles</p>
+              <p style={{ fontSize: '13px' }}>
+                rockyou.txt, unix_users.txt, common_passwords.txt
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {selectedAttack && (
+          <Card>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Détails Attaque #{selectedAttack.id}
+              </h3>
+              <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                <Button 
+                  onClick={() => fetchAttacks()} 
+                  size="sm" 
+                  variant="secondary" 
+                  icon={RefreshCw}
+                >
+                  Actualiser
+                </Button>
+                <Button onClick={() => setSelectedAttack(null)} size="sm" variant="ghost" icon={X}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+            
+            <div style={{ 
+              backgroundColor: theme.colors.bg.tertiary,
+              padding: theme.spacing.lg,
+              borderRadius: theme.borderRadius.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              {/* Informations générales */}
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                  📋 Informations Générales
+                </h4>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                  gap: theme.spacing.md,
+                  fontSize: '13px'
+                }}>
+                  <div>
+                    <span style={{ color: theme.colors.text.muted }}>🎯 Cible:</span><br/>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                      {selectedAttack.target}:{selectedAttack.port}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.colors.text.muted }}>🔧 Service:</span><br/>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                      {selectedAttack.service}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.colors.text.muted }}>⚡ Statut:</span><br/>
+                    <Badge variant={selectedAttack.status === 'running' ? 'warning' : 
+                                  selectedAttack.status === 'completed' ? 'success' : 'error'}>
+                      {selectedAttack.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.colors.text.muted }}>📅 Démarré:</span><br/>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                      {selectedAttack.started_at ? new Date(selectedAttack.started_at).toLocaleString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Configuration d'attaque */}
+              {(selectedAttack.username || selectedAttack.userlist || selectedAttack.password || selectedAttack.passlist) && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    ⚙️ Configuration
+                  </h4>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                    gap: theme.spacing.md,
+                    fontSize: '13px'
+                  }}>
+                    {selectedAttack.username && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>👤 Utilisateur:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500', fontFamily: 'Monaco, monospace' }}>
+                          {selectedAttack.username}
+                        </span>
+                      </div>
+                    )}
+                    {selectedAttack.userlist && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>📋 Liste utilisateurs:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500', fontSize: '12px' }}>
+                          {selectedAttack.userlist.split('/').pop()}
+                        </span>
+                      </div>
+                    )}
+                    {selectedAttack.password && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>🔑 Mot de passe:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500', fontFamily: 'Monaco, monospace' }}>
+                          {selectedAttack.password}
+                        </span>
+                      </div>
+                    )}
+                    {selectedAttack.passlist && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>📋 Liste mots de passe:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500', fontSize: '12px' }}>
+                          {selectedAttack.passlist.split('/').pop()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Progression en temps réel pour attaques en cours */}
+              {selectedAttack.status === 'running' && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.status.warning, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    ⏳ Progression en Temps Réel
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: `2px solid ${theme.colors.status.warning}`
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                      <div style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        borderRadius: '50%', 
+                        backgroundColor: theme.colors.status.warning,
+                        animation: 'pulse 1.5s ease-in-out infinite'
+                      }}></div>
+                      <span style={{ color: theme.colors.status.warning, fontWeight: '600' }}>
+                        Attaque en cours...
+                      </span>
+                    </div>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                      gap: theme.spacing.md,
+                      fontSize: '13px'
+                    }}>
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>🔢 Tentatives:</span><br/>
+                        <span style={{ color: theme.colors.status.info, fontWeight: '600', fontSize: '16px' }}>
+                          {selectedAttack.total_attempts ? selectedAttack.total_attempts.toLocaleString() : 'En cours...'}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>📈 Progression:</span><br/>
+                        <span style={{ color: theme.colors.status.warning, fontWeight: '600', fontSize: '16px' }}>
+                          {selectedAttack.progress ? `${selectedAttack.progress}%` : 'Calcul...'}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>⏱️ Durée:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                          {selectedAttack.duration || 'En cours...'}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>🎯 Trouvés:</span><br/>
+                        <span style={{ color: theme.colors.status.success, fontWeight: '600', fontSize: '16px' }}>
+                          {selectedAttack.credentials ? selectedAttack.credentials.length : '0'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Barre de progression si disponible */}
+                    {selectedAttack.progress && (
+                      <div style={{ marginTop: theme.spacing.md }}>
+                        <div style={{ 
+                          width: '100%', 
+                          height: '8px', 
+                          backgroundColor: theme.colors.bg.accent,
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{ 
+                            width: `${selectedAttack.progress}%`, 
+                            height: '100%', 
+                            backgroundColor: theme.colors.status.warning,
+                            transition: 'width 0.5s ease'
+                          }}></div>
+                        </div>
+                        <div style={{ 
+                          textAlign: 'center', 
+                          marginTop: theme.spacing.xs, 
+                          fontSize: '12px',
+                          color: theme.colors.text.muted
+                        }}>
+                          {selectedAttack.progress}% complété
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Statistiques finales pour attaques terminées */}
+              {selectedAttack.status !== 'running' && (selectedAttack.total_attempts || selectedAttack.progress) && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    📊 Statistiques Finales
+                  </h4>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                    gap: theme.spacing.md,
+                    fontSize: '13px'
+                  }}>
+                    {selectedAttack.total_attempts && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>🔢 Total tentatives:</span><br/>
+                        <span style={{ color: theme.colors.status.info, fontWeight: '600', fontSize: '16px' }}>
+                          {selectedAttack.total_attempts.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {selectedAttack.duration && (
+                      <div>
+                        <span style={{ color: theme.colors.text.muted }}>⏱️ Durée totale:</span><br/>
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                          {selectedAttack.duration}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <span style={{ color: theme.colors.text.muted }}>🎯 Taux de succès:</span><br/>
+                      <span style={{ 
+                        color: selectedAttack.credentials && selectedAttack.credentials.length > 0 ? 
+                              theme.colors.status.success : theme.colors.status.error, 
+                        fontWeight: '600', 
+                        fontSize: '16px' 
+                      }}>
+                        {selectedAttack.credentials && selectedAttack.total_attempts ? 
+                          `${((selectedAttack.credentials.length / selectedAttack.total_attempts) * 100).toFixed(3)}%` : 
+                          '0%'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Credentials trouvés */}
+              {selectedAttack.credentials && selectedAttack.credentials.length > 0 && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.status.success, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    🎉 Credentials Trouvés ({selectedAttack.credentials.length})
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: `2px solid ${theme.colors.status.success}`
+                  }}>
+                    {selectedAttack.credentials.map((cred, index) => (
+                      <div 
+                        key={index}
+                        style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: theme.spacing.md,
+                          padding: theme.spacing.sm,
+                          backgroundColor: index % 2 === 0 ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                          borderRadius: theme.borderRadius.sm,
+                          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                          fontSize: '13px',
+                          marginBottom: theme.spacing.xs
+                        }}
+                      >
+                        <CheckCircle size={16} color={theme.colors.status.success} />
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                          {cred.username}
+                        </span>
+                        <span style={{ color: theme.colors.text.muted }}>:</span>
+                        <span style={{ color: theme.colors.status.success, fontWeight: '600' }}>
+                          {cred.password}
+                        </span>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${cred.username}:${cred.password}`);
+                            alert('Credential copié dans le presse-papiers !');
+                          }}
+                          style={{ marginLeft: 'auto', padding: '4px 8px' }}
+                        >
+                          📋 Copier
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Message d'absence de credentials */}
+              {selectedAttack.status === 'completed' && (!selectedAttack.credentials || selectedAttack.credentials.length === 0) && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.status.error, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    ❌ Aucun Credential Trouvé
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: '1px solid ' + theme.colors.status.error,
+                    textAlign: 'center'
+                  }}>
+                    <p style={{ color: theme.colors.status.error, margin: 0, fontSize: '14px' }}>
+                      L'attaque s'est terminée sans trouver de credentials valides.
+                    </p>
+                    <p style={{ color: theme.colors.text.muted, margin: '8px 0 0 0', fontSize: '12px' }}>
+                      Essayez avec d'autres wordlists ou utilisateurs.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Message ou erreur */}
+              {selectedAttack.message && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    💬 Message
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: '1px solid ' + theme.colors.bg.accent,
+                    fontSize: '13px',
+                    color: theme.colors.text.secondary
+                  }}>
+                    {selectedAttack.message}
+                  </div>
+                </div>
+              )}
+
+              {selectedAttack.error && (
+                <div style={{ marginBottom: theme.spacing.lg }}>
+                  <h4 style={{ color: theme.colors.status.error, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    ❌ Erreur
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: '1px solid ' + theme.colors.status.error,
+                    fontSize: '13px',
+                    color: theme.colors.status.error,
+                    fontFamily: 'Monaco, monospace'
+                  }}>
+                    {selectedAttack.error}
+                  </div>
+                </div>
+              )}
+
+              {/* Fichier de sortie */}
+              {selectedAttack.output_file && (
+                <div>
+                  <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    📄 Fichier de sortie
+                  </h4>
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: '1px solid ' + theme.colors.bg.accent
+                  }}>
+                    <FileText size={16} color={theme.colors.status.info} />
+                    <span style={{ 
+                      color: theme.colors.text.primary, 
+                      fontFamily: 'Monaco, monospace',
+                      fontSize: '13px',
+                      flex: 1
+                    }}>
+                      {selectedAttack.output_file}
+                    </span>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={() => {
+                        window.open(API_BASE + '/reports/download/' + selectedAttack.output_file, '_blank');
+                      }}
+                    >
+                      📥 Télécharger
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Auto-refresh pour les attaques en cours */}
+        {selectedAttack && selectedAttack.status === 'running' && (
+          <div style={{ 
+            position: 'fixed', 
+            bottom: '20px', 
+            right: '20px', 
+            zIndex: 1000 
+          }}>
+            <div style={{
+              backgroundColor: theme.colors.status.warning,
+              color: theme.colors.bg.primary,
+              padding: '8px 16px',
+              borderRadius: theme.borderRadius.md,
+              fontSize: '12px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                backgroundColor: theme.colors.bg.primary,
+                animation: 'pulse 1s ease-in-out infinite'
+              }}></div>
+              Auto-refresh actif
+            </div>
+          </div>
         )}
       </div>
-    </Card>
+
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+};
+                    fontSize: '13px',
+                    color: theme.colors.status.error,
+                    fontFamily: 'Monaco, monospace'
+                  }}>
+                    {selectedAttack.error}
+                  </div>
+                </div>
+              )}
+
+              {/* Fichier de sortie */}
+              {selectedAttack.output_file && (
+                <div>
+                  <h4 style={{ color: theme.colors.text.primary, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    📄 Fichier de sortie
+                  </h4>
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                    backgroundColor: theme.colors.bg.primary,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.borderRadius.md,
+                    border: `1px solid ${theme.colors.bg.accent}`
+                  }}>
+                    <FileText size={16} color={theme.colors.status.info} />
+                    <span style={{ 
+                      color: theme.colors.text.primary, 
+                      fontFamily: 'Monaco, monospace',
+                      fontSize: '13px',
+                      flex: 1
+                    }}>
+                      {selectedAttack.output_file}
+                    </span>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={() => {
+                        window.open(`${API_BASE}/reports/download/${selectedAttack.output_file}`, '_blank');
+                      }}
+                    >
+                      📥 Télécharger
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -1118,11 +1912,8 @@ const MetasploitTab = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
   const [shellVisible, setShellVisible] = useState(false);
-  const [exploitOutput, setExploitOutput] = useState(null);
-  const [exploitOutputVisible, setExploitOutputVisible] = useState(false);
 
   useEffect(() => {
-    // Charger les sessions au démarrage
     fetchSessions();
   }, []);
 
@@ -1140,15 +1931,9 @@ const MetasploitTab = () => {
   };
 
   const handleExploitLaunched = (result) => {
-    if (result.exploit_id) {
-      setExploitOutput(result.exploit_id);
-      setExploitOutputVisible(true);
-      
-      // Rafraîchir les sessions après quelques secondes
-      setTimeout(() => {
-        fetchSessions();
-      }, 5000);
-    }
+    setTimeout(() => {
+      fetchSessions();
+    }, 5000);
   };
 
   const handleOpenShell = (sessionId) => {
@@ -1162,34 +1947,18 @@ const MetasploitTab = () => {
     setSelectedSession(null);
   };
 
-  const handleCloseExploitOutput = () => {
-    setExploitOutputVisible(false);
-    setExploitOutput(null);
-  };
-
   return (
     <div style={{ padding: theme.spacing.lg }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
         
-        {/* Exploit Launcher */}
         <ExploitLauncher onExploitLaunched={handleExploitLaunched} />
         
-        {/* Session Manager */}
         <SessionManager 
           sessions={sessions} 
           onSessionUpdate={setSessions}
           onOpenShell={handleOpenShell}
         />
         
-        {/* Exploit Output */}
-        {exploitOutputVisible && exploitOutput && (
-          <ExploitOutput 
-            exploitId={exploitOutput}
-            onClose={handleCloseExploitOutput}
-          />
-        )}
-        
-        {/* Interactive Terminal */}
         {shellVisible && selectedSession && (
           <InteractiveTerminal
             sessionId={selectedSession.id}
@@ -1203,6 +1972,100 @@ const MetasploitTab = () => {
 };
 
 // ================================
+// AUTRES ONGLETS (SIMPLIFIÉS)
+// ================================
+
+const ReconnaissanceTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Target size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Reconnaissance Module
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Target size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de reconnaissance en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : DNS enumeration, subdomain discovery, port scanning</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const ScanningTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Activity size={20} color={theme.colors.status.warning} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Vulnerability Scanning
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de scan de vulnérabilités en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : Nmap, Nikto, OpenVAS integration</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const SniffingTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Network size={20} color={theme.colors.status.success} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Network Sniffing
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de capture réseau en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : tcpdump, Wireshark integration, traffic analysis</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const ReportsTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <FileText size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Reports & Documentation
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de rapports en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : PDF generation, executive summaries, technical reports</p>
+      </div>
+    </Card>
+  </div>
+);
+
+const SettingsTab = () => (
+  <div style={{ padding: theme.spacing.lg }}>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+        <Settings size={20} color={theme.colors.status.info} />
+        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+          Configuration
+        </h2>
+      </div>
+      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
+        <Settings size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+        <p>Module de configuration en développement</p>
+        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : API settings, tool configuration, security preferences</p>
+      </div>
+    </Card>
+  </div>
+);
+
+// ================================
 // NAVIGATION TABS
 // ================================
 
@@ -1211,6 +2074,7 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
     { id: 'reconnaissance', label: 'Reconnaissance', icon: Target },
     { id: 'scanning', label: 'Vulnerability Scanning', icon: Activity },
     { id: 'metasploit', label: 'Metasploit', icon: Crosshairs },
+    { id: 'hydra', label: 'Hydra', icon: Shield },
     { id: 'sniffing', label: 'Sniffing Réseau', icon: Network },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Configuration', icon: Settings }
@@ -1260,873 +2124,6 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
 };
 
 // ================================
-// AUTRES ONGLETS (SIMPLIFIÉS)
-// ================================
-// Formulaire de scan
-const ScanForm = ({ toolsStatus, onScanStart }) => {
-  const [target, setTarget] = useState('');
-  const [scanType, setScanType] = useState('basic');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // RECONNAISSANCE = NMAP UNIQUEMENT
-  const scanTypes = {
-    basic: { name: 'Basic Port Scan', description: 'Fast TCP port scan (--top-ports 1000)' },
-    stealth: { name: 'Stealth SYN Scan', description: 'Stealthy SYN scan (-sS -T2)' },
-    comprehensive: { name: 'Comprehensive Scan', description: 'Service detection + OS fingerprinting (-sC -sV -O)' },
-    udp: { name: 'UDP Scan', description: 'UDP port discovery (--top-ports 100)' }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!target.trim()) return;
-
-    setIsLoading(true);
-    try {
-      await onScanStart({ tool: 'nmap', target, scanType });
-      setTarget('');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Target size={20} color={theme.colors.accent.primary} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Network Reconnaissance - NMAP
-        </h2>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Target
-            </label>
-            <input
-              type="text"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="e.g., scanme.nmap.org, 192.168.1.1, 10.0.0.0/24"
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: theme.spacing.sm, 
-              color: theme.colors.text.secondary,
-              fontSize: '13px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Scan Type
-            </label>
-            <select
-              value={scanType}
-              onChange={(e) => setScanType(e.target.value)}
-              style={{
-                width: '100%',
-                backgroundColor: theme.colors.bg.tertiary,
-                border: `1px solid ${theme.colors.bg.accent}`,
-                borderRadius: theme.borderRadius.md,
-                padding: theme.spacing.md,
-                color: theme.colors.text.primary,
-                fontSize: '14px'
-              }}
-            >
-              {Object.entries(scanTypes).map(([key, config]) => (
-                <option key={key} value={key}>{config.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <Button
-            type="submit"
-            variant="primary"
-            icon={Play}
-            disabled={isLoading || !toolsStatus.nmap}
-          >
-            {isLoading ? 'Scanning...' : 'Execute'}
-          </Button>
-        </div>
-
-        {scanTypes[scanType] && (
-          <div style={{
-            marginTop: theme.spacing.lg,
-            padding: theme.spacing.md,
-            backgroundColor: theme.colors.bg.primary,
-            borderRadius: theme.borderRadius.md,
-            border: `1px solid ${theme.colors.accent.primary}33`
-          }}>
-            <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-              <strong>{scanTypes[scanType].name}</strong>
-            </div>
-            <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-              {scanTypes[scanType].description}
-            </div>
-          </div>
-        )}
-
-        {!toolsStatus.nmap && (
-          <div style={{
-            marginTop: theme.spacing.lg,
-            padding: theme.spacing.md,
-            backgroundColor: `${theme.colors.status.error}20`,
-            borderRadius: theme.borderRadius.md,
-            border: `1px solid ${theme.colors.status.error}`,
-            color: theme.colors.status.error,
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
-            ⚠️ NMAP is not available on this system
-          </div>
-        )}
-      </form>
-    </Card>
-  );
-};
-
-// Panneau des scans actifs
-const ProgressBar = ({ progress, status }) => (
-  <div style={{
-    width: '100%',
-    height: '8px',
-    backgroundColor: theme.colors.bg.tertiary,
-    borderRadius: '4px',
-    overflow: 'hidden',
-    marginBottom: theme.spacing.md
-  }}>
-    <div style={{
-      height: '100%',
-      backgroundColor: status === 'completed' ? theme.colors.status.success : 
-                      status === 'error' ? theme.colors.status.error : 
-                      theme.colors.accent.primary,
-      width: `${progress}%`,
-      transition: 'width 0.3s ease',
-      animation: status === 'running' ? 'pulse 2s infinite' : 'none'
-    }} />
-  </div>
-);
-
-const ActiveScansPanel = ({ activeScans, onStopScan, onSelectScan, selectedScan, currentTool }) => {
-  // Filtrer les scans par outil actuel
-  const filteredScans = activeScans.filter(scan => scan.tool === currentTool);
-  
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Activity size={20} color={theme.colors.status.warning} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Active {currentTool.toUpperCase()} Scans ({filteredScans.length})
-          </h2>
-        </div>
-      </div>
-
-      {filteredScans.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-          {filteredScans.map(scan => {
-            const progress = scan.status === 'completed' ? 100 : 
-                           scan.status === 'running' ? 75 : 
-                           scan.status === 'error' ? 100 : 25;
-            
-            return (
-              <div
-                key={scan.scan_id}
-                onClick={() => onSelectScan(scan.scan_id)}
-                style={{
-                  backgroundColor: selectedScan === scan.scan_id ? 
-                    `${theme.colors.accent.primary}20` : 
-                    theme.colors.bg.tertiary,
-                  border: selectedScan === scan.scan_id ? 
-                    `1px solid ${theme.colors.accent.primary}` : 
-                    `1px solid ${theme.colors.bg.accent}`,
-                  borderRadius: theme.borderRadius.md,
-                  padding: theme.spacing.md,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                    <span style={{ 
-                      color: theme.colors.text.primary,
-                      fontWeight: '600',
-                      fontSize: '14px'
-                    }}>
-                      {scan.tool.toUpperCase()}
-                    </span>
-                    <Badge variant={scan.status === 'running' ? 'warning' : scan.status === 'completed' ? 'success' : 'error'}>
-                      {scan.status}
-                    </Badge>
-                  </div>
-                  {scan.status === 'running' && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      icon={Square}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onStopScan(scan.scan_id);
-                      }}
-                    >
-                      Stop
-                    </Button>
-                  )}
-                </div>
-                
-                <ProgressBar progress={progress} status={scan.status} />
-                
-                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                  Target: {scan.target}
-                </div>
-                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {scan.scan_type} • Started: {new Date(scan.start_time).toLocaleTimeString()}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: theme.spacing.xl,
-          color: theme.colors.text.muted
-        }}>
-          <Activity size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-          <p>No active {currentTool.toUpperCase()} scans</p>
-          <p style={{ fontSize: '13px' }}>Execute a scan to monitor real-time activity</p>
-        </div>
-      )}
-    </Card>
-  );
-};
-
-// Terminal
-const TerminalView = ({ scanId, isActive, title = "Terminal Output" }) => {
-  const [output, setOutput] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const terminalRef = useRef(null);
-
-  useEffect(() => {
-    if (!isActive || !scanId) return;
-
-    setIsConnected(true);
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_BASE}/scan/live/${scanId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.new_lines && data.new_lines.length > 0) {
-            setOutput(prev => [...prev, ...data.new_lines]);
-          }
-          if (!data.is_running) {
-            setIsConnected(false);
-            clearInterval(interval);
-          }
-        }
-      } catch (error) {
-        setIsConnected(false);
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [scanId, isActive]);
-
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [output]);
-
-  return (
-    <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Terminal size={20} color={theme.colors.accent.primary} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            {title} {scanId && `- ${scanId}`}
-          </h2>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: isConnected ? theme.colors.status.success : theme.colors.text.muted
-          }} />
-          <span style={{ 
-            color: isConnected ? theme.colors.status.success : theme.colors.text.muted,
-            fontSize: '12px',
-            fontWeight: '500',
-            textTransform: 'uppercase'
-          }}>
-            {isConnected ? 'Live' : 'Standby'}
-          </span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          backgroundColor: '#000',
-          borderRadius: theme.borderRadius.md,
-          padding: theme.spacing.md,
-          minHeight: '400px',
-          maxHeight: '600px',
-          overflowY: 'auto',
-          fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-          fontSize: '13px',
-          lineHeight: '1.4',
-          border: `1px solid ${theme.colors.bg.accent}`
-        }}
-      >
-        {output.length > 0 ? (
-          output.map((line, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
-              <span style={{ color: '#666', marginRight: theme.spacing.sm }}>
-                [{new Date().toLocaleTimeString()}]
-              </span>
-              <span style={{ color: '#00ff00' }}>
-                {line}
-              </span>
-            </div>
-          ))
-        ) : (
-          <div style={{ 
-            color: theme.colors.text.muted,
-            textAlign: 'center',
-            padding: theme.spacing.xl
-          }}>
-            {isActive ? 'Initializing scan...' : `${title} ready. Execute a scan to see live output.`}
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-};
-
-// Historique des scans
-const ScanHistory = ({ scans, onRefresh }) => (
-  <Card>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-        <FileText size={20} color={theme.colors.status.success} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Scan History
-        </h2>
-      </div>
-      <Button variant="ghost" icon={RefreshCw} onClick={onRefresh}>
-        Refresh
-      </Button>
-    </div>
-
-    {scans.length > 0 ? (
-      <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-        {scans.map(scan => (
-          <div
-            key={scan.scan_id}
-            style={{
-              backgroundColor: theme.colors.bg.tertiary,
-              border: `1px solid ${theme.colors.bg.accent}`,
-              borderRadius: theme.borderRadius.md,
-              padding: theme.spacing.md,
-              marginBottom: theme.spacing.md
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                  <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                    {scan.tool.toUpperCase()}
-                  </span>
-                  <Badge variant={
-                    scan.status === 'completed' ? 'success' :
-                    scan.status === 'error' ? 'error' : 'default'
-                  }>
-                    {scan.status}
-                  </Badge>
-                </div>
-                <div style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
-                  Target: {scan.target}
-                </div>
-                <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {scan.scan_type} • {scan.duration || 'N/A'} • {new Date(scan.start_time).toLocaleString()}
-                </div>
-              </div>
-              {scan.report_filename && (
-                <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Download}
-                    onClick={() => window.open(`${API_BASE}/reports/download/${scan.report_filename}`, '_blank')}
-                  >
-                    TXT
-                  </Button>
-                  {scan.pdf_filename && (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      icon={Download}
-                      onClick={() => window.open(`${API_BASE}/reports/download/${scan.pdf_filename}`, '_blank')}
-                    >
-                      PDF
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div style={{ 
-        textAlign: 'center', 
-        padding: theme.spacing.xl,
-        color: theme.colors.text.muted
-      }}>
-        <FileText size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>No scan history</p>
-        <p style={{ fontSize: '13px' }}>Completed scans will appear here</p>
-      </div>
-    )}
-  </Card>
-);
-
-// Composant principal
-const ProfessionalPentestInterface = () => {
-  const [activeTab, setActiveTab] = useState('reconnaissance');
-  const [activeScans, setActiveScans] = useState([]);
-  const [scanHistory, setScanHistory] = useState([]);
-  const [toolsStatus, setToolsStatus] = useState({});
-  const [selectedScan, setSelectedScan] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Chargement initial des données
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setToolsStatus({
-          nmap: true,
-          nikto: true,
-          masscan: true,
-          dirb: true,
-          gobuster: true,
-          sqlmap: true
-        });
-
-        const historyRes = await fetch(`${API_BASE}/scan/history`);
-        if (historyRes.ok) {
-          const history = await historyRes.json();
-          setScanHistory(history);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setToolsStatus({
-          nmap: true,
-          nikto: true,
-          masscan: true,
-          dirb: true,
-          gobuster: true,
-          sqlmap: true
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // Polling des scans actifs
-  useEffect(() => {
-    const fetchActiveScans = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/scan/active`);
-        if (response.ok) {
-          const scans = await response.json();
-          setActiveScans(scans);
-          
-          if (scans.length > 0 && !selectedScan) {
-            setSelectedScan(scans[0].scan_id);
-          }
-          
-          if (selectedScan && !scans.find(s => s.scan_id === selectedScan)) {
-            setSelectedScan(null);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching active scans:', error);
-      }
-    };
-
-    fetchActiveScans();
-    const interval = setInterval(fetchActiveScans, 2000);
-    return () => clearInterval(interval);
-  }, [selectedScan]);
-
-  const handleScanStart = async (formData) => {
-    try {
-      const response = await fetch(`${API_BASE}/scan/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Scan start failed');
-      }
-
-      const result = await response.json();
-      if (result.scan_id) {
-        setSelectedScan(result.scan_id);
-      }
-    } catch (error) {
-      console.error('Error starting scan:', error);
-      alert(`Error: ${error.message}`);
-    }
-  };
-
-  const handleStopScan = async (scanId) => {
-    try {
-      await fetch(`${API_BASE}/scan/stop/${scanId}`, { method: 'POST' });
-    } catch (error) {
-      console.error('Error stopping scan:', error);
-    }
-  };
-
-  const handleRefreshHistory = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/scan/history`);
-      if (response.ok) {
-        const history = await response.json();
-        setScanHistory(history);
-      }
-    } catch (error) {
-      console.error('Error refreshing history:', error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div style={{
-        backgroundColor: theme.colors.bg.primary,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: theme.colors.text.primary
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <Shield size={48} color={theme.colors.accent.primary} style={{ marginBottom: theme.spacing.md }} />
-          <div style={{ fontSize: '18px', fontWeight: '600' }}>Initializing Security Platform...</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      backgroundColor: theme.colors.bg.primary,
-      minHeight: '100vh',
-      color: theme.colors.text.primary,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
-      <PentestHeader />
-      <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: theme.spacing.lg }}>
-        <div style={{ display: 'grid', gap: theme.spacing.lg }}>
-          
-          {activeTab === 'reconnaissance' && (
-            <>
-              <ScanForm 
-                toolsStatus={toolsStatus} 
-                onScanStart={handleScanStart}
-              />
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <ActiveScansPanel
-                  activeScans={activeScans}
-                  onStopScan={handleStopScan}
-                  onSelectScan={setSelectedScan}
-                  selectedScan={selectedScan}
-                  currentTool="nmap"
-                />
-                <ScanHistory
-                  scans={scanHistory.filter(s => s.tool === 'nmap')}
-                  onRefresh={handleRefreshHistory}
-                />
-              </div>
-              
-              <TerminalView
-                scanId={selectedScan}
-                isActive={!!selectedScan}
-                title="Reconnaissance Terminal"
-              />
-            </>
-          )}
-
-          {activeTab === 'scanning' && (
-            <>
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <Shield size={20} color={theme.colors.accent.primary} />
-                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                    Web Vulnerability Scanner - NIKTO
-                  </h2>
-                </div>
-                
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const target = e.target.elements.niktoTarget.value;
-                  if (target) {
-                    handleScanStart({ tool: 'nikto', target, scanType: 'comprehensive' });
-                    e.target.elements.niktoTarget.value = '';
-                  }
-                }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 200px auto', gap: theme.spacing.md, alignItems: 'end' }}>
-                    <div>
-                      <label style={{ 
-                        display: 'block', 
-                        marginBottom: theme.spacing.sm, 
-                        color: theme.colors.text.secondary,
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Web Target (URL)
-                      </label>
-                      <input
-                        name="niktoTarget"
-                        type="text"
-                        placeholder="e.g., http://testphp.vulnweb.com, https://example.com"
-                        style={{
-                          width: '100%',
-                          backgroundColor: theme.colors.bg.tertiary,
-                          border: `1px solid ${theme.colors.bg.accent}`,
-                          borderRadius: theme.borderRadius.md,
-                          padding: theme.spacing.md,
-                          color: theme.colors.text.primary,
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ 
-                        display: 'block', 
-                        marginBottom: theme.spacing.sm, 
-                        color: theme.colors.text.secondary,
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Scan Mode
-                      </label>
-                      <select
-                        defaultValue="comprehensive"
-                        style={{
-                          width: '100%',
-                          backgroundColor: theme.colors.bg.tertiary,
-                          border: `1px solid ${theme.colors.bg.accent}`,
-                          borderRadius: theme.borderRadius.md,
-                          padding: theme.spacing.md,
-                          color: theme.colors.text.primary,
-                          fontSize: '14px'
-                        }}
-                      >
-                        <option value="fast">Fast Scan</option>
-                        <option value="comprehensive">Deep Scan</option>
-                      </select>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      variant="success"
-                      icon={Shield}
-                    >
-                      Scan Web App
-                    </Button>
-                  </div>
-                </form>
-                
-                <div style={{
-                  marginTop: theme.spacing.lg,
-                  padding: theme.spacing.md,
-                  backgroundColor: theme.colors.bg.primary,
-                  borderRadius: theme.borderRadius.md,
-                  border: `1px solid ${theme.colors.status.success}33`
-                }}>
-                  <div style={{ color: theme.colors.text.primary, fontSize: '14px', marginBottom: theme.spacing.xs }}>
-                    <strong>Web Vulnerability Assessment</strong>
-                  </div>
-                  <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-                    • Comprehensive web application security testing<br/>
-                    • Detection of common vulnerabilities (XSS, SQLi, etc.)<br/>
-                    • Server configuration issues and outdated software
-                  </div>
-                </div>
-              </Card>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-                <ActiveScansPanel
-                  activeScans={activeScans}
-                  onStopScan={handleStopScan}
-                  onSelectScan={setSelectedScan}
-                  selectedScan={selectedScan}
-                  currentTool="nikto"
-                />
-                <ScanHistory
-                  scans={scanHistory.filter(s => s.tool === 'nikto')}
-                  onRefresh={handleRefreshHistory}
-                />
-              </div>
-              
-              <TerminalView
-                scanId={selectedScan}
-                isActive={!!selectedScan}
-                title="Web Vulnerability Scanner"
-              />
-            </>
-          )}
-
-          {activeTab === 'reports' && (
-            <>
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <FileText size={20} color={theme.colors.accent.primary} />
-                  <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                    Report Management
-                  </h2>
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.success, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.status === 'completed').length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Completed Scans</div>
-                  </div>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.warning, fontSize: '24px', fontWeight: '700' }}>
-                      {activeScans.length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Active Scans</div>
-                  </div>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    padding: theme.spacing.md,
-                    borderRadius: theme.borderRadius.md,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ color: theme.colors.status.info, fontSize: '24px', fontWeight: '700' }}>
-                      {scanHistory.filter(s => s.report_filename).length}
-                    </div>
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>Available Reports</div>
-                  </div>
-                </div>
-              </Card>
-              
-              <ScanHistory
-                scans={scanHistory}
-                onRefresh={handleRefreshHistory}
-              />
-            </>
-          )}
-
-          {activeTab === 'settings' && (
-            <Card>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <Settings size={20} color={theme.colors.accent.primary} />
-                <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-                  System Configuration
-                </h2>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.lg }}>
-                <div>
-                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
-                    Tool Availability
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-                    {Object.entries(toolsStatus).map(([tool, available]) => (
-                      <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: theme.colors.text.secondary, textTransform: 'uppercase' }}>
-                          {tool}
-                        </span>
-                        <Badge variant={available ? 'success' : 'error'}>
-                          {available ? 'Available' : 'Missing'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 style={{ color: theme.colors.text.primary, fontSize: '16px', marginBottom: theme.spacing.md }}>
-                    Platform Status
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>API Status</span>
-                      <Badge variant="success">Operational</Badge>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Active Scans</span>
-                      <Badge variant="info">{activeScans.length}</Badge>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: theme.colors.text.secondary }}>Total Scans</span>
-                      <Badge variant="default">{scanHistory.length}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// ================================
 // COMPOSANT PRINCIPAL
 // ================================
 
@@ -2141,6 +2138,8 @@ const EnhancedMetasploitInterface = () => {
         return <ScanningTab />;
       case 'metasploit':
         return <MetasploitTab />;
+      case 'hydra':
+        return <HydraTab />;
       case 'sniffing':
         return <SniffingTab />;
       case 'reports':
