@@ -150,6 +150,82 @@ const AlertTriangle = ({ size = 16, color = "#666" }) => (
 );
 
 // ================================
+// ICÔNES MANQUANTES AJOUTÉES
+// ================================
+
+const BrainCircuit = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
+    <path d="M9 13a4.5 4.5 0 0 0 3-4"></path>
+    <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path>
+    <path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path>
+    <path d="M6 18a4 4 0 0 1-1.967-.516"></path>
+    <path d="M12 13h4"></path>
+    <path d="M12 18h6a2 2 0 0 1 2 2v1"></path>
+    <path d="M12 8h8"></path>
+    <path d="M16 8v2"></path>
+    <path d="M20 8v2"></path>
+  </svg>
+);
+
+const Cpu = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <rect width="16" height="16" x="4" y="4" rx="2"></rect>
+    <rect width="6" height="6" x="9" y="9" rx="1"></rect>
+    <path d="M15 2v2"></path>
+    <path d="M15 20v2"></path>
+    <path d="M2 15h2"></path>
+    <path d="M2 9h2"></path>
+    <path d="M20 15h2"></path>
+    <path d="M20 9h2"></path>
+    <path d="M9 2v2"></path>
+    <path d="M9 20v2"></path>
+  </svg>
+);
+
+const Fingerprint = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"></path>
+    <path d="M14 13.12c0 2.38 0 6.38-1 8.88"></path>
+    <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"></path>
+    <path d="M6 12a2 2 0 0 1 2-2c1.02 0 2.51.1 4 .26"></path>
+    <path d="M8.21 16.1c-.6.12-2.3.43-3.02.5"></path>
+    <path d="M12 10a2 2 0 0 1 2 2c0 1.02.1 2.51.26 4"></path>
+    <path d="M12 22s4-4 4-8V8a4 4 0 1 0-8 0v6c0 4 4 8 4 8z"></path>
+    <path d="M12 2a6 6 0 0 0-6 6v6"></path>
+    <path d="M12 2a6 6 0 0 1 6 6v6"></path>
+  </svg>
+);
+
+const HardDrive = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <line x1="22" y1="12" x2="2" y2="12"></line>
+    <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+    <line x1="6" y1="16" x2="6.01" y2="16"></line>
+    <line x1="10" y1="16" x2="10.01" y2="16"></line>
+  </svg>
+);
+
+const Database = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+    <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path>
+    <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path>
+  </svg>
+);
+
+const Microscope = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M6 18h8"></path>
+    <path d="M3 22h18"></path>
+    <path d="M14 22a7 7 0 1 0 0-14h-1"></path>
+    <path d="M9 14h2"></path>
+    <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"></path>
+    <path d="M12 6V3a1 1 0 0 0-2 0v3"></path>
+  </svg>
+);
+
+// ================================
 // THÈME PROFESSIONNEL
 // ================================
 
@@ -341,45 +417,158 @@ const Select = ({ options, value, onChange, placeholder = "Sélectionnez..." }) 
 // HEADER PROFESSIONNEL
 // ================================
 
-const PentestHeader = () => (
-  <header style={{
-    backgroundColor: theme.colors.bg.secondary,
-    borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
-    padding: theme.spacing.lg
-  }}>
-    <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-          <Shield size={32} color={theme.colors.accent.primary} />
-          <div>
-            <h1 style={{ 
-              color: theme.colors.text.primary,
-              fontSize: '24px',
-              fontWeight: '700',
-              margin: 0,
-              letterSpacing: '-0.5px'
+const PentestHeader = () => {
+  const [systemStatus, setSystemStatus] = useState({
+    api: 'unknown',
+    tcpdump: 'unknown',
+    tools: {}
+  });
+
+  useEffect(() => {
+    checkSystemStatus();
+    // Vérification toutes les 30 secondes
+    const interval = setInterval(checkSystemStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkSystemStatus = async () => {
+    try {
+      // Test de l'API principale
+      const apiResponse = await fetch(`${API_BASE}/health`);
+      const apiStatus = apiResponse.ok ? 'online' : 'offline';
+      
+      // Test des outils système
+      const toolsResponse = await fetch(`${API_BASE}/system/tools`);
+      let toolsStatus = {};
+      
+      if (toolsResponse.ok) {
+        const toolsData = await toolsResponse.json();
+        toolsStatus = toolsData.tools || {};
+      }
+      
+      // Test spécifique tcpdump
+      const tcpdumpResponse = await fetch(`${API_BASE}/network/capture/interfaces`);
+      const tcpdumpStatus = tcpdumpResponse.ok ? 'online' : 'offline';
+      
+      setSystemStatus({
+        api: apiStatus,
+        tcpdump: tcpdumpStatus,
+        tools: toolsStatus
+      });
+    } catch (error) {
+      setSystemStatus({
+        api: 'offline',
+        tcpdump: 'offline',
+        tools: {}
+      });
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'online': return theme.colors.status.success;
+      case 'offline': return theme.colors.status.error;
+      default: return theme.colors.status.warning;
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'online': return '🟢';
+      case 'offline': return '🔴';
+      default: return '🟡';
+    }
+  };
+
+  return (
+    <header style={{
+      backgroundColor: theme.colors.bg.secondary,
+      borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
+      padding: theme.spacing.lg
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Shield size={32} color={theme.colors.accent.primary} />
+            <div>
+              <h1 style={{ 
+                color: theme.colors.text.primary,
+                fontSize: '24px',
+                fontWeight: '700',
+                margin: 0,
+                letterSpacing: '-0.5px'
+              }}>
+                PACHA Security Platform
+              </h1>
+              <p style={{
+                color: theme.colors.text.muted,
+                fontSize: '14px',
+                margin: 0
+              }}>
+                Professional Penetration Testing Suite
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+          {/* Statut des outils */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.sm,
+              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px'
             }}>
-              PACHA Security Platform
-            </h1>
-            <p style={{
-              color: theme.colors.text.muted,
-              fontSize: '14px',
-              margin: 0
+              <span>{getStatusIcon(systemStatus.api)}</span>
+              <span style={{ color: getStatusColor(systemStatus.api) }}>API</span>
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.sm,
+              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px'
             }}>
-              Professional Penetration Testing Suite
-            </p>
+              <span>{getStatusIcon(systemStatus.tcpdump)}</span>
+              <span style={{ color: getStatusColor(systemStatus.tcpdump) }}>tcpdump</span>
+            </div>
+
+            {Object.keys(systemStatus.tools).length > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: theme.spacing.xs,
+                padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.sm,
+                fontSize: '11px'
+              }}>
+                {systemStatus.tools.nmap && <span title="Nmap disponible">🗺️</span>}
+                {systemStatus.tools.metasploit && <span title="Metasploit disponible">🎯</span>}
+                {systemStatus.tools.hydra && <span title="Hydra disponible">🔑</span>}
+                {systemStatus.tools.tcpdump && <span title="tcpdump disponible">📡</span>}
+              </div>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Badge variant="success">OPERATIONAL</Badge>
+            <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+              {new Date().toLocaleString()}
+            </div>
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-        <Badge variant="success">OPERATIONAL</Badge>
-        <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-          {new Date().toLocaleString()}
-        </div>
-      </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 // ================================
 // COMPOSANT TERMINAL INTERACTIF
@@ -1858,8 +2047,687 @@ const HydraTab = () => {
 };
 
 // ================================
-// ONGLET METASPLOIT PRINCIPAL
+// COMPOSANT MEMORY FORENSICS TAB
 // ================================
+
+const MemoryForensicsTab = () => {
+  const [activeSubTab, setActiveSubTab] = useState('analysis');
+  const [memoryDumps, setMemoryDumps] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedDump, setSelectedDump] = useState(null);
+  const [analysisResults, setAnalysisResults] = useState(null);
+
+  const subTabs = [
+    { id: 'analysis', label: 'Analyse Mémoire', icon: BrainCircuit },
+    { id: 'processes', label: 'Processus', icon: Cpu },
+    { id: 'network', label: 'Connexions', icon: Network },
+    { id: 'malware', label: 'Détection Malware', icon: Fingerprint },
+    { id: 'timeline', label: 'Timeline', icon: Clock },
+    { id: 'reports', label: 'Rapports', icon: FileText }
+  ];
+
+  useEffect(() => {
+    loadMemoryDumps();
+  }, []);
+
+  const loadMemoryDumps = () => {
+    // Simulation de dumps mémoire disponibles
+    setMemoryDumps([
+      {
+        id: 'dump_001',
+        name: 'suspicious_workstation.mem',
+        size: '4.2 GB',
+        date: new Date(Date.now() - 3600000).toISOString(),
+        status: 'analyzed',
+        os: 'Windows 10 x64',
+        processes_count: 127,
+        malware_detected: 2,
+        severity: 'high'
+      },
+      {
+        id: 'dump_002', 
+        name: 'server_incident_20250616.dmp',
+        size: '8.1 GB',
+        date: new Date(Date.now() - 7200000).toISOString(),
+        status: 'pending',
+        os: 'Windows Server 2019',
+        processes_count: 89,
+        malware_detected: 0,
+        severity: 'medium'
+      }
+    ]);
+  };
+
+  const analyzeMemoryDump = async (dumpId) => {
+    setIsAnalyzing(true);
+    setSelectedDump(dumpId);
+    
+    // Simulation d'analyse
+    setTimeout(() => {
+      setAnalysisResults({
+        dump_id: dumpId,
+        os_info: {
+          version: 'Windows 10 Build 19042',
+          architecture: 'x64',
+          kernel_base: '0xfffff80344e00000',
+          dump_time: '2025-06-16 14:23:17 UTC'
+        },
+        processes: [
+          {
+            pid: 1234,
+            name: 'malware.exe',
+            ppid: 4,
+            threads: 3,
+            handles: 45,
+            wow64: false,
+            create_time: '2025-06-16 14:20:15 UTC',
+            exit_time: null,
+            suspicious: true,
+            indicators: ['Packed executable', 'No digital signature', 'Hidden from tasklist']
+          },
+          {
+            pid: 4567,
+            name: 'svchost.exe',
+            ppid: 584,
+            threads: 12,
+            handles: 234,
+            wow64: false,
+            create_time: '2025-06-16 09:15:32 UTC',
+            exit_time: null,
+            suspicious: false,
+            indicators: []
+          },
+          {
+            pid: 8901,
+            name: 'powershell.exe',
+            ppid: 1234,
+            threads: 8,
+            handles: 189,
+            wow64: false,
+            create_time: '2025-06-16 14:21:03 UTC',
+            exit_time: null,
+            suspicious: true,
+            indicators: ['Child of suspicious process', 'Encoded command line']
+          }
+        ],
+        network_connections: [
+          {
+            local_addr: '192.168.1.105:49152',
+            remote_addr: '185.243.41.77:443',
+            state: 'ESTABLISHED',
+            pid: 1234,
+            process: 'malware.exe',
+            suspicious: true,
+            geo_location: 'Russia',
+            reputation: 'Malicious'
+          },
+          {
+            local_addr: '192.168.1.105:443',
+            remote_addr: '0.0.0.0:0',
+            state: 'LISTENING',
+            pid: 4,
+            process: 'System',
+            suspicious: false,
+            geo_location: null,
+            reputation: 'Clean'
+          }
+        ],
+        malware_signatures: [
+          {
+            name: 'Backdoor.Win32.Agent',
+            confidence: 95,
+            process: 'malware.exe',
+            description: 'Trojan backdoor with C&C communication capabilities',
+            indicators: ['Registry persistence', 'Network beacon', 'Process injection']
+          },
+          {
+            name: 'Trojan.PowerShell.Obfuscated',
+            confidence: 87,
+            process: 'powershell.exe',
+            description: 'Obfuscated PowerShell script with malicious payload',
+            indicators: ['Base64 encoding', 'Invoke-Expression usage', 'Download cradle']
+          }
+        ],
+        registry_analysis: [
+          {
+            key: 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
+            value: 'SecurityUpdate',
+            data: 'C:\\Windows\\Temp\\malware.exe',
+            suspicious: true,
+            description: 'Persistence mechanism for malware'
+          }
+        ],
+        timeline_events: [
+          {
+            time: '2025-06-16 14:20:15 UTC',
+            type: 'Process Creation',
+            description: 'malware.exe started',
+            severity: 'high'
+          },
+          {
+            time: '2025-06-16 14:20:18 UTC',
+            type: 'Registry Modification',
+            description: 'Persistence key created',
+            severity: 'high'
+          },
+          {
+            time: '2025-06-16 14:20:22 UTC',
+            type: 'Network Connection',
+            description: 'C&C communication established',
+            severity: 'critical'
+          },
+          {
+            time: '2025-06-16 14:21:03 UTC',
+            type: 'Process Creation',
+            description: 'PowerShell spawned by malware',
+            severity: 'high'
+          }
+        ]
+      });
+      setIsAnalyzing(false);
+    }, 3000);
+  };
+
+  const generateReport = () => {
+    if (!analysisResults) return;
+    
+    const report = `MEMORY FORENSICS ANALYSIS REPORT
+========================================
+
+🔍 DUMP INFORMATION:
+- File: ${memoryDumps.find(d => d.id === selectedDump)?.name}
+- OS: ${analysisResults.os_info.version}
+- Architecture: ${analysisResults.os_info.architecture}
+- Kernel Base: ${analysisResults.os_info.kernel_base}
+- Dump Time: ${analysisResults.os_info.dump_time}
+
+🚨 MALWARE DETECTED (${analysisResults.malware_signatures.length}):
+${analysisResults.malware_signatures.map(m => 
+  `- ${m.name} (${m.confidence}% confidence)\n  Process: ${m.process}\n  Description: ${m.description}`
+).join('\n')}
+
+⚡ SUSPICIOUS PROCESSES:
+${analysisResults.processes.filter(p => p.suspicious).map(p => 
+  `- PID ${p.pid}: ${p.name} (Parent: ${p.ppid})\n  Indicators: ${p.indicators.join(', ')}`
+).join('\n')}
+
+🌐 NETWORK ACTIVITY:
+${analysisResults.network_connections.filter(n => n.suspicious).map(n => 
+  `- ${n.local_addr} → ${n.remote_addr}\n  Process: ${n.process} (PID ${n.pid})\n  Location: ${n.geo_location} | Reputation: ${n.reputation}`
+).join('\n')}
+
+📊 TIMELINE ANALYSIS:
+${analysisResults.timeline_events.map(e => 
+  `${e.time} - ${e.type}: ${e.description} [${e.severity.toUpperCase()}]`
+).join('\n')}
+
+Generated: ${new Date().toLocaleString()}
+Analyst: PACHA Memory Forensics Engine v2.0
+`;
+    
+    navigator.clipboard.writeText(report);
+    alert('📊 Rapport forensique complet copié dans le presse-papiers !');
+  };
+
+  return (
+    <div style={{ padding: theme.spacing.lg }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: theme.spacing.md, 
+            marginBottom: theme.spacing.lg 
+          }}>
+            <BrainCircuit size={20} color={theme.colors.status.info} />
+            <h2 style={{ 
+              color: theme.colors.text.primary, 
+              margin: 0, 
+              fontSize: '18px', 
+              fontWeight: '600' 
+            }}>
+              Memory Forensics & Incident Response
+            </h2>
+          </div>
+          
+          <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            {subTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeSubTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSubTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.sm,
+                    padding: '10px 16px',
+                    backgroundColor: isActive ? theme.colors.accent.primary : theme.colors.bg.secondary,
+                    color: isActive ? theme.colors.text.primary : theme.colors.text.secondary,
+                    border: `1px solid ${isActive ? theme.colors.accent.primary : theme.colors.bg.tertiary}`,
+                    borderRadius: theme.borderRadius.md,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeSubTab === 'analysis' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <HardDrive size={20} color={theme.colors.status.info} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Dumps Mémoire Disponibles
+              </h3>
+            </div>
+            
+            {memoryDumps.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: theme.spacing.xl,
+                color: theme.colors.text.muted
+              }}>
+                <Database size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+                <p>Aucun dump mémoire chargé</p>
+                <p style={{ fontSize: '13px' }}>
+                  Uploadez un fichier .mem, .dmp ou .raw pour commencer l'analyse
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                {memoryDumps.map(dump => (
+                  <div 
+                    key={dump.id}
+                    style={{
+                      padding: theme.spacing.md,
+                      backgroundColor: dump.severity === 'high' ? 'rgba(220, 38, 38, 0.1)' : 
+                                     dump.severity === 'medium' ? 'rgba(234, 179, 8, 0.1)' :
+                                     theme.colors.bg.tertiary,
+                      borderRadius: theme.borderRadius.md,
+                      border: dump.severity === 'high' ? `2px solid ${theme.colors.status.error}` :
+                             dump.severity === 'medium' ? `2px solid ${theme.colors.status.warning}` :
+                             `1px solid ${theme.colors.bg.accent}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs }}>
+                        <HardDrive size={16} color={theme.colors.status.info} />
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
+                          {dump.name}
+                        </span>
+                        <Badge variant={dump.status === 'analyzed' ? 'success' : 'warning'}>
+                          {dump.status}
+                        </Badge>
+                        {dump.malware_detected > 0 && (
+                          <Badge variant="error">
+                            {dump.malware_detected} MALWARE
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted }}>
+                        <span>💾 {dump.size}</span>
+                        <span>🖥️ {dump.os}</span>
+                        <span>⚡ {dump.processes_count} processus</span>
+                        <span>📅 {new Date(dump.date).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        icon={BrainCircuit}
+                        onClick={() => analyzeMemoryDump(dump.id)}
+                        disabled={isAnalyzing}
+                      >
+                        {isAnalyzing && selectedDump === dump.id ? 'Analyse...' : 'Analyser'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeSubTab === 'processes' && analysisResults && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Cpu size={20} color={theme.colors.status.warning} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Analyse des Processus ({analysisResults.processes.length})
+              </h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+              {analysisResults.processes.map(process => (
+                <div 
+                  key={process.pid}
+                  style={{
+                    padding: theme.spacing.md,
+                    backgroundColor: process.suspicious ? 'rgba(220, 38, 38, 0.1)' : theme.colors.bg.tertiary,
+                    borderRadius: theme.borderRadius.md,
+                    border: process.suspicious ? `2px solid ${theme.colors.status.error}` : `1px solid ${theme.colors.bg.accent}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                    <Badge variant="info">PID {process.pid}</Badge>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
+                      {process.name}
+                    </span>
+                    {process.suspicious && <Badge variant="error">SUSPECT</Badge>}
+                    <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
+                      Parent: {process.ppid} | Threads: {process.threads} | Handles: {process.handles}
+                    </span>
+                  </div>
+                  
+                  {process.indicators.length > 0 && (
+                    <div style={{ fontSize: '13px', color: theme.colors.status.error }}>
+                      🚨 Indicateurs: {process.indicators.join(', ')}
+                    </div>
+                  )}
+                  
+                  <div style={{ fontSize: '12px', color: theme.colors.text.muted, marginTop: theme.spacing.xs }}>
+                    Créé: {process.create_time}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'network' && analysisResults && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Network size={20} color={theme.colors.status.info} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Connexions Réseau ({analysisResults.network_connections.length})
+              </h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+              {analysisResults.network_connections.map((conn, index) => (
+                <div 
+                  key={index}
+                  style={{
+                    padding: theme.spacing.md,
+                    backgroundColor: conn.suspicious ? 'rgba(220, 38, 38, 0.1)' : theme.colors.bg.tertiary,
+                    borderRadius: theme.borderRadius.md,
+                    border: conn.suspicious ? `2px solid ${theme.colors.status.error}` : `1px solid ${theme.colors.bg.accent}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                    <Badge variant="info">PID {conn.pid}</Badge>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                      {conn.process}
+                    </span>
+                    <Badge variant={conn.state === 'ESTABLISHED' ? 'success' : 'default'}>
+                      {conn.state}
+                    </Badge>
+                    {conn.suspicious && <Badge variant="error">MALVEILLANT</Badge>}
+                  </div>
+                  
+                  <div style={{ fontFamily: 'Monaco, monospace', fontSize: '13px', color: theme.colors.text.primary, marginBottom: theme.spacing.sm }}>
+                    {conn.local_addr} → {conn.remote_addr}
+                  </div>
+                  
+                  {conn.geo_location && (
+                    <div style={{ fontSize: '12px', color: theme.colors.text.muted }}>
+                      🌍 {conn.geo_location} | Réputation: {conn.reputation}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'malware' && analysisResults && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Fingerprint size={20} color={theme.colors.status.error} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Détection de Malwares ({analysisResults.malware_signatures.length})
+              </h3>
+            </div>
+            
+            {analysisResults.malware_signatures.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: theme.spacing.xl,
+                color: theme.colors.text.muted
+              }}>
+                <CheckCircle size={48} color={theme.colors.status.success} style={{ marginBottom: theme.spacing.md }} />
+                <p style={{ color: theme.colors.status.success, fontWeight: '600' }}>Aucun malware détecté</p>
+                <p style={{ fontSize: '13px' }}>Le dump mémoire semble propre</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                {analysisResults.malware_signatures.map((malware, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      padding: theme.spacing.lg,
+                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                      borderRadius: theme.borderRadius.md,
+                      border: `3px solid ${theme.colors.status.error}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                      <AlertTriangle size={20} color={theme.colors.status.error} />
+                      <span style={{ color: theme.colors.status.error, fontWeight: '700', fontSize: '18px' }}>
+                        {malware.name}
+                      </span>
+                      <Badge variant="error">{malware.confidence}% CONFIANCE</Badge>
+                    </div>
+                    
+                    <div style={{ marginBottom: theme.spacing.md }}>
+                      <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Processus infecté:</span><br/>
+                      <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontFamily: 'Monaco, monospace' }}>
+                        {malware.process}
+                      </span>
+                    </div>
+                    
+                    <div style={{ marginBottom: theme.spacing.md }}>
+                      <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Description:</span><br/>
+                      <span style={{ color: theme.colors.text.primary }}>
+                        {malware.description}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Indicateurs:</span><br/>
+                      <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap', marginTop: theme.spacing.xs }}>
+                        {malware.indicators.map((indicator, idx) => (
+                          <Badge key={idx} variant="error" style={{ fontSize: '11px' }}>
+                            {indicator}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeSubTab === 'timeline' && analysisResults && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Clock size={20} color={theme.colors.status.warning} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Timeline des Événements ({analysisResults.timeline_events.length})
+              </h3>
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              {/* Ligne de timeline */}
+              <div style={{
+                position: 'absolute',
+                left: '20px',
+                top: 0,
+                bottom: 0,
+                width: '2px',
+                backgroundColor: theme.colors.accent.primary
+              }}></div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md, paddingLeft: '50px' }}>
+                {analysisResults.timeline_events.map((event, index) => (
+                  <div key={index} style={{ position: 'relative' }}>
+                    {/* Point sur la timeline */}
+                    <div style={{
+                      position: 'absolute',
+                      left: '-35px',
+                      top: '8px',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: event.severity === 'critical' ? theme.colors.status.error :
+                                     event.severity === 'high' ? theme.colors.status.warning :
+                                     theme.colors.status.info,
+                      border: `2px solid ${theme.colors.bg.primary}`
+                    }}></div>
+                    
+                    <div style={{
+                      padding: theme.spacing.md,
+                      backgroundColor: theme.colors.bg.tertiary,
+                      borderRadius: theme.borderRadius.md,
+                      border: `1px solid ${theme.colors.bg.accent}`
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                        <span style={{ color: theme.colors.text.muted, fontSize: '13px', fontFamily: 'Monaco, monospace' }}>
+                          {event.time}
+                        </span>
+                        <Badge variant={event.severity === 'critical' ? 'error' : 
+                                      event.severity === 'high' ? 'warning' : 'info'}>
+                          {event.severity.toUpperCase()}
+                        </Badge>
+                        <span style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
+                          {event.type}
+                        </span>
+                      </div>
+                      <div style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                        {event.description}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'reports' && analysisResults && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <FileText size={20} color={theme.colors.status.info} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Génération de Rapports
+              </h3>
+            </div>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+              gap: theme.spacing.lg 
+            }}>
+              <div style={{
+                padding: theme.spacing.lg,
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.md,
+                border: `1px solid ${theme.colors.bg.accent}`
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                  <Microscope size={20} color={theme.colors.status.info} />
+                  <h4 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                    Résumé de l'Analyse
+                  </h4>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <div>
+                    <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>OS Analysé:</span><br/>
+                    <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                      {analysisResults.os_info.version}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Processus Suspects:</span><br/>
+                    <span style={{ color: theme.colors.status.error, fontWeight: '600', fontSize: '18px' }}>
+                      {analysisResults.processes.filter(p => p.suspicious).length}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Malwares Détectés:</span><br/>
+                    <span style={{ color: theme.colors.status.error, fontWeight: '600', fontSize: '18px' }}>
+                      {analysisResults.malware_signatures.length}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span style={{ color: theme.colors.text.muted, fontSize: '13px' }}>Connexions Suspectes:</span><br/>
+                    <span style={{ color: theme.colors.status.warning, fontWeight: '600', fontSize: '18px' }}>
+                      {analysisResults.network_connections.filter(c => c.suspicious).length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{
+                padding: theme.spacing.lg,
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.md,
+                border: `1px solid ${theme.colors.bg.accent}`
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                  <FileText size={20} color={theme.colors.status.success} />
+                  <h4 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                    Export Rapports
+                  </h4>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+                  <Button variant="success" fullWidth onClick={generateReport}>
+                    📊 Rapport Complet (TXT)
+                  </Button>
+                  
+                  <Button variant="secondary" fullWidth>
+                    📄 Rapport Exécutif (PDF)
+                  </Button>
+                  
+                  <Button variant="ghost" fullWidth>
+                    🔍 IOCs & Signatures (JSON)
+                  </Button>
+                  
+                  <Button variant="ghost" fullWidth>
+                    📈 Timeline (CSV)
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const MetasploitTab = () => {
   const [sessions, setSessions] = useState([]);
@@ -1964,23 +2832,747 @@ const ScanningTab = () => (
   </div>
 );
 
-const SniffingTab = () => (
-  <div style={{ padding: theme.spacing.lg }}>
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-        <Network size={20} color={theme.colors.status.success} />
-        <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-          Network Sniffing
-        </h2>
+// ================================
+// COMPOSANT TCPDUMP/NETWORK SNIFFING COMPLET
+// ================================
+
+const SniffingTab = () => {
+  const [activeSubTab, setActiveSubTab] = useState('capture');
+  const [interfaces, setInterfaces] = useState([]);
+  const [captures, setCaptures] = useState([]);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [selectedCapture, setSelectedCapture] = useState(null);
+  const [liveOutput, setLiveOutput] = useState([]);
+
+  const [captureConfig, setCaptureConfig] = useState({
+    interface: '',
+    duration: '60',
+    filter: 'all',
+    customFilter: '',
+    name: ''
+  });
+
+  const predefinedFilters = [
+    { value: 'all', label: 'Tout le trafic', description: 'Capture tous les paquets' },
+    { value: 'smb', label: 'SMB/CIFS', description: 'port 445 or port 139' },
+    { value: 'http', label: 'HTTP', description: 'port 80 or port 8080' },
+    { value: 'https', label: 'HTTPS', description: 'port 443' },
+    { value: 'ssh', label: 'SSH', description: 'port 22' },
+    { value: 'dns', label: 'DNS', description: 'port 53' },
+    { value: 'web', label: 'Web Traffic', description: 'port 80 or port 443 or port 8080' },
+    { value: 'printnightmare', label: 'Print Nightmare', description: 'host printnightmare.thm and (port 445 or port 135)' },
+    { value: 'custom', label: 'Filtre personnalisé', description: 'Définir un filtre BPF personnalisé' }
+  ];
+
+  const subTabs = [
+    { id: 'capture', label: 'Nouvelle Capture', icon: Play },
+    { id: 'active', label: 'Captures Actives', icon: Activity },
+    { id: 'history', label: 'Historique', icon: Clock },
+    { id: 'analysis', label: 'Analyse', icon: Eye }
+  ];
+
+  useEffect(() => {
+    loadInterfaces();
+    loadCaptures();
+    
+    // Rafraîchissement automatique toutes les 5 secondes
+    const interval = setInterval(() => {
+      loadCaptures();
+      if (selectedCapture) {
+        loadLiveOutput(selectedCapture.id);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [selectedCapture]);
+
+  const loadInterfaces = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/interfaces`);
+      if (response.ok) {
+        const data = await response.json();
+        setInterfaces(data.interfaces || []);
+        
+        // Sélection automatique de la première interface
+        if (data.interfaces && data.interfaces.length > 0 && !captureConfig.interface) {
+          setCaptureConfig(prev => ({ ...prev, interface: data.interfaces[0].name }));
+        }
+      } else {
+        // Interfaces simulées si API pas disponible
+        const mockInterfaces = [
+          { name: 'eth0', description: 'Ethernet Interface', ip: '192.168.1.100', status: 'up' },
+          { name: 'wlan0', description: 'Wireless Interface', ip: '192.168.1.101', status: 'up' },
+          { name: 'lo', description: 'Loopback Interface', ip: '127.0.0.1', status: 'up' }
+        ];
+        setInterfaces(mockInterfaces);
+        setCaptureConfig(prev => ({ ...prev, interface: 'eth0' }));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des interfaces:', error);
+      // Interfaces simulées en cas d'erreur
+      const mockInterfaces = [
+        { name: 'eth0', description: 'Ethernet Interface', ip: '192.168.1.100', status: 'up' },
+        { name: 'lo', description: 'Loopback Interface', ip: '127.0.0.1', status: 'up' }
+      ];
+      setInterfaces(mockInterfaces);
+    }
+  };
+
+  const loadCaptures = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setCaptures(data.captures || []);
+      } else {
+        // Données simulées si API pas disponible
+        setCaptures([
+          {
+            id: 'capture_001',
+            name: 'SMB_Analysis_' + new Date().getHours(),
+            interface: 'eth0',
+            status: 'completed',
+            start_time: new Date(Date.now() - 300000).toISOString(),
+            end_time: new Date(Date.now() - 60000).toISOString(),
+            duration: 240,
+            filter: 'port 445 or port 139',
+            packets_captured: 1247,
+            file_size: 2048576,
+            filename: 'smb_capture_001.pcap'
+          },
+          {
+            id: 'capture_002',
+            name: 'Web_Traffic_' + new Date().getHours(),
+            interface: 'eth0',
+            status: 'running',
+            start_time: new Date(Date.now() - 120000).toISOString(),
+            duration: 300,
+            filter: 'port 80 or port 443',
+            packets_captured: 856,
+            filename: 'web_capture_002.pcap'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des captures:', error);
+    }
+  };
+
+  const loadLiveOutput = async (captureId) => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/live/${captureId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lines && data.lines.length > 0) {
+          setLiveOutput(prev => [...prev, ...data.lines].slice(-100)); // Garder les 100 dernières lignes
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la sortie live:', error);
+    }
+  };
+
+  const startCapture = async () => {
+    if (!captureConfig.interface || !captureConfig.duration) {
+      alert('Veuillez sélectionner une interface et spécifier une durée');
+      return;
+    }
+
+    const captureName = captureConfig.name || `Capture_${new Date().getTime()}`;
+    
+    setIsCapturing(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          interface: captureConfig.interface,
+          duration: parseInt(captureConfig.duration),
+          filter: captureConfig.filter === 'custom' ? captureConfig.customFilter : captureConfig.filter,
+          name: captureName
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Simulation de capture si API pas disponible
+        setTimeout(() => {
+          const newCapture = {
+            id: 'capture_' + Date.now(),
+            name: captureName,
+            interface: captureConfig.interface,
+            status: 'running',
+            start_time: new Date().toISOString(),
+            duration: parseInt(captureConfig.duration),
+            filter: captureConfig.filter === 'custom' ? captureConfig.customFilter : 
+                   predefinedFilters.find(f => f.value === captureConfig.filter)?.description || captureConfig.filter,
+            packets_captured: 0,
+            filename: `${captureName.toLowerCase().replace(/\s+/g, '_')}.pcap`
+          };
+          
+          setCaptures(prev => [newCapture, ...prev]);
+          setSelectedCapture(newCapture);
+          setActiveSubTab('active');
+          alert(`🎯 Capture "${captureName}" démarrée avec succès sur ${captureConfig.interface}`);
+        }, 1000);
+        
+        // Reset du formulaire
+        setCaptureConfig(prev => ({
+          ...prev,
+          name: '',
+          filter: 'all',
+          customFilter: ''
+        }));
+      } else {
+        const error = await response.json();
+        alert(`Erreur lors du démarrage: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      // Simulation en cas d'erreur de connexion
+      const newCapture = {
+        id: 'demo_capture_' + Date.now(),
+        name: captureName,
+        interface: captureConfig.interface,
+        status: 'running',
+        start_time: new Date().toISOString(),
+        duration: parseInt(captureConfig.duration),
+        filter: captureConfig.filter === 'custom' ? captureConfig.customFilter : 
+               predefinedFilters.find(f => f.value === captureConfig.filter)?.description || captureConfig.filter,
+        packets_captured: 0,
+        filename: `${captureName.toLowerCase().replace(/\s+/g, '_')}.pcap`
+      };
+      
+      setCaptures(prev => [newCapture, ...prev]);
+      setActiveSubTab('active');
+      alert(`📡 Capture simulée "${captureName}" démarrée (mode démo)`);
+    }
+    
+    setIsCapturing(false);
+  };
+
+  const stopCapture = async (captureId) => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/stop/${captureId}`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        loadCaptures();
+        alert('Capture arrêtée avec succès');
+      } else {
+        // Simulation d'arrêt
+        setCaptures(prev => prev.map(cap => 
+          cap.id === captureId ? { ...cap, status: 'stopped', end_time: new Date().toISOString() } : cap
+        ));
+        alert('Capture arrêtée (mode simulation)');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'arrêt:', error);
+      alert('Erreur lors de l\'arrêt de la capture');
+    }
+  };
+
+  const downloadCapture = async (captureId, filename) => {
+    try {
+      const response = await fetch(`${API_BASE}/network/capture/download/${captureId}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        alert(`📥 Fichier ${filename} téléchargé avec succès`);
+      } else {
+        alert('Fichier non disponible - utilisez le simulateur ou vérifiez l\'API');
+      }
+    } catch (error) {
+      console.error('Erreur lors du téléchargement:', error);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  return (
+    <div style={{ padding: theme.spacing.lg }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: theme.spacing.md, 
+            marginBottom: theme.spacing.lg 
+          }}>
+            <Network size={20} color={theme.colors.status.success} />
+            <h2 style={{ 
+              color: theme.colors.text.primary, 
+              margin: 0, 
+              fontSize: '18px', 
+              fontWeight: '600' 
+            }}>
+              Network Sniffing - tcpdump Integration
+            </h2>
+          </div>
+          
+          <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            {subTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeSubTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSubTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.sm,
+                    padding: '10px 16px',
+                    backgroundColor: isActive ? theme.colors.accent.primary : theme.colors.bg.secondary,
+                    color: isActive ? theme.colors.text.primary : theme.colors.text.secondary,
+                    border: `1px solid ${isActive ? theme.colors.accent.primary : theme.colors.bg.tertiary}`,
+                    borderRadius: theme.borderRadius.md,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeSubTab === 'capture' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              <Play size={20} color={theme.colors.status.success} />
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Nouvelle Capture réseau
+              </h3>
+            </div>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+              gap: theme.spacing.lg 
+            }}>
+              <div>
+                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: '14px', fontWeight: '600' }}>
+                  🌐 Configuration réseau
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: theme.spacing.sm, 
+                      color: theme.colors.text.secondary,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}>
+                      Interface réseau
+                    </label>
+                    <Select
+                      options={interfaces.map(iface => ({ 
+                        value: iface.name, 
+                        label: `${iface.name} - ${iface.description || iface.ip}` 
+                      }))}
+                      value={captureConfig.interface}
+                      onChange={(e) => setCaptureConfig(prev => ({ ...prev, interface: e.target.value }))}
+                      placeholder="Sélectionnez une interface"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: theme.spacing.sm, 
+                      color: theme.colors.text.secondary,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}>
+                      Durée de capture (secondes)
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="60"
+                      value={captureConfig.duration}
+                      onChange={(e) => setCaptureConfig(prev => ({ ...prev, duration: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: theme.spacing.sm, 
+                      color: theme.colors.text.secondary,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}>
+                      Nom de la capture (optionnel)
+                    </label>
+                    <Input
+                      placeholder="Print_Nightmare_Analysis"
+                      value={captureConfig.name}
+                      onChange={(e) => setCaptureConfig(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: '14px', fontWeight: '600' }}>
+                  🔍 Filtres BPF
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: theme.spacing.sm, 
+                      color: theme.colors.text.secondary,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}>
+                      Filtre prédéfini
+                    </label>
+                    <Select
+                      options={predefinedFilters}
+                      value={captureConfig.filter}
+                      onChange={(e) => setCaptureConfig(prev => ({ ...prev, filter: e.target.value }))}
+                      placeholder="Type de trafic"
+                    />
+                  </div>
+                  
+                  {captureConfig.filter === 'custom' && (
+                    <div>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: theme.spacing.sm, 
+                        color: theme.colors.text.secondary,
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}>
+                        Filtre BPF personnalisé
+                      </label>
+                      <Input
+                        placeholder="host 192.168.1.100 and port 445"
+                        value={captureConfig.customFilter}
+                        onChange={(e) => setCaptureConfig(prev => ({ ...prev, customFilter: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  
+                  {captureConfig.filter !== 'custom' && (
+                    <div style={{ 
+                      padding: theme.spacing.sm,
+                      backgroundColor: theme.colors.bg.tertiary,
+                      borderRadius: theme.borderRadius.sm,
+                      fontSize: '12px',
+                      color: theme.colors.text.muted,
+                      fontFamily: 'Monaco, monospace'
+                    }}>
+                      {predefinedFilters.find(f => f.value === captureConfig.filter)?.description || 'Aucun filtre'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ 
+              marginTop: theme.spacing.lg, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.lg 
+            }}>
+              <Button
+                onClick={startCapture}
+                disabled={isCapturing || !captureConfig.interface}
+                variant="success"
+                icon={isCapturing ? Square : Play}
+                fullWidth
+              >
+                {isCapturing ? 'Démarrage en cours...' : '🎯 Démarrer la capture'}
+              </Button>
+              
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: theme.spacing.sm,
+                color: theme.colors.status.info,
+                fontSize: '13px'
+              }}>
+                <Network size={16} />
+                {interfaces.length} interfaces disponibles
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'active' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <Activity size={20} color={theme.colors.status.warning} />
+                <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                  Captures en cours ({captures.filter(c => c.status === 'running').length})
+                </h3>
+              </div>
+              <Button onClick={loadCaptures} size="sm" variant="ghost" icon={RefreshCw}>
+                Actualiser
+              </Button>
+            </div>
+
+            {captures.filter(c => c.status === 'running').length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: theme.spacing.xl,
+                color: theme.colors.text.muted
+              }}>
+                <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
+                <p>Aucune capture en cours</p>
+                <p style={{ fontSize: '13px' }}>
+                  Démarrez une nouvelle capture dans l'onglet "Nouvelle Capture"
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+                {captures.filter(c => c.status === 'running').map(capture => (
+                  <div
+                    key={capture.id}
+                    style={{
+                      padding: theme.spacing.md,
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      borderRadius: theme.borderRadius.md,
+                      border: `2px solid ${theme.colors.status.success}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs }}>
+                        <Activity size={16} color={theme.colors.status.success} />
+                        <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
+                          {capture.name}
+                        </span>
+                        <Badge variant="success">EN COURS</Badge>
+                        <span style={{ color: theme.colors.status.success, fontSize: '14px', fontWeight: '500' }}>
+                          📦 {capture.packets_captured || 0} paquets
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted }}>
+                        <span>🌐 {capture.interface}</span>
+                        <span>⏱️ {formatDuration(capture.duration)}s</span>
+                        <span>🔍 {capture.filter}</span>
+                        <span>📅 {new Date(capture.start_time).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                      <Button onClick={() => setSelectedCapture(capture)} size="sm" variant="ghost" icon={Eye}>
+                        Live
+                      </Button>
+                      <Button onClick={() => stopCapture(capture.id)} size="sm" variant="danger" icon={Square}>
+                        Arrêter
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeSubTab === 'history' && (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <Clock size={20} color={theme.colors.status.info} />
+                <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                  Historique des captures ({captures.filter(c => c.status !== 'running').length})
+                </h3>
+              </div>
+              <Button onClick={loadCaptures} size="sm" variant="ghost" icon={RefreshCw}>
+                Actualiser
+              </Button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+              {captures.filter(c => c.status !== 'running').map(capture => (
+                <div
+                  key={capture.id}
+                  style={{
+                    padding: theme.spacing.md,
+                    backgroundColor: theme.colors.bg.tertiary,
+                    borderRadius: theme.borderRadius.md,
+                    border: `1px solid ${theme.colors.bg.accent}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs }}>
+                      <CheckCircle size={16} color={theme.colors.status.success} />
+                      <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
+                        {capture.name}
+                      </span>
+                      <Badge variant={capture.status === 'completed' ? 'success' : 'warning'}>
+                        {capture.status}
+                      </Badge>
+                      <span style={{ color: theme.colors.text.secondary, fontSize: '14px' }}>
+                        📦 {capture.packets_captured || 0} paquets
+                      </span>
+                      {capture.file_size && (
+                        <span style={{ color: theme.colors.text.secondary, fontSize: '14px' }}>
+                          💾 {formatFileSize(capture.file_size)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted }}>
+                      <span>🌐 {capture.interface}</span>
+                      <span>📁 {capture.filename}</span>
+                      <span>🔍 {capture.filter}</span>
+                      <span>📅 {new Date(capture.start_time).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                    <Button 
+                      onClick={() => downloadCapture(capture.id, capture.filename)} 
+                      size="sm" 
+                      variant="secondary"
+                    >
+                      📥 Télécharger
+                    </Button>
+                    <Button onClick={() => setSelectedCapture(capture)} size="sm" variant="ghost" icon={Eye}>
+                      Analyser
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {activeSubTab === 'analysis' && selectedCapture && (
+          <Card>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                📊 Analyse - {selectedCapture.name}
+              </h3>
+              <Button onClick={() => setSelectedCapture(null)} size="sm" variant="ghost" icon={X}>
+                Fermer
+              </Button>
+            </div>
+            
+            <div style={{ 
+              backgroundColor: theme.colors.bg.tertiary,
+              padding: theme.spacing.lg,
+              borderRadius: theme.borderRadius.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: theme.spacing.md,
+                marginBottom: theme.spacing.lg,
+                fontSize: '13px'
+              }}>
+                <div>
+                  <span style={{ color: theme.colors.text.muted }}>📁 Fichier:</span><br/>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '500', fontFamily: 'Monaco, monospace' }}>
+                    {selectedCapture.filename}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: theme.colors.text.muted }}>🌐 Interface:</span><br/>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                    {selectedCapture.interface}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: theme.colors.text.muted }}>📦 Paquets:</span><br/>
+                  <span style={{ color: theme.colors.status.success, fontWeight: '600', fontSize: '16px' }}>
+                    {selectedCapture.packets_captured || 0}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: theme.colors.text.muted }}>⏱️ Durée:</span><br/>
+                  <span style={{ color: theme.colors.text.primary, fontWeight: '500' }}>
+                    {formatDuration(selectedCapture.duration)}
+                  </span>
+                </div>
+              </div>
+
+              {selectedCapture.status === 'running' && (
+                <div>
+                  <h4 style={{ color: theme.colors.status.info, margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
+                    📡 Sortie en temps réel
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: '#000000',
+                    border: `1px solid ${theme.colors.bg.accent}`,
+                    borderRadius: theme.borderRadius.md,
+                    padding: theme.spacing.md,
+                    minHeight: '300px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                    fontSize: '12px',
+                    lineHeight: '1.4'
+                  }}>
+                    {liveOutput.length === 0 ? (
+                      <div style={{ color: theme.colors.text.muted, textAlign: 'center', paddingTop: '50px' }}>
+                        En attente de paquets...
+                      </div>
+                    ) : (
+                      liveOutput.map((line, index) => (
+                        <div key={index} style={{ 
+                          color: line.includes('TCP') ? '#22c55e' : 
+                                line.includes('UDP') ? '#3b82f6' : 
+                                line.includes('ICMP') ? '#eab308' : '#e5e5e5',
+                          marginBottom: '2px'
+                        }}>
+                          {line}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
-      <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.text.muted }}>
-        <Network size={48} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.md }} />
-        <p>Module de capture réseau en développement</p>
-        <p style={{ fontSize: '13px' }}>Fonctionnalités prévues : tcpdump, Wireshark integration, traffic analysis</p>
-      </div>
-    </Card>
-  </div>
-);
+    </div>
+  );
+};
 
 const ReportsTab = () => (
   <div style={{ padding: theme.spacing.lg }}>
@@ -2028,6 +3620,7 @@ const NavigationTabs = ({ activeTab, onTabChange }) => {
     { id: 'scanning', label: 'Vulnerability Scanning', icon: Activity },
     { id: 'metasploit', label: 'Metasploit', icon: Crosshairs },
     { id: 'hydra', label: 'Hydra', icon: Shield },
+    { id: 'forensics', label: 'Memory Forensics', icon: BrainCircuit },
     { id: 'sniffing', label: 'Sniffing Réseau', icon: Network },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Configuration', icon: Settings }
@@ -2093,6 +3686,8 @@ const EnhancedMetasploitInterface = () => {
         return <MetasploitTab />;
       case 'hydra':
         return <HydraTab />;
+      case 'forensics':
+        return <MemoryForensicsTab />;
       case 'sniffing':
         return <SniffingTab />;
       case 'reports':
