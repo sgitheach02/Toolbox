@@ -2450,51 +2450,410 @@ Analyst: PACHA Memory Forensics Engine v2.0
           </Card>
         )}
 
-        {activeSubTab === 'network' && analysisResults && (
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-              <Network size={20} color={theme.colors.status.info} />
-              <h3 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '16px', fontWeight: '600' }}>
-                Connexions Réseau ({analysisResults.network_connections.length})
-              </h3>
+
+
+{activeSubTab === 'network' && (
+  <Card>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: theme.spacing.md, 
+      marginBottom: theme.spacing.lg 
+    }}>
+      <Network size={20} color={theme.colors.status.info} />
+      <h3 style={{ 
+        color: theme.colors.text.primary, 
+        margin: 0, 
+        fontSize: '16px', 
+        fontWeight: '600' 
+      }}>
+        Analyse Connexions Réseau {analysisResults?.data_type === 'network_capture' ? '(Capture tcpdump)' : '(Dump Mémoire)'} 
+        ({analysisResults?.network_connections?.length || 0})
+      </h3>
+    </div>
+
+    {/* Section intégration tcpdump */}
+    {(!analysisResults || analysisResults.data_type !== 'network_capture') && (
+      <div style={{ 
+        padding: theme.spacing.lg,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderRadius: theme.borderRadius.md,
+        border: `2px solid ${theme.colors.status.info}`,
+        marginBottom: theme.spacing.lg
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: theme.spacing.md, 
+          marginBottom: theme.spacing.md 
+        }}>
+          <Network size={20} color={theme.colors.status.info} />
+          <h4 style={{ 
+            color: theme.colors.status.info, 
+            margin: 0, 
+            fontSize: '16px', 
+            fontWeight: '600' 
+          }}>
+            🔗 Intégration tcpdump disponible
+          </h4>
+        </div>
+        <p style={{ 
+          color: theme.colors.text.primary, 
+          margin: 0, 
+          lineHeight: '1.5', 
+          marginBottom: theme.spacing.md 
+        }}>
+          Pour une analyse réseau plus approfondie, utilisez les captures tcpdump du module "Sniffing Réseau". 
+          Les captures sont automatiquement converties en artifacts forensiques analysables dans cet onglet.
+        </p>
+        
+        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+          <Button variant="secondary" size="sm">
+            🔍 Voir captures tcpdump disponibles
+          </Button>
+          <Button variant="ghost" size="sm">
+            📡 Aller au module Sniffing
+          </Button>
+        </div>
+      </div>
+    )}
+    
+    {/* Analyse enrichie tcpdump */}
+    {analysisResults?.data_type === 'network_capture' && analysisResults.network_analysis && (
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <h4 style={{ 
+          color: theme.colors.status.info, 
+          margin: '0 0 16px 0', 
+          fontSize: '14px', 
+          fontWeight: '600' 
+        }}>
+          📊 Analyse du Trafic Réseau (Source: tcpdump)
+        </h4>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: theme.spacing.md,
+          marginBottom: theme.spacing.lg
+        }}>
+          {/* Widget Protocoles */}
+          <div style={{
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <h5 style={{ 
+              color: theme.colors.text.primary, 
+              margin: '0 0 12px 0', 
+              fontSize: '13px', 
+              fontWeight: '600' 
+            }}>
+              🌐 Répartition Protocoles
+            </h5>
+            {Object.entries(analysisResults.network_analysis.protocols).map(([protocol, percentage]) => (
+              <div 
+                key={protocol} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '8px' 
+                }}
+              >
+                <span style={{ 
+                  color: theme.colors.text.secondary, 
+                  fontSize: '12px', 
+                  textTransform: 'uppercase' 
+                }}>
+                  {protocol}
+                </span>
+                <span style={{ 
+                  color: theme.colors.text.primary, 
+                  fontWeight: '600', 
+                  fontSize: '13px' 
+                }}>
+                  {percentage}%
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Widget Ports */}
+          <div style={{
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <h5 style={{ 
+              color: theme.colors.text.primary, 
+              margin: '0 0 12px 0', 
+              fontSize: '13px', 
+              fontWeight: '600' 
+            }}>
+              🚪 Ports les Plus Actifs
+            </h5>
+            {analysisResults.network_analysis.top_ports.slice(0, 4).map(port => (
+              <div 
+                key={port.port} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '8px',
+                  padding: '4px 8px',
+                  backgroundColor: port.suspicious ? 'rgba(220, 38, 38, 0.1)' : 'transparent',
+                  borderRadius: theme.borderRadius.sm
+                }}
+              >
+                <span style={{ 
+                  color: port.suspicious ? theme.colors.status.error : theme.colors.text.secondary, 
+                  fontSize: '12px' 
+                }}>
+                  {port.port}/{port.protocol}
+                </span>
+                <span style={{ 
+                  color: theme.colors.text.primary, 
+                  fontWeight: '600', 
+                  fontSize: '12px' 
+                }}>
+                  {port.packets.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Widget IPs malveillantes */}
+          <div style={{
+            padding: theme.spacing.md,
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <h5 style={{ 
+              color: theme.colors.text.primary, 
+              margin: '0 0 12px 0', 
+              fontSize: '13px', 
+              fontWeight: '600' 
+            }}>
+              🚨 IPs Malveillantes (tcpdump)
+            </h5>
+            {analysisResults.network_analysis.suspicious_ips.map(ip => (
+              <div 
+                key={ip.ip} 
+                style={{ 
+                  marginBottom: '12px',
+                  padding: '8px',
+                  backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.error}`
+                }}
+              >
+                <div style={{ 
+                  color: theme.colors.status.error, 
+                  fontWeight: '600', 
+                  fontSize: '12px', 
+                  fontFamily: 'Monaco, monospace' 
+                }}>
+                  {ip.ip}
+                </div>
+                <div style={{ 
+                  color: theme.colors.text.muted, 
+                  fontSize: '11px' 
+                }}>
+                  🌍 {ip.country} | {ip.reputation}
+                </div>
+                <div style={{ 
+                  color: theme.colors.text.secondary, 
+                  fontSize: '11px' 
+                }}>
+                  📦 {ip.packets} paquets
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Widget Source tcpdump */}
+          <div style={{
+            padding: theme.spacing.md,
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.status.success}`
+          }}>
+            <h5 style={{ 
+              color: theme.colors.status.success, 
+              margin: '0 0 12px 0', 
+              fontSize: '13px', 
+              fontWeight: '600' 
+            }}>
+              📡 Source tcpdump
+            </h5>
+            <div style={{ fontSize: '12px', color: theme.colors.text.primary }}>
+              <div>Interface: {analysisResults.source_info?.interface}</div>
+              <div>Durée: {analysisResults.source_info?.duration}</div>
+              <div>Paquets: {analysisResults.source_info?.packets_total?.toLocaleString()}</div>
+              <div style={{ 
+                marginTop: '8px', 
+                fontFamily: 'Monaco, monospace', 
+                fontSize: '11px', 
+                color: theme.colors.text.muted 
+              }}>
+                Filtre: {analysisResults.source_info?.capture_filter}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Liste des connexions */}
+    {analysisResults?.network_connections && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+        {analysisResults.network_connections.map((conn, index) => (
+          <div 
+            key={index}
+            style={{
+              padding: theme.spacing.md,
+              backgroundColor: conn.suspicious ? 'rgba(220, 38, 38, 0.1)' : theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              border: conn.suspicious ? `2px solid ${theme.colors.status.error}` : `1px solid ${theme.colors.bg.accent}`
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.md, 
+              marginBottom: theme.spacing.sm 
+            }}>
+              {analysisResults.data_type === 'network_capture' ? (
+                <Network size={16} color={conn.suspicious ? theme.colors.status.error : theme.colors.status.info} />
+              ) : (
+                <Badge variant="info">PID {conn.pid}</Badge>
+              )}
+              <span style={{ 
+                color: theme.colors.text.primary, 
+                fontWeight: '600' 
+              }}>
+                {conn.process}
+              </span>
+              <Badge variant={conn.state === 'ESTABLISHED' ? 'success' : 'default'}>
+                {conn.state}
+              </Badge>
+              {conn.suspicious && <Badge variant="error">MALVEILLANT</Badge>}
+              {analysisResults.data_type === 'network_capture' && (
+                <Badge variant="success">tcpdump</Badge>
+              )}
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-              {analysisResults.network_connections.map((conn, index) => (
-                <div 
-                  key={index}
-                  style={{
-                    padding: theme.spacing.md,
-                    backgroundColor: conn.suspicious ? 'rgba(220, 38, 38, 0.1)' : theme.colors.bg.tertiary,
-                    borderRadius: theme.borderRadius.md,
-                    border: conn.suspicious ? `2px solid ${theme.colors.status.error}` : `1px solid ${theme.colors.bg.accent}`
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                    <Badge variant="info">PID {conn.pid}</Badge>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {conn.process}
-                    </span>
-                    <Badge variant={conn.state === 'ESTABLISHED' ? 'success' : 'default'}>
-                      {conn.state}
-                    </Badge>
-                    {conn.suspicious && <Badge variant="error">MALVEILLANT</Badge>}
-                  </div>
-                  
-                  <div style={{ fontFamily: 'Monaco, monospace', fontSize: '13px', color: theme.colors.text.primary, marginBottom: theme.spacing.sm }}>
-                    {conn.local_addr} → {conn.remote_addr}
-                  </div>
-                  
-                  {conn.geo_location && (
-                    <div style={{ fontSize: '12px', color: theme.colors.text.muted }}>
-                      🌍 {conn.geo_location} | Réputation: {conn.reputation}
-                    </div>
+            <div style={{ 
+              fontFamily: 'Monaco, monospace', 
+              fontSize: '13px', 
+              color: theme.colors.text.primary, 
+              marginBottom: theme.spacing.sm 
+            }}>
+              {conn.local_addr} → {conn.remote_addr}
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: theme.spacing.lg, 
+              fontSize: '12px', 
+              color: theme.colors.text.muted 
+            }}>
+              {conn.geo_location && <span>🌍 {conn.geo_location}</span>}
+              <span>🔒 {conn.reputation}</span>
+              {conn.bytes_transferred && <span>📊 {conn.bytes_transferred}</span>}
+              {conn.duration && <span>⏱️ {conn.duration}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Captures tcpdump disponibles */}
+    {(!analysisResults || analysisResults.data_type !== 'network_capture') && (
+      <div style={{ marginTop: theme.spacing.lg }}>
+        <h4 style={{ 
+          color: theme.colors.text.primary, 
+          margin: '0 0 16px 0', 
+          fontSize: '14px', 
+          fontWeight: '600' 
+        }}>
+          📡 Captures tcpdump disponibles pour analyse réseau
+        </h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
+          {memoryDumps?.filter(d => d.type === 'network_capture').map(capture => (
+            <div 
+              key={capture.id}
+              style={{
+                padding: theme.spacing.md,
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.md,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: theme.spacing.sm, 
+                  marginBottom: theme.spacing.xs 
+                }}>
+                  <Network size={16} color={theme.colors.status.success} />
+                  <span style={{ 
+                    color: theme.colors.text.primary, 
+                    fontWeight: '600' 
+                  }}>
+                    {capture.name}
+                  </span>
+                  <Badge variant="success">tcpdump</Badge>
+                  {capture.suspicious_connections > 0 && (
+                    <Badge variant="warning">{capture.suspicious_connections} SUSPECT</Badge>
                   )}
                 </div>
-              ))}
+                <div style={{ fontSize: '12px', color: theme.colors.text.muted }}>
+                  📦 {capture.packets?.toLocaleString()} paquets | 🔍 {capture.filter}
+                </div>
+              </div>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => analyzeForensicData(capture.id, 'network_capture')}
+              >
+                Analyser connexions
+              </Button>
             </div>
-          </Card>
+          ))}
+        </div>
+        
+        {memoryDumps?.filter(d => d.type === 'network_capture').length === 0 && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: theme.spacing.lg,
+            color: theme.colors.text.muted,
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `2px dashed ${theme.colors.bg.accent}`
+          }}>
+            <Network size={32} color={theme.colors.text.muted} style={{ marginBottom: theme.spacing.sm }} />
+            <p style={{ margin: 0, fontSize: '14px' }}>Aucune capture tcpdump disponible</p>
+            <p style={{ 
+              margin: `${theme.spacing.xs} 0 0 0`, 
+              fontSize: '12px' 
+            }}>
+              Créez des captures dans l'onglet "Sniffing Réseau" pour les analyser ici
+            </p>
+          </div>
         )}
+      </div>
+    )}
+  </Card>
+)}
 
         {activeSubTab === 'malware' && analysisResults && (
           <Card>
