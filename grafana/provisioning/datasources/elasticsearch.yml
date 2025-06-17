@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: Elasticsearch-Graylog
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "graylog_*"
+    timeField: timestamp
+    timeInterval: 10s
+    jsonData:
+      interval: Medium
+      timeInterval: 10s
+      maxConcurrentShardRequests: 5
+      logMessageField: message
+      logLevelField: level
+    secureJsonData: {}

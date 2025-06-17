@@ -1,0 +1,288 @@
+# docker-compose-graylog.yml
+# Stack complète Pacha Toolbox + Graylog pour forensique réseau
+
+version: '3.8'
+
+services:
+  # ==================== PACHA TOOLBOX SERVICES ====================
+  
+  # Backend API Flask
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pacha-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Graylog Configuration
+      - GRAYLOG_HOST=graylog
+      - GRAYLOG_PORT=9000
+      - GRAYLOG_USER=admin
+      - GRAYLOG_PASSWORD=admin123!
+      - GRAYLOG_TOKEN=
+      - GRAYLOG_STREAM_ID=
+    volumes:
+      - ./backend:/app:rw
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+    networks:
+      - pacha-network
+    depends_on:
+      - graylog
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pacha-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./frontend:/app:rw
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+  # ==================== GRAYLOG STACK ====================
+  
+  # MongoDB pour Graylog
+  mongodb:
+    image: mongo:5.0.13
+    container_name: graylog-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: graylog
+      MONGO_INITDB_ROOT_PASSWORD: graylog123
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Elasticsearch pour Graylog
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    container_name: graylog-elasticsearch
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - discovery.type=single-node
+      - cluster.name=graylog-cluster
+      - node.name=graylog-node
+      - bootstrap.memory_lock=true
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 2g
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Graylog Server
+  graylog:
+    image: graylog/graylog:5.0
+    container_name: graylog-server
+    environment:
+      # Graylog Configuration
+      - GRAYLOG_PASSWORD_SECRET=SomePasswordPepper123456789012345678901234567890
+      # echo -n "admin123!" | sha256sum
+      - GRAYLOG_ROOT_PASSWORD_SHA2=e3c652f0ba0b4801205814f8b6bc49672c4c74e25b497770bb89b22cdeb4e951
+      - GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/
+      
+      # MongoDB Configuration
+      - GRAYLOG_MONGODB_URI=mongodb://graylog:graylog123@mongodb:27017/graylog
+      
+      # Elasticsearch Configuration
+      - GRAYLOG_ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      
+      # Performance Settings
+      - GRAYLOG_PROCESSBUFFER_PROCESSORS=2
+      - GRAYLOG_OUTPUTBUFFER_PROCESSORS=2
+      - GRAYLOG_PROCESSOR_WAIT_STRATEGY=blocking
+      - GRAYLOG_RING_SIZE=65536
+      - GRAYLOG_INPUTBUFFER_RING_SIZE=65536
+      - GRAYLOG_INPUTBUFFER_PROCESSORS=2
+      - GRAYLOG_INPUTBUFFER_WAIT_STRATEGY=blocking
+      
+      # Network Settings
+      - GRAYLOG_HTTP_PUBLISH_URI=http://localhost:9000/
+      - GRAYLOG_HTTP_ENABLE_CORS=true
+      - GRAYLOG_HTTP_ENABLE_GZIP=true
+      
+      # Security Settings
+      - GRAYLOG_TRUSTED_PROXIES=127.0.0.1/32, 0:0:0:0:0:0:0:1/128
+      
+      # Forensics Settings
+      - GRAYLOG_ALLOW_HIGHLIGHTING=true
+      - GRAYLOG_ALLOW_LEADING_WILDCARD_SEARCHES=true
+      
+    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 -- /docker-entrypoint.sh
+    ports:
+      - "9000:9000"      # Graylog Web Interface
+      - "1514:1514/tcp"  # Syslog TCP
+      - "1514:1514/udp"  # Syslog UDP
+      - "12201:12201/tcp" # GELF TCP
+      - "12201:12201/udp" # GELF UDP
+      - "5555:5555/tcp"  # Raw TCP
+      - "5555:5555/udp"  # Raw UDP
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+      - ./graylog/config:/usr/share/graylog/data/config:rw
+      - ./graylog/logs:/var/log/graylog:rw
+    networks:
+      - pacha-network
+    depends_on:
+      - mongodb
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/cluster/health || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # ==================== LOG GENERATORS (POUR TESTS) ====================
+  
+  # Générateur de logs Syslog pour tests
+  log-generator:
+    image: alpine:latest
+    container_name: log-generator
+    command: >
+      sh -c "
+        apk add --no-cache netcat-openbsd &&
+        while true; do
+          echo '<134>1 $(date -Iseconds) testhost rsyslog - - [origin software=\"rsyslog\" swVersion=\"8.2001.0\"] Test forensic log message from container: Traffic from 192.168.1.$(shuf -i 1-254 -n 1) to port $(shuf -i 1-65535 -n 1)' | nc -u graylog 1514;
+          sleep $(shuf -i 1-10 -n 1);
+        done
+      "
+    networks:
+      - pacha-network
+    depends_on:
+      - graylog
+    restart: unless-stopped
+    profiles:
+      - testing
+
+  # Générateur de logs de sécurité
+  security-log-generator:
+    image: alpine:latest
+    container_name: security-log-generator
+    command: >
+      sh -c "
+        apk add --no-cache netcat-openbsd &&
+        while true; do
+          EVENTS=('Failed password for admin from 192.168.1.100' 'Firewall DENY from 10.0.0.1 to 192.168.1.50:80' 'DNS query for malicious-domain.tk from 192.168.1.25' 'Port scan detected from 172.16.1.200')
+          EVENT=\$${EVENTS[\$$((RANDOM % \$${#EVENTS[@]}))]}
+          echo '<134>1 $(date -Iseconds) securityhost security - - - '\$$EVENT | nc -u graylog 1514;
+          sleep $(shuf -i 5-30 -n 1);
+        done
+      "
+    networks:
+      - pacha-network
+    depends_on:
+      - graylog
+    restart: unless-stopped
+    profiles:
+      - testing
+
+  # ==================== MONITORING ====================
+  
+  # Grafana pour visualisation avancée (optionnel)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: graylog-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  # Pacha Toolbox volumes
+  reports_data:
+    driver: local
+  logs_data:
+    driver: local
+  
+  # Graylog volumes
+  mongodb_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  graylog_data:
+    driver: local
+  
+  # Monitoring volumes
+  grafana_data:
+    driver: local
+
+networks:
+  pacha-network:
+    driver: bridge
+    name: pacha-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ==================== CONFIGURATION ADDITIONNELLE ====================
+
+# Créer les répertoires de configuration
+# mkdir -p graylog/config graylog/logs grafana/provisioning/datasources
+
+# Exemple de datasource Grafana pour Elasticsearch
+# grafana/provisioning/datasources/elasticsearch.yml:
+# apiVersion: 1
+# datasources:
+#   - name: Elasticsearch
+#     type: elasticsearch
+#     access: proxy
+#     url: http://elasticsearch:9200
+#     database: "graylog_*"
+#     timeField: timestamp
+#     timeInterval: 10s

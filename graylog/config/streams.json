@@ -1,0 +1,40 @@
+{
+    "streams": [
+        {
+            "title": "Security Events",
+            "description": "Stream for security-related events",
+            "rules": [
+                {
+                    "field": "message",
+                    "type": 1,
+                    "value": "(failed|denied|unauthorized|attack|malware|virus)",
+                    "inverted": false
+                }
+            ]
+        },
+        {
+            "title": "Network Traffic",
+            "description": "Stream for network traffic logs",
+            "rules": [
+                {
+                    "field": "facility",
+                    "type": 1,
+                    "value": "(firewall|router|switch)",
+                    "inverted": false
+                }
+            ]
+        },
+        {
+            "title": "Authentication Logs",
+            "description": "Stream for authentication events",
+            "rules": [
+                {
+                    "field": "message",
+                    "type": 1,
+                    "value": "(login|logout|ssh|auth)",
+                    "inverted": false
+                }
+            ]
+        }
+    ]
+}
