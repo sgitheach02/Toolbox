@@ -1,0 +1,227 @@
+# docker-compose-graylog.yml - VERSION CORRIGÉE
+# Stack complète Pacha Toolbox + Graylog pour forensique réseau
+
+version: '3.8'
+
+services:
+  # ==================== PACHA TOOLBOX SERVICES ====================
+  
+  # Backend API Flask
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pacha-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Graylog Configuration
+      - GRAYLOG_HOST=graylog
+      - GRAYLOG_PORT=9000
+      - GRAYLOG_USER=admin
+      - GRAYLOG_PASSWORD=admin123!
+      # Elasticsearch Configuration
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+    volumes:
+      - ./backend:/app:rw
+      - ./data/reports:/app/reports:rw
+      - ./data/logs:/app/logs:rw
+      - ./data/temp:/app/temp:rw
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - elasticsearch
+      - graylog
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pacha-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+      - REACT_APP_GRAYLOG_URL=http://localhost:9000
+    volumes:
+      - ./frontend/src:/app/src:rw
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # ==================== GRAYLOG STACK ====================
+  
+  # MongoDB (base de données pour Graylog)
+  mongodb:
+    image: mongo:4.4
+    container_name: graylog-mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123!
+    volumes:
+      - mongodb_data:/data/db:rw
+    networks:
+      - pacha-network
+    restart: unless-stopped
+
+  # Elasticsearch (moteur de recherche)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    container_name: graylog-elasticsearch
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - discovery.type=single-node
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data:rw
+    ports:
+      - "9200:9200"
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Graylog Server
+  graylog:
+    image: graylog/graylog:4.3
+    container_name: graylog-server
+    environment:
+      # Graylog Configuration
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/
+      # MongoDB
+      - GRAYLOG_MONGODB_URI=mongodb://admin:admin123!@mongodb:27017/graylog?authSource=admin
+      # Elasticsearch
+      - GRAYLOG_ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      # Network
+      - GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000
+      - GRAYLOG_HTTP_PUBLISH_URI=http://localhost:9000/
+    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 --  /docker-entrypoint.sh
+    ports:
+      - "9000:9000"
+      - "1514:1514/udp"
+      - "12201:12201/udp"
+    volumes:
+      - graylog_data:/usr/share/graylog/data:rw
+      - ./graylog/config:/usr/share/graylog/data/config:rw
+      - ./graylog/logs:/var/log/graylog:rw
+    networks:
+      - pacha-network
+    depends_on:
+      - mongodb
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/cluster/health || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # ==================== LOG GENERATORS (POUR TESTS) ====================
+  
+  # Générateur de logs Syslog pour tests
+  log-generator:
+    image: alpine:latest
+    container_name: log-generator
+    command: >
+      sh -c "
+        apk add --no-cache netcat-openbsd &&
+        while true; do
+          echo '<134>1 '$$(date -Iseconds)' testhost rsyslog - - [origin software=\"rsyslog\" swVersion=\"8.2001.0\"] Test forensic log message from container: Traffic from 192.168.1.'$$(shuf -i 1-254 -n 1)' to port '$$(shuf -i 1-65535 -n 1) | nc -u graylog 1514;
+          sleep $$(shuf -i 1-10 -n 1);
+        done
+      "
+    networks:
+      - pacha-network
+    depends_on:
+      - graylog
+    restart: unless-stopped
+    profiles:
+      - testing
+
+  # Générateur de logs de sécurité
+  security-log-generator:
+    image: alpine:latest
+    container_name: security-log-generator
+    command: >
+      sh -c "
+        apk add --no-cache netcat-openbsd &&
+        while true; do
+          EVENTS='Failed_password_for_admin_from_192.168.1.100 Firewall_DENY_from_10.0.0.1_to_192.168.1.50:80 DNS_query_for_malicious-domain.tk_from_192.168.1.25 Port_scan_detected_from_172.16.1.200';
+          EVENT=$$(echo $$EVENTS | tr ' ' '\n' | shuf -n 1 | tr '_' ' ');
+          echo '<134>1 '$$(date -Iseconds)' securityhost security - - - '$$EVENT | nc -u graylog 1514;
+          sleep $$(shuf -i 5-30 -n 1);
+        done
+      "
+    networks:
+      - pacha-network
+    depends_on:
+      - graylog
+    restart: unless-stopped
+    profiles:
+      - testing
+
+  # ==================== MONITORING ====================
+  
+  # Grafana pour visualisation avancée (optionnel)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: graylog-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  # Pacha Toolbox volumes
+  reports_data:
+    driver: local
+  logs_data:
+    driver: local
+  
+  # Graylog volumes
+  mongodb_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  graylog_data:
+    driver: local
+  
+  # Monitoring volumes
+  grafana_data:
+    driver: local
+
+networks:
+  pacha-network:
+    driver: bridge
+    name: pacha-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

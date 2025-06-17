@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Backend API Flask avec tcpdump
+  # Backend API Flask
   backend:
     build: 
       context: ./backend
@@ -20,19 +20,9 @@ services:
       - logs_data:/app/logs
     networks:
       - pacha-network
-    # Permissions réseau pour tcpdump
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    privileged: true
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  # Frontend React
+  # Frontend React - Version anti-crash
   frontend:
     build: 
       context: ./frontend
@@ -44,6 +34,9 @@ services:
       - REACT_APP_API_URL=http://localhost:5000/api
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      - NODE_OPTIONS=--max-old-space-size=4096
+      - GENERATE_SOURCEMAP=false
+      - DISABLE_ESLINT_PLUGIN=true
     volumes:
       - ./frontend:/app:rw
       - /app/node_modules
@@ -54,6 +47,12 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
 volumes:
   reports_data:
