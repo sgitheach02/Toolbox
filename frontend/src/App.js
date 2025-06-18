@@ -301,13 +301,15 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
   );
 };
 
-const Input = ({ type = 'text', placeholder, value, onChange, style = {}, onKeyPress }) => (
+const Input = ({ type = 'text', placeholder, value, onChange, style = {}, onKeyPress, name, disabled }) => (
   <input
     type={type}
+    name={name}
     placeholder={placeholder}
     value={value}
     onChange={onChange}
     onKeyPress={onKeyPress}
+    disabled={disabled}
     style={{
       width: '100%',
       backgroundColor: theme.colors.bg.tertiary,
@@ -511,22 +513,178 @@ const AuthForm = ({ onLogin }) => {
         
         {mode === 'login' && (
           <div style={{
-            marginTop: theme.spacing.lg,
+            marginBottom: theme.spacing.lg,
             padding: theme.spacing.md,
             background: 'rgba(0, 212, 255, 0.1)',
             border: `1px solid rgba(0, 212, 255, 0.3)`,
             borderRadius: theme.borderRadius.md,
             textAlign: 'center'
           }}>
-            <div style={{ color: theme.colors.accent.secondary, fontWeight: '600', marginBottom: theme.spacing.sm }}>
-              🧪 Compte de démonstration
-            </div>
-            <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-              <strong>Admin:</strong> admin / Admin123!<br />
-              <strong>User:</strong> user / password123
-            </div>
+           
+    
           </div>
         )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.accent.primary,
+              fontWeight: '600'
+            }}>
+              👤 Nom d'utilisateur
+            </label>
+            <Input
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              placeholder="Votre nom d'utilisateur"
+              disabled={isLoading}
+            />
+          </div>
+          
+          {mode === 'register' && (
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: theme.spacing.sm, 
+                color: theme.colors.accent.primary,
+                fontWeight: '600'
+              }}>
+                📧 Email
+              </label>
+              <Input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="votre@email.com"
+                disabled={isLoading}
+              />
+            </div>
+          )}
+          
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.accent.primary,
+              fontWeight: '600'
+            }}>
+              🔒 Mot de passe
+            </label>
+            <Input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Votre mot de passe"
+              disabled={isLoading}
+            />
+          </div>
+          
+          {mode === 'register' && (
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: theme.spacing.sm, 
+                color: theme.colors.accent.primary,
+                fontWeight: '600'
+              }}>
+                🔒 Confirmer le mot de passe
+              </label>
+              <Input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="Confirmez votre mot de passe"
+                disabled={isLoading}
+              />
+            </div>
+          )}
+          
+          {error && (
+            <div style={{
+              padding: theme.spacing.md,
+              borderRadius: theme.borderRadius.md,
+              background: 'rgba(220, 38, 38, 0.2)',
+              border: `1px solid ${theme.colors.status.error}`,
+              color: '#ff6b6b',
+              textAlign: 'center'
+            }}>
+              ❌ {error}
+            </div>
+          )}
+          
+          {success && (
+            <div style={{
+              padding: theme.spacing.md,
+              borderRadius: theme.borderRadius.md,
+              background: 'rgba(0, 255, 136, 0.2)',
+              border: `1px solid ${theme.colors.accent.primary}`,
+              color: theme.colors.accent.primary,
+              textAlign: 'center'
+            }}>
+              ✅ {success}
+            </div>
+          )}
+          
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            fullWidth
+            style={{ marginTop: theme.spacing.md }}
+          >
+            {isLoading ? (
+              <>
+                <Loader size={16} />
+                {mode === 'login' ? 'Connexion...' : 'Création...'}
+              </>
+            ) : (
+              mode === 'login' ? '🚀 Se connecter' : '✨ Créer le compte'
+            )}
+          </Button>
+        </form>
+        
+        <div style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
+          {mode === 'login' ? (
+            <>
+              Pas encore de compte ?{' '}
+              <button 
+                onClick={() => setMode('register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: theme.colors.accent.primary,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Créer un compte
+              </button>
+            </>
+          ) : (
+            <>
+              Déjà un compte ?{' '}
+              <button 
+                onClick={() => setMode('login')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: theme.colors.accent.primary,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Se connecter
+              </button>
+            </>
+          )}
+        </div>
       </Card>
     </div>
   );
@@ -688,6 +846,63 @@ const Header = ({ currentUser, onLogout }) => {
 // ONGLETS DE SCAN
 // ================================
 
+const LoadingProgress = ({ message, progress, subMessage }) => (
+  <div style={{
+    padding: theme.spacing.xl,
+    textAlign: 'center',
+    backgroundColor: theme.colors.bg.tertiary,
+    borderRadius: theme.borderRadius.md,
+    border: `1px solid ${theme.colors.bg.accent}`
+  }}>
+    <div style={{ marginBottom: theme.spacing.lg }}>
+      <Loader size={32} color={theme.colors.accent.primary} />
+    </div>
+    
+    <div style={{ 
+      color: theme.colors.text.primary, 
+      fontSize: '16px', 
+      fontWeight: '600',
+      marginBottom: theme.spacing.md 
+    }}>
+      {message}
+    </div>
+    
+    {subMessage && (
+      <div style={{ 
+        color: theme.colors.text.muted, 
+        fontSize: '14px',
+        marginBottom: theme.spacing.lg
+      }}>
+        {subMessage}
+      </div>
+    )}
+    
+    <div style={{
+      width: '100%',
+      height: '8px',
+      backgroundColor: theme.colors.bg.primary,
+      borderRadius: theme.borderRadius.sm,
+      overflow: 'hidden',
+      marginBottom: theme.spacing.md
+    }}>
+      <div style={{
+        width: `${progress}%`,
+        height: '100%',
+        background: `linear-gradient(90deg, ${theme.colors.accent.primary}, ${theme.colors.accent.secondary})`,
+        transition: 'width 0.3s ease',
+        borderRadius: theme.borderRadius.sm
+      }}></div>
+    </div>
+    
+    <div style={{ 
+      color: theme.colors.text.muted, 
+      fontSize: '12px' 
+    }}>
+      {progress}% completed
+    </div>
+  </div>
+);
+
 const NmapTab = () => {
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('');
@@ -737,63 +952,6 @@ const NmapTab = () => {
       });
     }, 500);
   };
-
-  const LoadingProgress = ({ message, progress, subMessage }) => (
-    <div style={{
-      padding: theme.spacing.xl,
-      textAlign: 'center',
-      backgroundColor: theme.colors.bg.tertiary,
-      borderRadius: theme.borderRadius.md,
-      border: `1px solid ${theme.colors.bg.accent}`
-    }}>
-      <div style={{ marginBottom: theme.spacing.lg }}>
-        <Loader size={32} color={theme.colors.accent.primary} />
-      </div>
-      
-      <div style={{ 
-        color: theme.colors.text.primary, 
-        fontSize: '16px', 
-        fontWeight: '600',
-        marginBottom: theme.spacing.md 
-      }}>
-        {message}
-      </div>
-      
-      {subMessage && (
-        <div style={{ 
-          color: theme.colors.text.muted, 
-          fontSize: '14px',
-          marginBottom: theme.spacing.lg
-        }}>
-          {subMessage}
-        </div>
-      )}
-      
-      <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: theme.colors.bg.primary,
-        borderRadius: theme.borderRadius.sm,
-        overflow: 'hidden',
-        marginBottom: theme.spacing.md
-      }}>
-        <div style={{
-          width: `${progress}%`,
-          height: '100%',
-          background: `linear-gradient(90deg, ${theme.colors.accent.primary}, ${theme.colors.accent.secondary})`,
-          transition: 'width 0.3s ease',
-          borderRadius: theme.borderRadius.sm
-        }}></div>
-      </div>
-      
-      <div style={{ 
-        color: theme.colors.text.muted, 
-        fontSize: '12px' 
-      }}>
-        {progress}% completed
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
@@ -913,6 +1071,642 @@ const NmapTab = () => {
   );
 };
 
+const MetasploitTab = () => {
+  const [target, setTarget] = useState('');
+  const [exploit, setExploit] = useState('');
+  const [payload, setPayload] = useState('');
+  const [isExploiting, setIsExploiting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState([]);
+
+  const exploits = [
+    { value: 'exploit/windows/smb/ms17_010_eternalblue', label: 'EternalBlue (MS17-010)' },
+    { value: 'exploit/multi/handler', label: 'Multi Handler' },
+    { value: 'exploit/linux/http/apache_mod_cgi_bash_env_exec', label: 'Apache CGI Bash' },
+    { value: 'exploit/windows/http/rejetto_hfs_exec', label: 'Rejetto HFS' },
+    { value: 'exploit/unix/webapp/php_utility_belt_rce', label: 'PHP Utility Belt RCE' }
+  ];
+
+  const payloads = [
+    { value: 'windows/x64/meterpreter/reverse_tcp', label: 'Windows x64 Meterpreter' },
+    { value: 'linux/x64/meterpreter/reverse_tcp', label: 'Linux x64 Meterpreter' },
+    { value: 'windows/meterpreter/reverse_tcp', label: 'Windows Meterpreter' },
+    { value: 'cmd/unix/reverse_bash', label: 'Unix Reverse Bash' },
+    { value: 'generic/shell_reverse_tcp', label: 'Generic Shell' }
+  ];
+
+  const startExploit = async () => {
+    if (!target || !exploit) {
+      alert('Veuillez renseigner une cible et un exploit');
+      return;
+    }
+
+    setIsExploiting(true);
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          const newResult = {
+            id: Date.now(),
+            target: target,
+            exploit: exploit,
+            payload: payload,
+            timestamp: new Date().toLocaleString(),
+            status: 'session_opened',
+            session_id: Math.floor(Math.random() * 1000),
+            details: {
+              os: 'Windows 10 x64',
+              privileges: 'SYSTEM',
+              architecture: 'x64'
+            }
+          };
+          setResults(prev => [newResult, ...prev]);
+          setIsExploiting(false);
+          return 0;
+        }
+        return prev + 12;
+      });
+    }, 300);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <Crosshairs size={20} color={theme.colors.status.error} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Metasploit Framework - Exploitation Engine
+          </h2>
+        </div>
+
+        {isExploiting ? (
+          <LoadingProgress 
+            message="Exploiting target..." 
+            progress={progress}
+            subMessage={`Running ${exploit} against ${target}`}
+          />
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🎯 Target
+                </label>
+                <Input
+                  placeholder="192.168.1.100"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  💣 Exploit Module
+                </label>
+                <Select
+                  options={exploits}
+                  value={exploit}
+                  onChange={(e) => setExploit(e.target.value)}
+                  placeholder="Sélectionner un exploit"
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🚀 Payload
+                </label>
+                <Select
+                  options={payloads}
+                  value={payload}
+                  onChange={(e) => setPayload(e.target.value)}
+                  placeholder="Sélectionner un payload"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: theme.spacing.lg }}>
+              <Button
+                onClick={startExploit}
+                disabled={!target || !exploit}
+                variant="danger"
+                icon={Play}
+                fullWidth
+              >
+                💀 Launch Exploit
+              </Button>
+            </div>
+          </>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            🚨 Exploitation Results ({results.length})
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.status.error}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="error">SESSION OPENED</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <Badge variant="info">Session #{result.session_id}</Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.sm }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.error}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                    Target OS
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                    {result.details.os}
+                  </div>
+                </div>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.error}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                    Privileges
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                    {result.details.privileges}
+                  </div>
+                </div>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.error}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                    Architecture
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                    {result.details.architecture}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
+const TcpdumpTab = () => {
+  const [interface_, setInterface] = useState('');
+  const [filter, setFilter] = useState('');
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [packets, setPackets] = useState([]);
+
+  const interfaces = [
+    { value: 'eth0', label: 'eth0 - Ethernet' },
+    { value: 'wlan0', label: 'wlan0 - WiFi' },
+    { value: 'lo', label: 'lo - Loopback' },
+    { value: 'any', label: 'any - All interfaces' }
+  ];
+
+  const filterPresets = [
+    { value: 'tcp port 80', label: 'HTTP Traffic (port 80)' },
+    { value: 'tcp port 443', label: 'HTTPS Traffic (port 443)' },
+    { value: 'tcp port 22', label: 'SSH Traffic (port 22)' },
+    { value: 'icmp', label: 'ICMP Packets' },
+    { value: 'tcp', label: 'All TCP Traffic' },
+    { value: 'udp', label: 'All UDP Traffic' }
+  ];
+
+  const startCapture = async () => {
+    if (!interface_) {
+      alert('Veuillez sélectionner une interface');
+      return;
+    }
+
+    setIsCapturing(true);
+    setProgress(0);
+    setPackets([]);
+
+    const captureInterval = setInterval(() => {
+      const newPacket = {
+        id: Date.now() + Math.random(),
+        timestamp: new Date().toISOString(),
+        src: `192.168.1.${Math.floor(Math.random() * 254) + 1}`,
+        dst: `192.168.1.${Math.floor(Math.random() * 254) + 1}`,
+        protocol: ['TCP', 'UDP', 'ICMP'][Math.floor(Math.random() * 3)],
+        port: Math.floor(Math.random() * 65535),
+        length: Math.floor(Math.random() * 1500) + 64
+      };
+      
+      setPackets(prev => [newPacket, ...prev.slice(0, 19)]);
+      setProgress(prev => Math.min(prev + 2, 100));
+    }, 500);
+
+    setTimeout(() => {
+      clearInterval(captureInterval);
+      setIsCapturing(false);
+      setProgress(0);
+    }, 10000);
+  };
+
+  const stopCapture = () => {
+    setIsCapturing(false);
+    setProgress(0);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <Network size={20} color={theme.colors.accent.secondary} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            tcpdump - Network Packet Analyzer
+          </h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500'
+            }}>
+              🔌 Interface
+            </label>
+            <Select
+              options={interfaces}
+              value={interface_}
+              onChange={(e) => setInterface(e.target.value)}
+              placeholder="Sélectionner une interface"
+            />
+          </div>
+
+          <div>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: theme.spacing.sm, 
+              color: theme.colors.text.secondary,
+              fontSize: '13px',
+              fontWeight: '500'
+            }}>
+              🔍 Filter
+            </label>
+            <Select
+              options={filterPresets}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filtre de capture (optionnel)"
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: theme.spacing.md }}>
+          <Button
+            onClick={startCapture}
+            disabled={!interface_ || isCapturing}
+            variant="primary"
+            icon={Play}
+            style={{ flex: 1 }}
+          >
+            📡 Start Capture
+          </Button>
+          
+          {isCapturing && (
+            <Button
+              onClick={stopCapture}
+              variant="danger"
+              style={{ flex: 1 }}
+            >
+              ⏹️ Stop Capture
+            </Button>
+          )}
+        </div>
+
+        {isCapturing && (
+          <div style={{ marginTop: theme.spacing.lg }}>
+            <div style={{ 
+              color: theme.colors.text.primary, 
+              fontSize: '14px', 
+              marginBottom: theme.spacing.sm,
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing.sm
+            }}>
+              <Loader size={16} color={theme.colors.accent.primary} />
+              Capturing packets on {interface_}...
+            </div>
+            
+            <div style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              tcpdump -i {interface_} {filter && `-f "${filter}"`} -v
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {packets.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            📦 Captured Packets ({packets.length})
+          </h3>
+          
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {packets.map(packet => (
+              <div key={packet.id} style={{
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.bg.tertiary,
+                borderRadius: theme.borderRadius.sm,
+                marginBottom: theme.spacing.xs,
+                border: `1px solid ${theme.colors.bg.accent}`,
+                fontFamily: 'monospace',
+                fontSize: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                  <Badge variant="info">{packet.protocol}</Badge>
+                  <span style={{ color: theme.colors.text.primary }}>
+                    {packet.src} → {packet.dst}
+                  </span>
+                  <span style={{ color: theme.colors.text.muted }}>
+                    Port: {packet.port}
+                  </span>
+                  <span style={{ color: theme.colors.text.muted }}>
+                    Length: {packet.length}
+                  </span>
+                  <span style={{ color: theme.colors.text.muted, marginLeft: 'auto' }}>
+                    {new Date(packet.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+const HydraTab = () => {
+  const [target, setTarget] = useState('');
+  const [service, setService] = useState('');
+  const [username, setUsername] = useState('');
+  const [wordlist, setWordlist] = useState('');
+  const [isAttacking, setIsAttacking] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState([]);
+
+  const services = [
+    { value: 'ssh', label: 'SSH (port 22)' },
+    { value: 'ftp', label: 'FTP (port 21)' },
+    { value: 'http-get', label: 'HTTP GET' },
+    { value: 'http-post-form', label: 'HTTP POST Form' },
+    { value: 'rdp', label: 'RDP (port 3389)' },
+    { value: 'smb', label: 'SMB (port 445)' },
+    { value: 'telnet', label: 'Telnet (port 23)' }
+  ];
+
+  const wordlists = [
+    { value: 'rockyou.txt', label: 'rockyou.txt (14M passwords)' },
+    { value: 'common.txt', label: 'common.txt (1K passwords)' },
+    { value: 'fasttrack.txt', label: 'fasttrack.txt (222 passwords)' },
+    { value: 'darkweb.txt', label: 'darkweb.txt (500K passwords)' },
+    { value: 'custom.txt', label: 'custom.txt (Custom wordlist)' }
+  ];
+
+  const startAttack = async () => {
+    if (!target || !service || !username) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setIsAttacking(true);
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          const newResult = {
+            id: Date.now(),
+            target: target,
+            service: service,
+            username: username,
+            timestamp: new Date().toLocaleString(),
+            status: 'success',
+            password: ['admin123', 'password', '123456', 'admin', 'root'][Math.floor(Math.random() * 5)],
+            attempts: Math.floor(Math.random() * 1000) + 100
+          };
+          setResults(prev => [newResult, ...prev]);
+          setIsAttacking(false);
+          return 0;
+        }
+        return prev + 15;
+      });
+    }, 200);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+          <Key size={20} color={theme.colors.status.warning} />
+          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+            Hydra - Network Login Cracker
+          </h2>
+        </div>
+
+        {isAttacking ? (
+          <LoadingProgress 
+            message="Brute force attack in progress..." 
+            progress={progress}
+            subMessage={`Attacking ${service} on ${target} with user ${username}`}
+          />
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🎯 Target
+                </label>
+                <Input
+                  placeholder="192.168.1.100"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🔧 Service
+                </label>
+                <Select
+                  options={services}
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  placeholder="Service à attaquer"
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  👤 Username
+                </label>
+                <Input
+                  placeholder="admin, root, user..."
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  📝 Wordlist
+                </label>
+                <Select
+                  options={wordlists}
+                  value={wordlist}
+                  onChange={(e) => setWordlist(e.target.value)}
+                  placeholder="Wordlist à utiliser"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: theme.spacing.lg }}>
+              <Button
+                onClick={startAttack}
+                disabled={!target || !service || !username}
+                variant="warning"
+                icon={Play}
+                fullWidth
+              >
+                🔨 Start Brute Force Attack
+              </Button>
+            </div>
+          </>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            🔓 Attack Results ({results.length})
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.status.success}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="success">PASSWORD FOUND</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <Badge variant="info">{result.service.toUpperCase()}</Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.sm }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.success}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                    Credentials
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px', fontFamily: 'monospace' }}>
+                    {result.username}:{result.password}
+                  </div>
+                </div>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.success}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                    Attempts
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                    {result.attempts} tries
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
 const NiktoTab = () => {
   const [target, setTarget] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -949,63 +1743,6 @@ const NiktoTab = () => {
       });
     }, 400);
   };
-
-  const LoadingProgress = ({ message, progress, subMessage }) => (
-    <div style={{
-      padding: theme.spacing.xl,
-      textAlign: 'center',
-      backgroundColor: theme.colors.bg.tertiary,
-      borderRadius: theme.borderRadius.md,
-      border: `1px solid ${theme.colors.bg.accent}`
-    }}>
-      <div style={{ marginBottom: theme.spacing.lg }}>
-        <Loader size={32} color={theme.colors.accent.primary} />
-      </div>
-      
-      <div style={{ 
-        color: theme.colors.text.primary, 
-        fontSize: '16px', 
-        fontWeight: '600',
-        marginBottom: theme.spacing.md 
-      }}>
-        {message}
-      </div>
-      
-      {subMessage && (
-        <div style={{ 
-          color: theme.colors.text.muted, 
-          fontSize: '14px',
-          marginBottom: theme.spacing.lg
-        }}>
-          {subMessage}
-        </div>
-      )}
-      
-      <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: theme.colors.bg.primary,
-        borderRadius: theme.borderRadius.sm,
-        overflow: 'hidden',
-        marginBottom: theme.spacing.md
-      }}>
-        <div style={{
-          width: `${progress}%`,
-          height: '100%',
-          background: `linear-gradient(90deg, ${theme.colors.accent.primary}, ${theme.colors.accent.secondary})`,
-          transition: 'width 0.3s ease',
-          borderRadius: theme.borderRadius.sm
-        }}></div>
-      </div>
-      
-      <div style={{ 
-        color: theme.colors.text.muted, 
-        fontSize: '12px' 
-      }}>
-        {progress}% completed
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
@@ -1204,19 +1941,11 @@ const PachaPentestSuite = () => {
       case 'nikto':
         return <NiktoTab />;
       case 'metasploit':
+        return <MetasploitTab />;
       case 'tcpdump':
+        return <TcpdumpTab />;
       case 'hydra':
-        return (
-          <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
-            <div style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>🚧</div>
-            <div style={{ color: theme.colors.text.primary, fontSize: '18px', marginBottom: theme.spacing.sm }}>
-              Module {activeTab.toUpperCase()} - En développement
-            </div>
-            <div style={{ color: theme.colors.text.muted }}>
-              Cette fonctionnalité sera bientôt disponible dans la version complète
-            </div>
-          </Card>
-        );
+        return <HydraTab />
       case 'history':
         return (
           <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
@@ -1271,165 +2000,3 @@ const PachaPentestSuite = () => {
 };
 
 export default PachaPentestSuite;
-        <>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            <div>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: theme.spacing.sm, 
-                color: theme.colors.accent.primary,
-                fontWeight: '600'
-              }}>
-                👤 Nom d'utilisateur
-              </label>
-              <Input
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                placeholder="Votre nom d'utilisateur"
-                disabled={isLoading}
-              />
-            </div>
-            
-            {mode === 'register' && (
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.accent.primary,
-                  fontWeight: '600'
-                }}>
-                  📧 Email
-                </label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="votre@email.com"
-                  disabled={isLoading}
-                />
-              </div>
-            )}
-            
-            <div>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: theme.spacing.sm, 
-                color: theme.colors.accent.primary,
-                fontWeight: '600'
-              }}>
-                🔒 Mot de passe
-              </label>
-              <Input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Votre mot de passe"
-                disabled={isLoading}
-              />
-            </div>
-            
-            {mode === 'register' && (
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.accent.primary,
-                  fontWeight: '600'
-                }}>
-                  🔒 Confirmer le mot de passe
-                </label>
-                <Input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirmez votre mot de passe"
-                  disabled={isLoading}
-                />
-              </div>
-            )}
-            
-            {error && (
-              <div style={{
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.md,
-                background: 'rgba(220, 38, 38, 0.2)',
-                border: `1px solid ${theme.colors.status.error}`,
-                color: '#ff6b6b',
-                textAlign: 'center'
-              }}>
-                ❌ {error}
-              </div>
-            )}
-            
-            {success && (
-              <div style={{
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.md,
-                background: 'rgba(0, 255, 136, 0.2)',
-                border: `1px solid ${theme.colors.accent.primary}`,
-                color: theme.colors.accent.primary,
-                textAlign: 'center'
-              }}>
-                ✅ {success}
-              </div>
-            )}
-            
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              fullWidth
-              style={{ marginTop: theme.spacing.md }}
-            >
-              {isLoading ? (
-                <>
-                  <Loader size={16} />
-                  {mode === 'login' ? 'Connexion...' : 'Création...'}
-                </>
-              ) : (
-                mode === 'login' ? '🚀 Se connecter' : '✨ Créer le compte'
-              )}
-            </Button>
-          </form>
-          
-          <div style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
-            {mode === 'login' ? (
-              <>
-                Pas encore de compte ?{' '}
-                <button 
-                  onClick={() => setMode('register')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: theme.colors.accent.primary,
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}
-                >
-                  Créer un compte
-                </button>
-              </>
-            ) : (
-              <>
-                Déjà un compte ?{' '}
-                <button 
-                  onClick={() => setMode('login')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: theme.colors.accent.primary,
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}
-                >
-                  Se connecter
-                </button>
-              </>
-            )}
-          </div>
-        </>
