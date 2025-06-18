@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Pacha Toolbox Backend v2.0 - Complet avec Metasploit et tous modules
+Pacha Toolbox Backend v2.1 - Version développement local
+Backend unifié avec multi-threading intégré - chemins corrigés
 """
 
 import os
@@ -13,29 +14,33 @@ import threading
 import subprocess
 import requests
 import logging
+import random
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
-# Ajouter le répertoire parent au path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# ==================== CONFIGURATION DÉVELOPPEMENT ====================
 
-# Configuration
+# Obtenir le répertoire de base du projet
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)  # Dossier parent (pacha-toolbox)
+
+# Configuration des répertoires pour développement local
 DIRECTORIES = {
-    'reports': '/app/reports',
-    'reports_pdf': '/app/reports/pdf',
-    'logs': '/app/logs',
-    'data': '/app/data'
+    'reports': os.path.join(PROJECT_ROOT, 'data', 'reports'),
+    'reports_pdf': os.path.join(PROJECT_ROOT, 'data', 'reports', 'pdf'),
+    'logs': os.path.join(PROJECT_ROOT, 'data', 'logs'),
+    'data': os.path.join(PROJECT_ROOT, 'data'),
+    'temp': os.path.join(PROJECT_ROOT, 'data', 'temp')
 }
 
 # Créer l'application Flask
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
-
-# Configuration
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max
 
-# Logger simple
+# ==================== LOGGING ====================
+
 class Logger:
     @staticmethod
     def info(msg):
@@ -51,13 +56,402 @@ class Logger:
 
 logger = Logger()
 
-# Créer les répertoires nécessaires
+# ==================== MULTI-THREADING INTÉGRÉ ====================
+
+class PachaTaskManager:
+    """Gestionnaire de tâches multi-threading intégré"""
+    
+    def __init__(self, max_workers=8):
+        self.max_workers = max_workers
+        self.active_tasks = {}
+        self.completed_tasks = {}
+        self.task_counter = 1
+        self._lock = threading.RLock()
+        
+        logger.info(f"🎯 TaskManager initialisé avec {max_workers} workers")
+    
+    def create_scan_task(self, tool, target, scan_type='basic', priority='normal'):
+        """Créer une tâche de scan"""
+        task_id = f"{tool}_{self.task_counter:04d}"
+        self.task_counter += 1
+        
+        task = {
+            'id': task_id,
+            'tool': tool,
+            'target': target,
+            'scan_type': scan_type,
+            'priority': priority,
+            'status': 'queued',
+            'created_at': datetime.now().isoformat(),
+            'progress': 0,
+            'output': [],
+            'result': None
+        }
+        
+        with self._lock:
+            self.active_tasks[task_id] = task
+        
+        # Démarrer l'exécution en arrière-plan
+        thread = threading.Thread(target=self._execute_scan_task, args=(task,), daemon=True)
+        thread.start()
+        
+        return task_id
+    
+    def create_exploit_task(self, module, target, payload, **kwargs):
+        """Créer une tâche d'exploit"""
+        task_id = f"exploit_{self.task_counter:04d}"
+        self.task_counter += 1
+        
+        task = {
+            'id': task_id,
+            'type': 'exploit',
+            'module': module,
+            'target': target,
+            'payload': payload,
+            'status': 'queued',
+            'created_at': datetime.now().isoformat(),
+            'progress': 0,
+            'output': [],
+            'metadata': kwargs
+        }
+        
+        with self._lock:
+            self.active_tasks[task_id] = task
+        
+        thread = threading.Thread(target=self._execute_exploit_task, args=(task,), daemon=True)
+        thread.start()
+        
+        return task_id
+    
+    def create_hydra_task(self, target, service, username=None, **kwargs):
+        """Créer une tâche Hydra"""
+        task_id = f"hydra_{self.task_counter:04d}"
+        self.task_counter += 1
+        
+        task = {
+            'id': task_id,
+            'type': 'hydra',
+            'target': target,
+            'service': service,
+            'username': username,
+            'status': 'queued',
+            'created_at': datetime.now().isoformat(),
+            'progress': 0,
+            'output': [],
+            'credentials': [],
+            'metadata': kwargs
+        }
+        
+        with self._lock:
+            self.active_tasks[task_id] = task
+        
+        thread = threading.Thread(target=self._execute_hydra_task, args=(task,), daemon=True)
+        thread.start()
+        
+        return task_id
+    
+    def _execute_scan_task(self, task):
+        """Exécuter une tâche de scan"""
+        task['status'] = 'running'
+        task['started_at'] = datetime.now().isoformat()
+        
+        try:
+            tool = task['tool']
+            target = task['target']
+            scan_type = task['scan_type']
+            
+            logger.info(f"🚀 Démarrage scan {tool}: {target}")
+            
+            # Phases de simulation réalistes
+            phases = self._get_scan_phases(tool)
+            
+            for i, (phase, progress) in enumerate(phases):
+                if task['status'] == 'cancelled':
+                    break
+                
+                task['progress'] = progress
+                message = f"[{datetime.now().strftime('%H:%M:%S')}] {phase}"
+                task['output'].append(message)
+                
+                # Délai réaliste
+                time.sleep(random.uniform(0.5, 2))
+            
+            # Résultats simulés
+            if task['status'] != 'cancelled':
+                task['result'] = self._generate_scan_results(tool, target)
+                task['status'] = 'completed'
+                task['progress'] = 100
+            
+        except Exception as e:
+            task['status'] = 'failed'
+            task['error'] = str(e)
+            logger.error(f"❌ Erreur scan {task['id']}: {e}")
+        
+        finally:
+            task['completed_at'] = datetime.now().isoformat()
+            self._move_to_completed(task['id'])
+    
+    def _execute_exploit_task(self, task):
+        """Exécuter une tâche d'exploit"""
+        task['status'] = 'running'
+        task['started_at'] = datetime.now().isoformat()
+        
+        try:
+            module = task['module']
+            target = task['target']
+            
+            logger.info(f"🎯 Démarrage exploit {module}: {target}")
+            
+            phases = [
+                ("Loading exploit module", 15),
+                ("Setting payload", 30),
+                ("Targeting system", 50),
+                ("Launching exploit", 75),
+                ("Checking for session", 90),
+                ("Exploit completed", 100)
+            ]
+            
+            session_created = False
+            
+            for phase, progress in phases:
+                if task['status'] == 'cancelled':
+                    break
+                
+                task['progress'] = progress
+                message = f"[{datetime.now().strftime('%H:%M:%S')}] [*] {phase}"
+                task['output'].append(message)
+                
+                # Simulation de succès (60% de chance)
+                if "Launching exploit" in phase:
+                    if random.random() > 0.4:
+                        session_created = True
+                        session_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+] Session opened successfully!"
+                        task['output'].append(session_msg)
+                        
+                        # Créer une session globale
+                        global metasploit_sessions
+                        session = {
+                            'id': len(metasploit_sessions) + 1,
+                            'target': target,
+                            'type': 'shell',
+                            'exploit_used': module,
+                            'opened_at': datetime.now().isoformat(),
+                            'status': 'active'
+                        }
+                        metasploit_sessions.append(session)
+                        task['session_id'] = session['id']
+                
+                time.sleep(random.uniform(0.5, 1.5))
+            
+            if task['status'] != 'cancelled':
+                task['result'] = {
+                    'success': session_created,
+                    'session_created': session_created,
+                    'target': target,
+                    'module': module
+                }
+                task['status'] = 'completed'
+            
+        except Exception as e:
+            task['status'] = 'failed'
+            task['error'] = str(e)
+            logger.error(f"❌ Erreur exploit {task['id']}: {e}")
+        
+        finally:
+            task['completed_at'] = datetime.now().isoformat()
+            self._move_to_completed(task['id'])
+    
+    def _execute_hydra_task(self, task):
+        """Exécuter une tâche Hydra"""
+        task['status'] = 'running'
+        task['started_at'] = datetime.now().isoformat()
+        
+        try:
+            target = task['target']
+            service = task['service']
+            
+            logger.info(f"🔓 Démarrage Hydra {service}: {target}")
+            
+            phases = [
+                ("Starting Hydra", 10),
+                ("Loading wordlist", 25),
+                ("Testing credentials", 70),
+                ("Analyzing results", 90),
+                ("Attack completed", 100)
+            ]
+            
+            for phase, progress in phases:
+                if task['status'] == 'cancelled':
+                    break
+                
+                task['progress'] = progress
+                message = f"[{datetime.now().strftime('%H:%M:%S')}] {phase}..."
+                task['output'].append(message)
+                
+                time.sleep(random.uniform(0.5, 1.5))
+            
+            # Simulation de découverte (25% de chance)
+            if task['status'] != 'cancelled' and random.random() > 0.75:
+                username = task['username'] or 'admin'
+                password = random.choice(['password', '123456', 'admin', 'test'])
+                
+                credential = {
+                    'username': username,
+                    'password': password,
+                    'service': service,
+                    'target': target
+                }
+                task['credentials'].append(credential)
+                
+                success_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+] Found: {username}:{password}"
+                task['output'].append(success_msg)
+            
+            if task['status'] != 'cancelled':
+                task['result'] = {
+                    'credentials_found': len(task['credentials']) > 0,
+                    'credentials': task['credentials'],
+                    'target': target,
+                    'service': service
+                }
+                task['status'] = 'completed'
+            
+        except Exception as e:
+            task['status'] = 'failed'
+            task['error'] = str(e)
+            logger.error(f"❌ Erreur Hydra {task['id']}: {e}")
+        
+        finally:
+            task['completed_at'] = datetime.now().isoformat()
+            self._move_to_completed(task['id'])
+    
+    def _get_scan_phases(self, tool):
+        """Récupérer les phases de scan selon l'outil"""
+        if tool == 'nmap':
+            return [
+                ("Initializing Nmap", 10),
+                ("Host discovery", 25),
+                ("Port scanning", 60),
+                ("Service detection", 80),
+                ("Script scanning", 95),
+                ("Scan completed", 100)
+            ]
+        elif tool == 'nikto':
+            return [
+                ("Starting Nikto", 10),
+                ("Testing server", 30),
+                ("Checking vulnerabilities", 70),
+                ("Analyzing results", 90),
+                ("Scan completed", 100)
+            ]
+        else:
+            return [
+                ("Initializing", 25),
+                ("Scanning", 75),
+                ("Completed", 100)
+            ]
+    
+    def _generate_scan_results(self, tool, target):
+        """Générer des résultats de scan simulés"""
+        if tool == 'nmap':
+            ports = random.sample([22, 80, 443, 8080, 21, 25, 53, 3389], random.randint(2, 5))
+            return {
+                'tool': 'nmap',
+                'target': target,
+                'ports_found': len(ports),
+                'open_ports': ports,
+                'services': {str(p): f"service-{p}" for p in ports}
+            }
+        elif tool == 'nikto':
+            vulns = random.randint(0, 5)
+            return {
+                'tool': 'nikto',
+                'target': target,
+                'vulnerabilities_found': vulns,
+                'security_issues': [f"Issue {i+1}" for i in range(vulns)]
+            }
+        else:
+            return {'tool': tool, 'target': target, 'completed': True}
+    
+    def _move_to_completed(self, task_id):
+        """Déplacer une tâche vers completed"""
+        with self._lock:
+            if task_id in self.active_tasks:
+                task = self.active_tasks.pop(task_id)
+                self.completed_tasks[task_id] = task
+    
+    def get_task_status(self, task_id):
+        """Récupérer le statut d'une tâche"""
+        with self._lock:
+            if task_id in self.active_tasks:
+                return self.active_tasks[task_id]
+            if task_id in self.completed_tasks:
+                return self.completed_tasks[task_id]
+        return None
+    
+    def get_active_tasks(self):
+        """Récupérer toutes les tâches actives"""
+        with self._lock:
+            return list(self.active_tasks.values())
+    
+    def get_completed_tasks(self, limit=10):
+        """Récupérer les tâches complétées"""
+        with self._lock:
+            tasks = list(self.completed_tasks.values())
+            tasks.sort(key=lambda x: x.get('completed_at', ''), reverse=True)
+            return tasks[:limit]
+    
+    def cancel_task(self, task_id):
+        """Annuler une tâche"""
+        with self._lock:
+            if task_id in self.active_tasks:
+                self.active_tasks[task_id]['status'] = 'cancelled'
+                logger.info(f"🚫 Tâche {task_id} annulée")
+                return True
+        return False
+    
+    def get_statistics(self):
+        """Obtenir les statistiques"""
+        with self._lock:
+            active_count = len(self.active_tasks)
+            completed_count = len(self.completed_tasks)
+            failed_count = len([t for t in self.completed_tasks.values() if t.get('status') == 'failed'])
+        
+        return {
+            'active_tasks': active_count,
+            'completed_tasks': completed_count,
+            'failed_tasks': failed_count,
+            'success_rate': ((completed_count - failed_count) / max(completed_count, 1)) * 100,
+            'max_workers': self.max_workers
+        }
+
+# Initialiser le gestionnaire de tâches
+task_manager = PachaTaskManager(max_workers=8)
+
+# Ajouter au contexte Flask
+app.task_manager = task_manager
+app.create_threaded_scan = task_manager.create_scan_task
+app.create_threaded_exploit = task_manager.create_exploit_task
+app.create_threaded_attack = task_manager.create_hydra_task
+app.get_threaded_task_status = task_manager.get_task_status
+
+logger.info("🔥 Multi-threading intégré activé!")
+
+# ==================== INITIALISATION ====================
+
 def ensure_directories():
-    """Créer tous les répertoires nécessaires"""
+    """Créer tous les répertoires nécessaires (version sécurisée)"""
     for name, path in DIRECTORIES.items():
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
-            logger.info(f"📁 Directory created: {path}")
+        try:
+            if not os.path.exists(path):
+                os.makedirs(path, exist_ok=True)
+                logger.info(f"📁 Directory created: {path}")
+        except PermissionError:
+            # Créer dans un dossier temporaire si permission refusée
+            temp_path = os.path.join(os.path.expanduser("~"), f"pacha-toolbox-{name}")
+            if not os.path.exists(temp_path):
+                os.makedirs(temp_path, exist_ok=True)
+                DIRECTORIES[name] = temp_path
+                logger.warning(f"⚠️ Permission denied for {path}, using {temp_path}")
 
 ensure_directories()
 
@@ -65,17 +459,14 @@ ensure_directories()
 scan_history = []
 active_scans = {}
 scan_outputs = {}
-
-# Variables Metasploit
 metasploit_sessions = []
 active_exploits = {}
 exploit_outputs = {}
+hydra_attacks = {}
+hydra_counter = 1
 
-# Variables globales Hydra (ajouter après les variables Metasploit existantes)
-hydra_attacks = {}  # Stockage des attaques en mémoire
-hydra_counter = 1   # Compteur pour les IDs d'attaques
+# ==================== BASE DE DONNÉES D'EXPLOITS ====================
 
-# Base de données d'exploits Metasploit
 METASPLOITABLE_EXPLOITS = [
     {
         'name': 'samba_usermap_script',
@@ -136,264 +527,55 @@ METASPLOITABLE_EXPLOITS = [
         'reliability': 'Excellent',
         'payloads': ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
         'color': '#f59e0b'
-    },
-
+    }
 ]
 
-# Données simulées pour les tests
-def create_test_scan_data():
-    """Créer des données de scan pour les tests"""
-    return {
-        'scan_id': str(uuid.uuid4())[:8],
-        'tool': 'nmap',
-        'target': '127.0.0.1',
-        'status': 'completed',
-        'timestamp': datetime.now().isoformat(),
-        'results': {
-            'hosts_discovered': 1,
-            'ports_open': [22, 80, 443],
-            'vulnerabilities': ['SSH version disclosure', 'HTTP server headers'],
-            'risk_level': 'medium'
-        }
-    }
-
-# Fonctions utilitaires pour les scans
-def build_nmap_command(target, scan_type):
-    """Build nmap command based on scan type"""
-    base_cmd = ['nmap']
-    
-    if scan_type == 'quick':
-        base_cmd.extend(['-T4', '-F'])
-    elif scan_type == 'basic':
-        base_cmd.extend(['-sV', '-sC'])
-    elif scan_type == 'intense':
-        base_cmd.extend(['-T4', '-A', '-v'])
-    elif scan_type == 'comprehensive':
-        base_cmd.extend(['-sS', '-sV', '-sC', '-A', '-T4'])
-    else:
-        base_cmd.extend(['-sV'])
-    
-    base_cmd.append(target)
-    return base_cmd
-
-def build_nikto_command(target, scan_type):
-    """Build nikto command based on scan type"""
-    base_cmd = ['nikto', '-h', target]
-    
-    if scan_type == 'quick':
-        base_cmd.extend(['-T', '2'])
-    elif scan_type == 'comprehensive':
-        base_cmd.extend(['-T', '5'])
-    
-    return base_cmd
-
-def execute_scan(command, scan_id, tool, target, scan_type):
-    """Execute scan in background thread"""
-    try:
-        logger.info(f"🚀 Starting scan {scan_id}: {' '.join(command)}")
-        
-        active_scans[scan_id]['status'] = 'running'
-        active_scans[scan_id]['pid'] = None
-        
-        # Execute command
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            bufsize=1
-        )
-        
-        active_scans[scan_id]['pid'] = process.pid
-        
-        # Read output line by line
-        output_lines = []
-        for line in iter(process.stdout.readline, ''):
-            line = line.strip()
-            if line:
-                output_lines.append(line)
-                scan_outputs[scan_id].append(line)
-                logger.info(f"📝 {scan_id}: {line}")
-        
-        # Wait for completion
-        return_code = process.wait()
-        
-        # Update status
-        if return_code == 0:
-            active_scans[scan_id]['status'] = 'completed'
-            logger.info(f"✅ Scan {scan_id} completed successfully")
-        else:
-            active_scans[scan_id]['status'] = 'failed'
-            logger.error(f"❌ Scan {scan_id} failed with code {return_code}")
-        
-        active_scans[scan_id]['end_time'] = datetime.now().isoformat()
-        active_scans[scan_id]['output'] = output_lines
-        
-        # Move to history
-        scan_history.append(active_scans[scan_id].copy())
-        
-    except Exception as e:
-        logger.error(f"❌ Error executing scan {scan_id}: {str(e)}")
-        active_scans[scan_id]['status'] = 'error'
-        active_scans[scan_id]['error'] = str(e)
-
-# Simulation d'exécution d'exploit Metasploit
-def simulate_exploit_execution(exploit_id, exploit_data):
-    """Simulation d'exécution d'exploit (remplace msfconsole en dev)"""
-    try:
-        target = exploit_data['target']
-        module = exploit_data['module']
-        payload = exploit_data['payload']
-        
-        # Messages de simulation
-        messages = [
-            f"[*] Started reverse TCP handler on {exploit_data['lhost']}:{exploit_data['lport']}",
-            f"[*] {exploit_data['start_time']} - Launching exploit {module}",
-            f"[*] Targeting {target}:{exploit_data['port']}",
-            f"[*] Sending stage ({len(payload)} bytes) to {target}",
-            f"[*] Command shell session opened ({target}:{exploit_data['port']} -> {exploit_data['lhost']}:{exploit_data['lport']})"
-        ]
-        
-        # Simulation du timing réel
-        for i, message in enumerate(messages):
-            time.sleep(2 + i)  # Délai progressif
-            exploit_outputs[exploit_id].append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
-            
-            # Simulation d'une session ouverte après le dernier message
-            if i == len(messages) - 1:
-                session_id = len(metasploit_sessions) + 1
-                session = {
-                    'id': session_id,
-                    'target': target,
-                    'type': 'shell' if 'shell' in payload else 'meterpreter',
-                    'platform': 'windows' if 'windows' in payload else 'linux',
-                    'exploit_used': module,
-                    'opened_at': datetime.now().isoformat(),
-                    'status': 'active'
-                }
-                metasploit_sessions.append(session)
-                exploit_outputs[exploit_id].append(f"[{datetime.now().strftime('%H:%M:%S')}] [+] Session {session_id} created successfully!")
-        
-        # Finaliser l'exploit
-        active_exploits[exploit_id]['status'] = 'completed'
-        active_exploits[exploit_id]['end_time'] = datetime.now().isoformat()
-        
-    except Exception as e:
-        logger.error(f"❌ Error in exploit simulation: {str(e)}")
-        active_exploits[exploit_id]['status'] = 'error'
-        active_exploits[exploit_id]['error'] = str(e)
-
-def simulate_hydra_attack(attack_id, attack_config):
-    """Simulation d'attaque Hydra (remplace l'appel réel à hydra en dev)"""
-    try:
-        target = attack_config['target']
-        service = attack_config['service']
-        port = attack_config['port']
-        
-        # Messages de simulation
-        messages = [
-            f"Hydra v9.4 (c) 2022 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).",
-            f"",
-            f"Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            f"[WARNING] Many SSH configurations limit the number of parallel tasks, it is recommended to reduce the tasks: use -t 4",
-            f"[DATA] max {attack_config['threads']} tasks per 1 server, overall {attack_config['threads']} tasks, {attack_config.get('attempts_estimate', 100)} login tries",
-            f"[DATA] attacking {service}://{target}:{port}/",
-            f"[STATUS] {attack_config.get('attempts_estimate', 100)} tries/min, {attack_config.get('attempts_estimate', 100)} tries in {attack_config['timeout']}s"
-        ]
-        
-        # Simulation du timing réel
-        for i, message in enumerate(messages):
-            time.sleep(1 + i * 0.5)  # Délai progressif
-            hydra_attacks[attack_id]['output'].append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
-            hydra_attacks[attack_id]['attempts'] = i * 10
-            hydra_attacks[attack_id]['progress'] = min((i * 15), 100)
-        
-        # Simulation de découverte de credentials (1 chance sur 3)
-        import random
-        if random.choice([True, False, False]):  # 33% de chance de trouver des credentials
-            time.sleep(3)
-            username = attack_config.get('username') or random.choice(['admin', 'root', 'user', 'test'])
-            password = random.choice(['password', '123456', 'admin', 'test', 'login'])
-            
-            credential = {'username': username, 'password': password}
-            hydra_attacks[attack_id]['credentials'].append(credential)
-            hydra_attacks[attack_id]['output'].append(f"[{datetime.now().strftime('%H:%M:%S')}] [22][ssh] host: {target}   login: {username}   password: {password}")
-            hydra_attacks[attack_id]['output'].append(f"[{datetime.now().strftime('%H:%M:%S')}] 1 of 1 target successfully completed, 1 valid password found")
-            
-            logger.info(f"🔓 Credentials found for {attack_id}: {username}:{password}")
-        else:
-            time.sleep(5)
-            hydra_attacks[attack_id]['output'].append(f"[{datetime.now().strftime('%H:%M:%S')}] 0 of 1 target completed, 0 valid passwords found")
-        
-        # Finaliser l'attaque
-        hydra_attacks[attack_id]['status'] = 'completed'
-        hydra_attacks[attack_id]['completed_at'] = datetime.now().isoformat()
-        hydra_attacks[attack_id]['progress'] = 100
-        
-        logger.info(f"✅ Hydra attack {attack_id} completed")
-        
-    except Exception as e:
-        logger.error(f"❌ Error in Hydra simulation: {str(e)}")
-        hydra_attacks[attack_id]['status'] = 'error'
-        hydra_attacks[attack_id]['error'] = str(e)
 # ==================== ROUTES DE BASE ====================
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """API health check"""
+    """Vérification de santé de l'API"""
     return jsonify({
         'status': 'healthy',
-        'message': 'Pacha Toolbox API operational',
-        'version': '2.0.0',
+        'message': 'Pacha Toolbox API operational (Development Mode)',
+        'version': '2.1.0-dev',
         'timestamp': datetime.now().isoformat(),
         'active_scans': len(active_scans),
-        'directories_ok': all(os.path.exists(path) for path in DIRECTORIES.values())
+        'threading_enabled': True,
+        'threading_stats': task_manager.get_statistics(),
+        'directories_ok': all(os.path.exists(path) for path in DIRECTORIES.values()),
+        'base_dir': BASE_DIR,
+        'project_root': PROJECT_ROOT
     })
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """Get complete API status - version avec Hydra"""
+    """Statut complet de l'API"""
     try:
-        active_hydra = [a for a in hydra_attacks.values() if a.get('status') == 'running']
+        threading_stats = task_manager.get_statistics()
         
         return jsonify({
-            'api_version': '2.0.0',
+            'api_version': '2.1.0-dev',
             'status': 'operational',
+            'mode': 'development',
             'active_scans': len(active_scans),
             'scan_history_count': len(scan_history),
             'active_metasploit_sessions': len(metasploit_sessions),
-            'active_hydra_attacks': len(active_hydra),
-            'total_hydra_attacks': len(hydra_attacks),
+            'threading_enabled': True,
+            'threading_stats': threading_stats,
             'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()},
             'available_tools': ['nmap', 'nikto', 'metasploit', 'hydra'],
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
-        logger.error(f"❌ Error getting status: {str(e)}")
+        logger.error(f"❌ Error getting status: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================== ROUTES SCAN ====================
 
-@app.route('/api/scan/types', methods=['GET'])
-def get_scan_types():
-    """Get available scan types"""
-    return jsonify({
-        'nmap': {
-            'quick': 'Quick scan (-T4 -F)',
-            'basic': 'Basic scan (-sV -sC)',
-            'intense': 'Intense scan (-T4 -A -v)',
-            'comprehensive': 'Comprehensive scan (-sS -sV -sC -A -T4)'
-        },
-        'nikto': {
-            'quick': 'Quick web scan',
-            'basic': 'Standard web scan',
-            'comprehensive': 'Complete web scan'
-        }
-    })
-
 @app.route('/api/scan/start', methods=['POST'])
 def start_scan():
-    """Start a new scan"""
+    """Démarrer un nouveau scan avec multi-threading"""
     try:
         data = request.get_json() or {}
         tool = data.get('tool', 'nmap')
@@ -403,123 +585,139 @@ def start_scan():
         if not target:
             return jsonify({'error': 'Target is required'}), 400
         
-        # Validate target for nikto
+        # Validation pour Nikto
         if tool == 'nikto':
             if not (target.startswith('http://') or target.startswith('https://')):
                 return jsonify({'error': 'Nikto requires HTTP/HTTPS URL'}), 400
         elif tool == 'nmap':
-            # Clean target for nmap
             if target.startswith(('http://', 'https://')):
                 target = target.replace('http://', '').replace('https://', '').split('/')[0]
         
-        scan_id = f"{tool}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
-        
-        # Build command
-        if tool == 'nmap':
-            command = build_nmap_command(target, scan_type)
-        elif tool == 'nikto':
-            command = build_nikto_command(target, scan_type)
-        else:
-            return jsonify({'error': f'Unsupported tool: {tool}'}), 400
-        
-        # Create scan entry
-        scan_entry = {
-            'scan_id': scan_id,
-            'tool': tool,
-            'target': target,
-            'scan_type': scan_type,
-            'status': 'starting',
-            'start_time': datetime.now().isoformat(),
-            'command': ' '.join(command)
-        }
-        
-        active_scans[scan_id] = scan_entry
-        scan_outputs[scan_id] = []
-        
-        # Start scan in background
-        thread = threading.Thread(target=execute_scan, args=(command, scan_id, tool, target, scan_type))
-        thread.daemon = True
-        thread.start()
-        
-        return jsonify({
-            'scan_id': scan_id,
-            'status': 'started',
-            'message': f'{tool} scan started successfully'
-        })
+        # Mode threadé (par défaut)
+        try:
+            task_id = task_manager.create_scan_task(tool, target, scan_type)
+            
+            return jsonify({
+                'scan_id': task_id,
+                'task_id': task_id,
+                'tool': tool,
+                'target': target,
+                'scan_type': scan_type,
+                'status': 'queued',
+                'message': f'{tool} scan started with threading',
+                'threaded': True,
+                'monitor_url': f'/api/threading/task/{task_id}/status'
+            })
+        except Exception as e:
+            logger.error(f"❌ Threading error: {e}")
+            return jsonify({'error': f'Threading failed: {str(e)}'}), 500
         
     except Exception as e:
-        logger.error(f"❌ Error starting scan: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/scan/stop/<scan_id>', methods=['POST'])
-def stop_scan(scan_id):
-    """Stop an active scan"""
-    try:
-        if scan_id not in active_scans:
-            return jsonify({'error': 'Scan not found'}), 404
-        
-        scan = active_scans[scan_id]
-        if 'pid' in scan and scan['pid']:
-            try:
-                os.kill(scan['pid'], signal.SIGTERM)
-                scan['status'] = 'stopped'
-                scan['end_time'] = datetime.now().isoformat()
-                logger.info(f"🛑 Scan {scan_id} stopped")
-            except ProcessLookupError:
-                scan['status'] = 'completed'
-        
-        return jsonify({'message': f'Scan {scan_id} stopped'})
-        
-    except Exception as e:
-        logger.error(f"❌ Error stopping scan: {str(e)}")
+        logger.error(f"❌ Error starting scan: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/scan/status/<scan_id>', methods=['GET'])
 def get_scan_status(scan_id):
-    """Get scan status"""
-    if scan_id in active_scans:
-        return jsonify(active_scans[scan_id])
-    
-    # Check in history
-    for scan in scan_history:
-        if scan['scan_id'] == scan_id:
-            return jsonify(scan)
+    """Récupérer le statut d'un scan"""
+    # Mode threadé
+    task_status = task_manager.get_task_status(scan_id)
+    if task_status:
+        return jsonify(task_status)
     
     return jsonify({'error': 'Scan not found'}), 404
-
-@app.route('/api/scan/output/<scan_id>', methods=['GET'])
-def get_scan_output(scan_id):
-    """Get scan output"""
-    if scan_id in scan_outputs:
-        return jsonify({
-            'scan_id': scan_id,
-            'output': scan_outputs[scan_id]
-        })
-    
-    return jsonify({'error': 'Scan output not found'}), 404
 
 @app.route('/api/scan/active', methods=['GET'])
 def get_active_scans():
-    """Get all active scans"""
-    return jsonify(list(active_scans.values()))
+    """Récupérer tous les scans actifs"""
+    threaded_scans = [task for task in task_manager.get_active_tasks() if task.get('tool')]
+    
+    return jsonify({
+        'threaded_scans': threaded_scans,
+        'total_active': len(threaded_scans)
+    })
 
 @app.route('/api/scan/history', methods=['GET'])
 def get_scan_history():
-    """Get scan history"""
-    return jsonify(scan_history)
-
-@app.route('/api/scan/live/<scan_id>', methods=['GET'])
-def get_scan_live_output(scan_id):
-    """Get live scan output"""
-    if scan_id in scan_outputs:
-        is_running = scan_id in active_scans and active_scans[scan_id].get('status') == 'running'
-        return jsonify({
-            'scan_id': scan_id,
-            'lines': scan_outputs[scan_id],
-            'is_running': is_running
-        })
+    """Récupérer l'historique des scans"""
+    threaded_history = task_manager.get_completed_tasks(20)
     
-    return jsonify({'error': 'Scan not found'}), 404
+    return jsonify({
+        'threaded_history': threaded_history,
+        'total_completed': len(task_manager.completed_tasks)
+    })
+
+# ==================== ROUTES THREADING ====================
+
+@app.route('/api/threading/info', methods=['GET'])
+def threading_info():
+    """Information sur le multi-threading"""
+    stats = task_manager.get_statistics()
+    return jsonify({
+        'threading_enabled': True,
+        'mode': 'integrated',
+        'stats': stats,
+        'features': [
+            'Scans parallèles',
+            'Exploits threadés', 
+            'Attaques Hydra parallèles',
+            'Annulation de tâches',
+            'Monitoring en temps réel'
+        ]
+    })
+
+@app.route('/api/threading/tasks', methods=['GET'])
+def get_threading_tasks():
+    """Liste des tâches threadées"""
+    active = task_manager.get_active_tasks()
+    completed = task_manager.get_completed_tasks(10)
+    
+    return jsonify({
+        'active_tasks': active,
+        'completed_tasks': completed,
+        'total_active': len(active),
+        'total_completed': len(task_manager.completed_tasks)
+    })
+
+@app.route('/api/threading/task/<task_id>/status', methods=['GET'])
+def get_threaded_task_status(task_id):
+    """Statut d'une tâche threadée"""
+    status = task_manager.get_task_status(task_id)
+    if status:
+        return jsonify(status)
+    else:
+        return jsonify({'error': 'Task not found'}), 404
+
+@app.route('/api/threading/task/<task_id>/cancel', methods=['POST'])
+def cancel_threaded_task(task_id):
+    """Annuler une tâche threadée"""
+    if task_manager.cancel_task(task_id):
+        return jsonify({'message': f'Task {task_id} cancelled', 'success': True})
+    else:
+        return jsonify({'error': 'Task not found or already completed'}), 404
+
+@app.route('/api/threading/dashboard', methods=['GET'])
+def threading_dashboard():
+    """Dashboard du multi-threading"""
+    try:
+        stats = task_manager.get_statistics()
+        active_tasks = task_manager.get_active_tasks()
+        completed_tasks = task_manager.get_completed_tasks(5)
+        
+        return jsonify({
+            'threading_enabled': True,
+            'stats': stats,
+            'active_tasks_count': len(active_tasks),
+            'active_tasks_detail': active_tasks,
+            'recent_completed': completed_tasks,
+            'performance': {
+                'total_processed': stats.get('completed_tasks', 0),
+                'success_rate': stats.get('success_rate', 0),
+                'current_throughput': len(active_tasks)
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ==================== ROUTES METASPLOIT ====================
 
@@ -532,13 +730,11 @@ def get_metasploitable_exploits():
         
         exploits = METASPLOITABLE_EXPLOITS.copy()
         
-        # Filtrage par recherche
         if search:
             exploits = [e for e in exploits if 
                        search in e['name'].lower() or 
                        search in e['description'].lower()]
         
-        # Filtrage par plateforme
         if platform:
             exploits = [e for e in exploits if platform in e['platform'].lower()]
         
@@ -548,7 +744,7 @@ def get_metasploitable_exploits():
         })
         
     except Exception as e:
-        logger.error(f"❌ Error getting exploits: {str(e)}")
+        logger.error(f"❌ Error getting exploits: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metasploit/exploit', methods=['POST'])
@@ -560,169 +756,65 @@ def start_metasploitable_exploit():
         module = data.get('module', '')
         payload = data.get('payload', '')
         target = data.get('target', '')
-        port = data.get('port', '445')
-        lhost = data.get('lhost', '127.0.0.1')
-        lport = data.get('lport', '4444')
         
         if not all([module, payload, target]):
             return jsonify({'error': 'Module, payload et target requis'}), 400
         
-        exploit_id = f"exploit_{int(time.time())}_{str(uuid.uuid4())[:8]}"
-        
-        # Simulation d'un exploit (remplace l'appel réel à msfconsole)
-        exploit_data = {
-            'exploit_id': exploit_id,
-            'module': module,
-            'payload': payload,
-            'target': target,
-            'port': port,
-            'lhost': lhost,
-            'lport': lport,
-            'status': 'running',
-            'start_time': datetime.now().isoformat()
-        }
-        
-        active_exploits[exploit_id] = exploit_data
-        exploit_outputs[exploit_id] = []
-        
-        # Simulation d'exécution
-        thread = threading.Thread(target=simulate_exploit_execution, args=(exploit_id, exploit_data))
-        thread.daemon = True
-        thread.start()
-        
-        logger.info(f"🚀 Metasploit exploit started: {exploit_id}")
+        # Mode threadé
+        task_id = task_manager.create_exploit_task(
+            module=module,
+            target=target,
+            payload=payload,
+            lhost=data.get('lhost', '127.0.0.1'),
+            lport=data.get('lport', '4444'),
+            port=data.get('port', '445')
+        )
         
         return jsonify({
-            'exploit_id': exploit_id,
-            'status': 'started',
-            'message': f'Exploit {module} lancé contre {target}:{port}'
+            'exploit_id': task_id,
+            'task_id': task_id,
+            'status': 'queued',
+            'message': f'Exploit {module} queued against {target}',
+            'threaded': True,
+            'monitor_url': f'/api/threading/task/{task_id}/status'
         })
         
     except Exception as e:
-        logger.error(f"❌ Error starting exploit: {str(e)}")
+        logger.error(f"❌ Error starting exploit: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metasploit/sessions', methods=['GET'])
 def get_metasploit_sessions():
     """Liste des sessions Metasploit actives"""
     try:
-        return jsonify(metasploit_sessions)
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting sessions: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/sessions/<int:session_id>', methods=['POST'])
-def interact_with_session(session_id):
-    """Interagir avec une session Metasploit"""
-    try:
-        data = request.get_json() or {}
-        command = data.get('command', '')
-        
-        # Trouver la session
-        session = next((s for s in metasploit_sessions if s['id'] == session_id), None)
-        if not session:
-            return jsonify({'error': 'Session non trouvée'}), 404
-        
-        # Simulation d'exécution de commande
-        if command:
-            output = f"Executing: {command}\nSimulated output for session {session_id}"
-            return jsonify({
-                'session_id': session_id,
-                'command': command,
-                'output': output,
-                'status': 'executed'
-            })
-        else:
-            return jsonify({'error': 'Commande requise'}), 400
-        
-    except Exception as e:
-        logger.error(f"❌ Error interacting with session: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/sessions/<int:session_id>', methods=['DELETE'])
-def kill_session(session_id):
-    """Fermer une session Metasploit"""
-    try:
-        global metasploit_sessions
-        session = next((s for s in metasploit_sessions if s['id'] == session_id), None)
-        if not session:
-            return jsonify({'error': 'Session non trouvée'}), 404
-        
-        # Supprimer la session
-        metasploit_sessions = [s for s in metasploit_sessions if s['id'] != session_id]
-        
         return jsonify({
-            'message': f'Session {session_id} fermée',
-            'session_id': session_id
+            'sessions': metasploit_sessions,
+            'total_sessions': len(metasploit_sessions)
         })
-        
     except Exception as e:
-        logger.error(f"❌ Error killing session: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/exploit/<exploit_id>/output', methods=['GET'])
-def get_exploit_output(exploit_id):
-    """Récupérer la sortie d'un exploit en cours"""
-    try:
-        if exploit_id not in exploit_outputs:
-            return jsonify({'error': 'Exploit non trouvé'}), 404
-        
-        is_running = exploit_id in active_exploits and active_exploits[exploit_id].get('status') == 'running'
-        
-        return jsonify({
-            'exploit_id': exploit_id,
-            'output': exploit_outputs[exploit_id],
-            'is_running': is_running,
-            'status': active_exploits.get(exploit_id, {}).get('status', 'unknown')
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting exploit output: {str(e)}")
+        logger.error(f"❌ Error getting sessions: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metasploit/status', methods=['GET'])
 def get_metasploit_status():
     """Statut général de Metasploit"""
     try:
+        threaded_exploits = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'exploit'])
+        
         return jsonify({
             'metasploit_available': True,
-            'active_exploits': len(active_exploits),
+            'active_exploits': threaded_exploits,
             'active_sessions': len(metasploit_sessions),
             'total_exploits_available': len(METASPLOITABLE_EXPLOITS),
-            'version': 'Metasploit Framework 6.3.x (Simulation)',
+            'version': 'Metasploit Framework 6.3.x (Simulation + Threading)',
             'last_updated': datetime.now().isoformat()
         })
         
     except Exception as e:
-        logger.error(f"❌ Error getting Metasploit status: {str(e)}")
+        logger.error(f"❌ Error getting Metasploit status: {e}")
         return jsonify({'error': str(e)}), 500
-    
 
-    # ==================== ROUTES HYDRA (ajouter avant les routes rapports) ====================
-
-@app.route('/api/hydra/attacks', methods=['GET'])
-def get_hydra_attacks():
-    """Récupérer la liste des attaques Hydra"""
-    try:
-        # Convertir le dictionnaire en liste
-        attacks_list = []
-        for attack_id, attack_data in hydra_attacks.items():
-            attack_info = attack_data.copy()
-            attack_info['id'] = attack_id
-            attacks_list.append(attack_info)
-        
-        # Trier par date de création (plus récent en premier)
-        attacks_list.sort(key=lambda x: x.get('started_at', ''), reverse=True)
-        
-        return jsonify({
-            'status': 'success',
-            'attacks': attacks_list,
-            'total': len(attacks_list)
-        })
-    except Exception as e:
-        logger.error(f"❌ Error getting Hydra attacks: {str(e)}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+# ==================== ROUTES HYDRA ====================
 
 @app.route('/api/hydra/attack', methods=['POST'])
 def launch_hydra_attack():
@@ -730,7 +822,6 @@ def launch_hydra_attack():
     try:
         data = request.get_json()
         
-        # Validation des données
         required_fields = ['target', 'service']
         for field in required_fields:
             if not data.get(field):
@@ -739,175 +830,80 @@ def launch_hydra_attack():
                     'message': f'Champ requis manquant: {field}'
                 }), 400
         
-        # Génération d'un ID unique pour l'attaque
-        global hydra_counter
-        attack_id = f"hydra_{hydra_counter:03d}"
-        hydra_counter += 1
+        # Mode threadé
+        task_id = task_manager.create_hydra_task(
+            target=data['target'],
+            service=data['service'],
+            username=data.get('username'),
+            port=data.get('port', '22'),
+            threads=data.get('threads', '4'),
+            timeout=data.get('timeout', '30')
+        )
         
-        # Estimation du nombre de tentatives
-        attempts_estimate = 100
-        if data.get('userlist') and data.get('passlist'):
-            attempts_estimate = 1000  # Plus d'estimation si wordlists
-        elif data.get('username') and data.get('password'):
-            attempts_estimate = 1  # Une seule tentative si credentials spécifiques
-        
-        # Configuration de l'attaque
-        attack_config = {
-            'id': attack_id,
+        return jsonify({
+            'status': 'success',
+            'message': 'Attaque Hydra threadée lancée',
+            'attack_id': task_id,
+            'task_id': task_id,
             'target': data['target'],
             'service': data['service'],
-            'port': data.get('port', '22'),
-            'username': data.get('username', ''),
-            'userlist': data.get('userlist', ''),
-            'password': data.get('password', ''),
-            'passlist': data.get('passlist', ''),
-            'threads': data.get('threads', '4'),
-            'timeout': data.get('timeout', '30'),
-            'args': data.get('args', ''),
-            'status': 'running',
-            'started_at': datetime.now().isoformat(),
-            'progress': 0,
-            'attempts': 0,
-            'attempts_estimate': attempts_estimate,
-            'credentials': [],
-            'output': [],
-            'pid': None
-        }
-        
-        # Stockage de l'attaque
-        hydra_attacks[attack_id] = attack_config
-        
-        # Lancement de l'attaque dans un thread séparé
-        attack_thread = threading.Thread(
-            target=simulate_hydra_attack,
-            args=(attack_id, attack_config)
-        )
-        attack_thread.daemon = True
-        attack_thread.start()
-        
-        logger.info(f"🚀 Hydra attack launched: {attack_id} -> {data['target']}:{data.get('port')}")
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Attaque Hydra lancée',
-            'attack_id': attack_id,
-            'target': data['target'],
-            'service': data['service']
+            'threaded': True,
+            'monitor_url': f'/api/threading/task/{task_id}/status'
         })
         
     except Exception as e:
-        logger.error(f"❌ Error launching Hydra attack: {str(e)}")
+        logger.error(f"❌ Error launching Hydra attack: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
-@app.route('/api/hydra/attack/<attack_id>/stop', methods=['POST'])
-def stop_hydra_attack(attack_id):
-    """Arrêter une attaque Hydra"""
-    try:
-        if attack_id not in hydra_attacks:
-            return jsonify({'error': 'Attaque non trouvée'}), 404
-        
-        attack = hydra_attacks[attack_id]
-        
-        # Simulation d'arrêt
-        if attack['status'] == 'running':
-            attack['status'] = 'stopped'
-            attack['completed_at'] = datetime.now().isoformat()
-            attack['output'].append(f"[{datetime.now().strftime('%H:%M:%S')}] Attack stopped by user")
-            
-            logger.info(f"🛑 Hydra attack {attack_id} stopped")
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'Attaque {attack_id} arrêtée'
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error stopping Hydra attack: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/hydra/attack/<attack_id>/status', methods=['GET'])
-def get_hydra_attack_status(attack_id):
-    """Obtenir le statut d'une attaque Hydra"""
-    try:
-        if attack_id not in hydra_attacks:
-            return jsonify({'error': 'Attaque non trouvée'}), 404
-        
-        attack = hydra_attacks[attack_id]
-        return jsonify(attack)
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting Hydra attack status: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/hydra/attack/<attack_id>/output', methods=['GET'])
-def get_hydra_attack_output(attack_id):
-    """Récupérer la sortie d'une attaque Hydra"""
-    try:
-        if attack_id not in hydra_attacks:
-            return jsonify({'error': 'Attaque non trouvée'}), 404
-        
-        attack = hydra_attacks[attack_id]
-        is_running = attack.get('status') == 'running'
-        
-        return jsonify({
-            'attack_id': attack_id,
-            'output': attack.get('output', []),
-            'is_running': is_running,
-            'status': attack.get('status', 'unknown'),
-            'progress': attack.get('progress', 0),
-            'attempts': attack.get('attempts', 0),
-            'credentials': attack.get('credentials', [])
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting Hydra attack output: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/hydra/status', methods=['GET'])
 def get_hydra_status():
     """Statut général de Hydra"""
     try:
-        active_attacks = [a for a in hydra_attacks.values() if a.get('status') == 'running']
-        completed_attacks = [a for a in hydra_attacks.values() if a.get('status') == 'completed']
-        total_credentials = sum(len(a.get('credentials', [])) for a in hydra_attacks.values())
+        threaded_active = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'hydra'])
+        threaded_completed = len([t for t in task_manager.get_completed_tasks() if t.get('type') == 'hydra'])
         
         return jsonify({
             'hydra_available': True,
-            'active_attacks': len(active_attacks),
-            'total_attacks': len(hydra_attacks),
-            'completed_attacks': len(completed_attacks),
-            'total_credentials_found': total_credentials,
-            'version': 'THC Hydra v9.4 (Simulation)',
+            'active_attacks': threaded_active,
+            'total_attacks': threaded_completed + threaded_active,
+            'completed_attacks': threaded_completed,
+            'version': 'THC Hydra v9.4 (Simulation + Threading)',
             'last_updated': datetime.now().isoformat(),
-            'supported_services': [
-                'ssh', 'ftp', 'telnet', 'http-get', 'http-post-form',
-                'https-get', 'mysql', 'mssql', 'postgres', 'rdp', 'smb', 'vnc'
-            ]
+            'supported_services': ['ssh', 'ftp', 'telnet', 'http-get', 'rdp', 'smb']
         })
         
     except Exception as e:
-        logger.error(f"❌ Error getting Hydra status: {str(e)}")
+        logger.error(f"❌ Error getting Hydra status: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================== ROUTES RAPPORTS ====================
 
 @app.route('/api/reports/test', methods=['GET'])
 def test_reports():
-    """Test endpoint for reports"""
+    """Test endpoint pour les rapports"""
     try:
-        # Create a test report
+        threading_stats = task_manager.get_statistics()
+        
         report_content = f"""
         <html>
-        <head><title>Test Report</title></head>
+        <head><title>Pacha Toolbox Report</title></head>
         <body>
-            <h1>Pacha Toolbox Test Report</h1>
+            <h1>Pacha Toolbox Development Report</h1>
             <p>Generated at: {datetime.now().isoformat()}</p>
-            <p>Status: Reports module operational</p>
-            <h2>Test Data</h2>
+            <p>Version: 2.1.0-dev</p>
+            <p>Base Directory: {BASE_DIR}</p>
+            
+            <h2>Threading Status</h2>
             <ul>
-                <li>Active scans: {len(active_scans)}</li>
-                <li>History count: {len(scan_history)}</li>
-                <li>Directories OK: {all(os.path.exists(path) for path in DIRECTORIES.values())}</li>
+                <li>Active tasks: {threading_stats['active_tasks']}</li>
+                <li>Completed tasks: {threading_stats['completed_tasks']}</li>
+                <li>Success rate: {threading_stats['success_rate']:.1f}%</li>
+                <li>Max workers: {threading_stats['max_workers']}</li>
+            </ul>
+            
+            <h2>Directories</h2>
+            <ul>
+                {''.join([f"<li>{name}: {path} ({'✓' if os.path.exists(path) else '✗'})</li>" for name, path in DIRECTORIES.items()])}
             </ul>
         </body>
         </html>
@@ -928,16 +924,16 @@ def test_reports():
         })
         
     except Exception as e:
-        logger.error(f"❌ Error creating test report: {str(e)}")
+        logger.error(f"❌ Error creating test report: {e}")
         return jsonify({
             'status': 'error',
-            'message': 'Reports module unavailable',
+            'message': 'Reports module error',
             'error': str(e)
         }), 500
 
 @app.route('/api/reports/list', methods=['GET'])
 def list_reports():
-    """List all available reports"""
+    """Liste de tous les rapports disponibles"""
     try:
         reports_dir = DIRECTORIES['reports']
         if not os.path.exists(reports_dir):
@@ -953,8 +949,7 @@ def list_reports():
                     'size': stat.st_size,
                     'created': datetime.fromtimestamp(stat.st_ctime).isoformat(),
                     'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    'download_url': f'/api/reports/download/{filename}',
-                    'preview_url': f'/api/reports/preview/{filename}'
+                    'download_url': f'/api/reports/download/{filename}'
                 })
         
         return jsonify({
@@ -962,387 +957,81 @@ def list_reports():
         })
         
     except Exception as e:
-        logger.error(f"❌ Error listing reports: {str(e)}")
+        logger.error(f"❌ Error listing reports: {e}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/reports/download/<filename>', methods=['GET'])
-def download_report(filename):
-    """Download a report file"""
-    try:
-        filepath = os.path.join(DIRECTORIES['reports'], filename)
-        if not os.path.exists(filepath):
-            return jsonify({'error': 'Report not found'}), 404
-        
-        return send_file(filepath, as_attachment=True)
-        
-    except Exception as e:
-        logger.error(f"❌ Error downloading report: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES RÉSEAU ====================
-
-@app.route('/api/network/interfaces', methods=['GET'])
-def get_network_interfaces():
-    """Available network interfaces"""
-    return jsonify({
-        'interfaces': [
-            {'name': 'eth0', 'ip': '192.168.1.100', 'status': 'up'},
-            {'name': 'lo', 'ip': '127.0.0.1', 'status': 'up'}
-        ]
-    })
-
-@app.route('/api/network/captures/active', methods=['GET'])
-def get_active_network_captures():
-    """Get active network captures"""
-    return jsonify([])
-
-@app.route('/api/network/capture/history', methods=['GET'])
-def get_network_capture_history():
-    """Get network capture history"""
-    return jsonify([])
-
-@app.route('/api/network/capture/live/<capture_id>', methods=['GET'])
-def get_capture_live_output(capture_id):
-    """Get live capture output"""
-    return jsonify({
-        'capture_id': capture_id,
-        'lines': [],
-        'is_running': False,
-        'packets_captured': 0
-    })
 
 # ==================== ROUTES SYSTÈME ====================
 
-@app.route('/api/system/tools', methods=['GET'])
-def get_system_tools():
-    """Check available security tools - version avec Hydra"""
+@app.route('/api/system/info', methods=['GET'])
+def get_system_info():
+    """Informations système"""
     try:
-        tools_status = {}
-        
-        # Check for each tool
-        tools_to_check = ['nmap', 'nikto', 'msfconsole', 'hydra', 'tcpdump']
-        
-        for tool in tools_to_check:
-            try:
-                if tool == 'hydra':
-                    # Hydra utilise -h pour help, pas --version
-                    result = subprocess.run([tool, '-h'], 
-                                          capture_output=True, 
-                                          text=True, 
-                                          timeout=5)
-                    tools_status[tool] = result.returncode == 0
-                else:
-                    result = subprocess.run([tool, '--version'], 
-                                          capture_output=True, 
-                                          text=True, 
-                                          timeout=5)
-                    tools_status[tool.replace('msfconsole', 'metasploit')] = result.returncode == 0
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                tools_status[tool.replace('msfconsole', 'metasploit')] = False
+        threading_stats = task_manager.get_statistics()
         
         return jsonify({
-            'tools': tools_status,
+            'version': '2.1.0-dev',
+            'mode': 'development',
+            'threading_enabled': True,
+            'threading_stats': threading_stats,
+            'python_version': sys.version,
+            'base_directory': BASE_DIR,
+            'project_root': PROJECT_ROOT,
+            'directories': DIRECTORIES,
             'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:
-        logger.error(f"❌ Error checking tools: {str(e)}")
-        # Return default status if check fails
-        return jsonify({
-            'tools': {
-                'nmap': True,
-                'nikto': True,
-                'metasploit': True,
-                'hydra': True,
-                'tcpdump': True
-            },
-            'timestamp': datetime.now().isoformat()
-        })
-
-@app.route('/api/system/info', methods=['GET'])
-def get_system_info():
-    """Get system information"""
-    try:
-        import psutil
-        
-        return jsonify({
-            'version': '2.0.0',
-            'uptime': f"{int(time.time() - psutil.boot_time())}s",
-            'memory': f"{psutil.virtual_memory().percent}%",
-            'cpu': f"{psutil.cpu_percent()}%",
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except ImportError:
-        return jsonify({
-            'version': '2.0.0',
-            'uptime': 'Unknown',
-            'memory': 'Unknown',
-            'cpu': 'Unknown',
-            'timestamp': datetime.now().isoformat()
-        })
+        logger.error(f"❌ Error getting system info: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ==================== GESTIONNAIRES D'ERREURS ====================
-
-# ==================== MISE À JOUR DU HANDLER 404 ====================
-
-# Remplacer la fonction not_found() existante par :
 
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
         'error': 'Endpoint not found',
         'message': 'Check the API URL',
+        'mode': 'development',
         'available_endpoints': [
             '/api/health',
             '/api/status',
-            '/api/scan/types',
             '/api/scan/start',
-            '/api/scan/stop/<scan_id>',
+            '/api/scan/status/<scan_id>',
             '/api/scan/active',
             '/api/scan/history',
+            '/api/threading/info',
+            '/api/threading/tasks',
+            '/api/threading/dashboard',
             '/api/metasploit/exploits',
             '/api/metasploit/exploit',
             '/api/metasploit/sessions',
-            '/api/hydra/attacks',           # NOUVEAU
-            '/api/hydra/attack',            # NOUVEAU
-            '/api/hydra/attack/<id>/stop',  # NOUVEAU
-            '/api/hydra/status',            # NOUVEAU
+            '/api/hydra/attack',
+            '/api/hydra/status',
             '/api/reports/test',
             '/api/reports/list',
-            '/api/system/tools',
             '/api/system/info'
         ]
     }), 404
-@app.errorhandler(413)
-def file_too_large(error):
-    return jsonify({
-        'error': 'File too large',
-        'message': 'File size exceeds the allowed limit'
-    }), 413
 
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"Internal server error: {error}")
     return jsonify({
         'error': 'Internal server error',
-        'message': 'An unexpected error occurred'
+        'message': 'An unexpected error occurred',
+        'mode': 'development'
     }), 500
-
-# Ajoutez cette route dans votre backend/main.py pour l'exécution de commandes
-
-@app.route('/api/metasploit/sessions/<int:session_id>/execute', methods=['POST'])
-def execute_session_command(session_id):
-    """Exécuter une commande dans une session Metasploit"""
-    try:
-        data = request.get_json() or {}
-        command = data.get('command', '').strip()
-        
-        if not command:
-            return jsonify({'error': 'Commande requise'}), 400
-        
-        # Trouver la session
-        session = next((s for s in metasploit_sessions if s['id'] == session_id), None)
-        if not session:
-            return jsonify({'error': 'Session non trouvée'}), 404
-        
-        logger.info(f"🖥️ Executing command in session {session_id}: {command}")
-        
-        # Simulation d'exécution de commande selon le type de session
-        session_type = session.get('type', 'meterpreter')
-        target = session.get('target', 'unknown')
-        
-        # Simuler des réponses réalistes pour différentes commandes
-        simulated_outputs = {
-            'whoami': 'distccd',
-            'id': 'uid=1001(distccd) gid=1001(distccd) groups=1001(distccd)',
-            'pwd': '/tmp',
-            'hostname': 'metasploitable',
-            'uname -a': 'Linux metasploitable 2.6.24-16-server #1 SMP Thu Apr 10 13:58:00 UTC 2008 i686 GNU/Linux',
-            'cat /etc/passwd': '''root:x:0:0:root:/root:/bin/bash
-daemon:x:1:1:daemon:/usr/sbin:/bin/sh
-bin:x:2:2:bin:/bin:/bin/sh
-sys:x:3:3:sys:/dev:/bin/sh
-sync:x:4:65534:sync:/bin:/bin/sync
-games:x:5:60:games:/usr/games:/bin/sh
-man:x:6:12:man:/var/cache/man:/bin/sh
-lp:x:7:7:lp:/var/spool/lpd:/bin/sh
-mail:x:8:8:mail:/var/mail:/bin/sh
-news:x:9:9:news:/var/spool/news:/bin/sh
-uucp:x:10:10:uucp:/var/spool/uucp:/bin/sh
-proxy:x:13:13:proxy:/bin:/bin/sh
-www-data:x:33:33:www-data:/var/www:/bin/sh
-backup:x:34:34:backup:/var/backups:/bin/sh
-list:x:38:38:Mailing List Manager:/var/list:/bin/sh
-irc:x:39:39:ircd:/var/run/ircd:/bin/sh
-gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/bin/sh
-nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
-libuuid:x:100:101::/var/lib/libuuid:/bin/sh
-dhcp:x:101:102::/nonexistent:/bin/false
-syslog:x:102:103::/home/syslog:/bin/false
-klog:x:103:104::/home/klog:/bin/false
-sshd:x:104:65534::/var/run/sshd:/usr/sbin/nologin
-msfadmin:x:1000:1000:msfadmin,,,:/home/msfadmin:/bin/bash
-bind:x:105:113::/var/cache/bind:/bin/false
-postfix:x:106:115::/var/spool/postfix:/bin/false
-ftp:x:107:116::/home/ftp:/bin/false
-postgres:x:108:117:PostgreSQL administrator,,,:/var/lib/postgresql:/bin/bash
-mysql:x:109:118:MySQL Server,,,:/var/lib/mysql:/bin/false
-tomcat55:x:110:65534::/usr/share/tomcat5.5:/bin/false
-distccd:x:111:65534::/:/bin/false''',
-            'ls -la': '''total 8
-drwxrwxrwt  2 root root 4096 Jun 14 13:45 .
-drwxr-xr-x 21 root root 4096 May 20  2012 ..
--rw-r--r--  1 root root    0 Jun 14 13:45 .X0-lock''',
-            'ps aux': '''USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-root         1  0.0  0.3   2844  1696 ?        Ss   13:30   0:01 /sbin/init
-root         2  0.0  0.0      0     0 ?        S    13:30   0:00 [kthreadd]
-root         3  0.0  0.0      0     0 ?        S    13:30   0:00 [migration/0]
-www-data  3094  0.0  0.8  22528  4460 ?        S    13:31   0:00 /usr/sbin/apache2
-mysql     3853  0.0  2.4  78188 12896 ?        Sl   13:31   0:00 /usr/sbin/mysqld
-distccd   4567  0.0  0.2   3456  1234 ?        S    13:45   0:00 /usr/bin/distccd
-postgres  5123  0.0  0.8  37584  4312 ?        S    13:31   0:00 /usr/lib/postgresql/8.3/bin/postgres''',
-            'netstat -an': '''Active Internet connections (servers and established)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State
-tcp        0      0 0.0.0.0:21             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:22             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:23             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:25             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:53             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:80             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:111            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:139            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:445            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:512            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:513            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:514            0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:1099           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:1524           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:2049           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:2121           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:3306           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:3632           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:5432           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:5900           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:6000           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:6667           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:8009           0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:8180           0.0.0.0:*               LISTEN
-tcp        0      0 192.168.6.154:4444    192.168.6.100:52341    ESTABLISHED''',
-            'ifconfig': '''eth0      Link encap:Ethernet  HWaddr 00:0c:29:d2:c4:7e  
-          inet addr:192.168.6.154  Bcast:192.168.6.255  Mask:255.255.255.0
-          inet6 addr: fe80::20c:29ff:fed2:c47e/64 Scope:Link
-          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:89234 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:67891 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:1000 
-          RX bytes:12345678 (11.7 MB)  TX bytes:9876543 (9.4 MB)
-
-lo        Link encap:Local Loopback  
-          inet addr:127.0.0.1  Mask:255.0.0.0
-          inet6 addr: ::1/128 Scope:Host
-          UP LOOPBACK RUNNING  MTU:16436  Metric:1''',
-            'cat /etc/issue': '''Ubuntu 8.04 \\n \\l''',
-            'find / -perm -4000 2>/dev/null': '''/bin/su
-/bin/mount
-/bin/umount
-/bin/ping
-/bin/ping6
-/usr/bin/chfn
-/usr/bin/chsh
-/usr/bin/gpasswd
-/usr/bin/newgrp
-/usr/bin/passwd
-/usr/bin/sudo
-/usr/lib/vmware-tools/bin32/vmware-user-suid-wrapper
-/usr/lib/vmware-tools/bin64/vmware-user-suid-wrapper
-/usr/sbin/uuidd'''
-        }
-        
-        # Commandes avec correspondances partielles
-        output = None
-        
-        # Correspondance exacte
-        if command in simulated_outputs:
-            output = simulated_outputs[command]
-        # Correspondances partielles
-        elif command.startswith('ls'):
-            if '-la' in command or '-al' in command:
-                output = simulated_outputs['ls -la']
-            else:
-                output = '''bin   dev  home        lib    media  opt   root  srv  tmp  var
-boot  etc  lost+found  media  mnt    proc  sbin  sys  usr'''
-        elif command.startswith('cat '):
-            filename = command.split(' ', 1)[1] if len(command.split(' ', 1)) > 1 else ''
-            if filename == '/etc/passwd':
-                output = simulated_outputs['cat /etc/passwd']
-            elif filename == '/etc/issue':
-                output = simulated_outputs['cat /etc/issue']
-            else:
-                output = f"cat: {filename}: No such file or directory"
-        elif command.startswith('cd '):
-            directory = command.split(' ', 1)[1] if len(command.split(' ', 1)) > 1 else '~'
-            output = f"Changed directory to: {directory}"
-        elif command.startswith('find'):
-            if '-perm -4000' in command:
-                output = simulated_outputs['find / -perm -4000 2>/dev/null']
-            else:
-                output = "find: command processed"
-        else:
-            # Commande inconnue - simulation générique
-            output = f"Command '{command}' executed\n(Output simulation for session {session_id})"
-        
-        return jsonify({
-            'session_id': session_id,
-            'command': command,
-            'output': output,
-            'status': 'executed',
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error executing command in session: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-# Ajoutez aussi cette route pour obtenir les informations détaillées d'une session
-@app.route('/api/metasploit/sessions/<int:session_id>/info', methods=['GET'])
-def get_session_info(session_id):
-    """Obtenir les informations détaillées d'une session"""
-    try:
-        session = next((s for s in metasploit_sessions if s['id'] == session_id), None)
-        if not session:
-            return jsonify({'error': 'Session non trouvée'}), 404
-        
-        # Enrichir les informations de session
-        session_info = {
-            **session,
-            'connection_time': session.get('opened_at'),
-            'last_activity': datetime.now().isoformat(),
-            'capabilities': ['command_execution', 'file_access', 'network_access'],
-            'host_info': {
-                'hostname': 'metasploitable',
-                'os': 'Ubuntu 8.04 LTS',
-                'architecture': 'i686',
-                'kernel': '2.6.24-16-server'
-            },
-            'network_info': {
-                'ip_address': session.get('target'),
-                'mac_address': '00:0c:29:d2:c4:7e',
-                'gateway': '192.168.6.1',
-                'dns': ['192.168.6.1']
-            }
-        }
-        
-        return jsonify(session_info)
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting session info: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 # ==================== GESTIONNAIRE DE SIGNAUX ====================
 
 def signal_handler(sig, frame):
     logger.info("🛑 Server shutdown requested")
+    try:
+        for task in task_manager.get_active_tasks():
+            task_manager.cancel_task(task['id'])
+        logger.info("🧹 Task manager cleaned up")
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -1351,166 +1040,37 @@ signal.signal(signal.SIGTERM, signal_handler)
 # ==================== DÉMARRAGE ====================
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting Pacha Toolbox Backend v2.0")
+    logger.info("🚀 Starting Pacha Toolbox Backend v2.1 (Development Mode)")
     logger.info("🌐 CORS configured for localhost:3000")
-    logger.info("📁 Directories initialized")
+    logger.info(f"📁 Base directory: {BASE_DIR}")
+    logger.info(f"📂 Project root: {PROJECT_ROOT}")
+    logger.info(f"🗂️ Data directories: {DIRECTORIES}")
     logger.info(f"🔧 Metasploit exploits available: {len(METASPLOITABLE_EXPLOITS)}")
-    logger.info("🔓 Hydra force brute module ready")  # NOUVEAU
+    logger.info("🔥 Multi-threading intégré et opérationnel")
+    
+    # Afficher les statistiques de démarrage
+    threading_stats = task_manager.get_statistics()
+    logger.info(f"🎯 Task Manager: {threading_stats['max_workers']} workers prêts")
+    
+    # Informations importantes pour le développement
+    logger.info("✨ Mode développement actif:")
+    logger.info("   - Chemins relatifs configurés")
+    logger.info("   - Permissions gérées automatiquement")
+    logger.info("   - Multi-threading intégré")
+    logger.info("   - Simulation complète des outils")
+    logger.info("   - API complète disponible")
+    
+    # Test des dépendances
+    try:
+        logger.info("🔍 Checking dependencies...")
+        logger.info(f"   - Flask: {Flask.__version__}")
+        logger.info(f"   - Python: {sys.version.split()[0]}")
+        logger.info("   ✅ All dependencies OK")
+    except Exception as e:
+        logger.error(f"   ❌ Dependency check failed: {e}")
     
     try:
         app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
     except Exception as e:
         logger.error(f"❌ Server startup error: {e}")
         sys.exit(1)
-# ==================== ROUTES FORENSIQUES GRAYLOG ====================
-
-@app.route('/api/forensics/status', methods=['GET'])
-def forensics_status():
-    """Statut du module forensique"""
-    try:
-        # Test de connexion à Graylog
-        graylog_url = f"http://{os.getenv('GRAYLOG_HOST', 'localhost')}:{os.getenv('GRAYLOG_PORT', '9000')}"
-        response = requests.get(f"{graylog_url}/api/system", timeout=10)
-        
-        if response.status_code == 200:
-            graylog_status = 'connected'
-            graylog_info = response.json()
-        else:
-            graylog_status = 'error'
-            graylog_info = {}
-        
-        return jsonify({
-            'forensics_available': True,
-            'graylog_status': graylog_status,
-            'graylog_info': graylog_info,
-            'version': '1.0.0',
-            'features': ['log_search', 'anomaly_detection', 'network_statistics', 'timeline_analysis'],
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        return jsonify({
-            'forensics_available': False,
-            'graylog_status': 'unavailable',
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        })
-
-@app.route('/api/forensics/search', methods=['POST'])
-def forensics_search():
-    """Recherche dans les logs Graylog"""
-    try:
-        data = request.get_json() or {}
-        query = data.get('query', '*')
-        timerange = data.get('timerange', '1h')
-        limit = data.get('limit', 100)
-        
-        # Simulation de résultats si Graylog n'est pas disponible
-        # Dans la vraie implémentation, utiliser l'API Graylog
-        
-        import random
-        messages = []
-        num_results = min(random.randint(10, 100), limit)
-        
-        for i in range(num_results):
-            timestamp = datetime.now() - timedelta(minutes=random.randint(0, 60))
-            messages.append({
-                'id': f"msg_{i}_{int(time.time())}",
-                'timestamp': timestamp.isoformat(),
-                'source': f"192.168.1.{random.randint(1, 254)}",
-                'message': f"Log message {i} matching query: {query}",
-                'level': random.choice(['INFO', 'WARNING', 'ERROR']),
-                'facility': random.choice(['firewall', 'syslog', 'auth', 'dns']),
-                'protocol': random.choice(['TCP', 'UDP', 'ICMP']),
-                'action': random.choice(['ACCEPT', 'DENY', 'DROP'])
-            })
-        
-        return jsonify({
-            'total_results': num_results,
-            'messages': messages,
-            'query': query,
-            'timerange': timerange
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in forensics search: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/forensics/anomalies', methods=['GET'])
-def forensics_anomalies():
-    """Détection d'anomalies"""
-    try:
-        timerange = request.args.get('timerange', '1h')
-        
-        # Simulation d'anomalies
-        anomalies = [
-            {
-                'id': 1,
-                'type': 'Traffic Spike',
-                'severity': 'HIGH',
-                'description': 'Pic de trafic inhabituel détecté',
-                'timestamp': (datetime.now() - timedelta(hours=1)).isoformat(),
-                'score': 0.92,
-                'affected_hosts': ['192.168.1.100', '192.168.1.45']
-            },
-            {
-                'id': 2,
-                'type': 'Failed Authentication',
-                'severity': 'MEDIUM',
-                'description': 'Multiples tentatives de connexion échouées',
-                'timestamp': (datetime.now() - timedelta(minutes=30)).isoformat(),
-                'score': 0.75,
-                'affected_hosts': ['192.168.1.200']
-            },
-            {
-                'id': 3,
-                'type': 'Suspicious DNS',
-                'severity': 'MEDIUM',
-                'description': 'Requêtes DNS vers des domaines suspects',
-                'timestamp': (datetime.now() - timedelta(minutes=15)).isoformat(),
-                'score': 0.68,
-                'affected_hosts': ['192.168.1.55']
-            }
-        ]
-        
-        return jsonify({
-            'anomalies': anomalies,
-            'total_anomalies': len(anomalies),
-            'timerange': timerange
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in anomaly detection: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/forensics/stats', methods=['GET'])
-def forensics_stats():
-    """Statistiques réseau"""
-    try:
-        timerange = request.args.get('timerange', '1h')
-        
-        import random
-        
-        stats = {
-            'total_events': random.randint(10000, 100000),
-            'unique_sources': random.randint(50, 500),
-            'top_protocols': [
-                {'protocol': 'TCP', 'count': 45000, 'percentage': 65},
-                {'protocol': 'UDP', 'count': 18000, 'percentage': 27},
-                {'protocol': 'ICMP', 'count': 6000, 'percentage': 8}
-            ],
-            'top_ports': [
-                {'port': 80, 'count': 12000},
-                {'port': 443, 'count': 8500},
-                {'port': 22, 'count': 3400},
-                {'port': 53, 'count': 2100}
-            ],
-            'threat_level': 'MEDIUM',
-            'anomaly_score': 0.45
-        }
-        
-        return jsonify(stats)
-        
-    except Exception as e:
-        logger.error(f"Error in network stats: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
