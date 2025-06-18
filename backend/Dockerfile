@@ -1,27 +1,23 @@
 FROM python:3.11-slim
 
-# Installation des outils système avec tcpdump
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
 RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    nmap \
-    tcpdump \
-    tshark \
-    netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    curl netcat-openbsd nmap gcc python3-dev libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Installation des dépendances Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Copie du code
 COPY . .
+RUN mkdir -p /app/{data,reports,logs,temp}
 
-# Port d'exposition
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 5000
-
-# Commande de démarrage
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "main.py"]

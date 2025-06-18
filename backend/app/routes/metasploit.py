@@ -262,7 +262,7 @@ def run_exploit():
 def run_exploit_async(exploit_id, exploit_config, task_id):
     """Exécution asynchrone d'un exploit"""
     try:
-        from app.main import socketio
+        from backend.main import socketio
         
         update_task_status(task_id, "running")
         socketio.emit('exploit_status', {

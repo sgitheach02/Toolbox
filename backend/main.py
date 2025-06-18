@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pacha Toolbox Backend v2.1 - Version développement local
+Pacha Toolbox Backend v2.1 - Version CORRIGÉE pour React
 Backend unifié avec multi-threading intégré - chemins corrigés
 """
 
@@ -36,7 +36,15 @@ DIRECTORIES = {
 
 # Créer l'application Flask
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+
+# ==================== CORS CONFIGURATION CORRIGÉE ====================
+# Configuration CORS étendue pour React
+CORS(app, 
+     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+     supports_credentials=True)
+
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max
 
 # ==================== LOGGING ====================
@@ -532,9 +540,17 @@ METASPLOITABLE_EXPLOITS = [
 
 # ==================== ROUTES DE BASE ====================
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():
     """Vérification de santé de l'API"""
+    # Gérer les requêtes OPTIONS pour CORS
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     return jsonify({
         'status': 'healthy',
         'message': 'Pacha Toolbox API operational (Development Mode)',
@@ -545,12 +561,20 @@ def health_check():
         'threading_stats': task_manager.get_statistics(),
         'directories_ok': all(os.path.exists(path) for path in DIRECTORIES.values()),
         'base_dir': BASE_DIR,
-        'project_root': PROJECT_ROOT
+        'project_root': PROJECT_ROOT,
+        'cors_enabled': True
     })
 
-@app.route('/api/status', methods=['GET'])
+@app.route('/api/status', methods=['GET', 'OPTIONS'])
 def get_status():
     """Statut complet de l'API"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         threading_stats = task_manager.get_statistics()
         
@@ -565,7 +589,8 @@ def get_status():
             'threading_stats': threading_stats,
             'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()},
             'available_tools': ['nmap', 'nikto', 'metasploit', 'hydra'],
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'cors_enabled': True
         })
     except Exception as e:
         logger.error(f"❌ Error getting status: {e}")
@@ -573,9 +598,16 @@ def get_status():
 
 # ==================== ROUTES SCAN ====================
 
-@app.route('/api/scan/start', methods=['POST'])
+@app.route('/api/scan/start', methods=['POST', 'OPTIONS'])
 def start_scan():
     """Démarrer un nouveau scan avec multi-threading"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         data = request.get_json() or {}
         tool = data.get('tool', 'nmap')
@@ -616,9 +648,16 @@ def start_scan():
         logger.error(f"❌ Error starting scan: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/scan/status/<scan_id>', methods=['GET'])
+@app.route('/api/scan/status/<scan_id>', methods=['GET', 'OPTIONS'])
 def get_scan_status(scan_id):
     """Récupérer le statut d'un scan"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     # Mode threadé
     task_status = task_manager.get_task_status(scan_id)
     if task_status:
@@ -626,9 +665,16 @@ def get_scan_status(scan_id):
     
     return jsonify({'error': 'Scan not found'}), 404
 
-@app.route('/api/scan/active', methods=['GET'])
+@app.route('/api/scan/active', methods=['GET', 'OPTIONS'])
 def get_active_scans():
     """Récupérer tous les scans actifs"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     threaded_scans = [task for task in task_manager.get_active_tasks() if task.get('tool')]
     
     return jsonify({
@@ -636,9 +682,16 @@ def get_active_scans():
         'total_active': len(threaded_scans)
     })
 
-@app.route('/api/scan/history', methods=['GET'])
+@app.route('/api/scan/history', methods=['GET', 'OPTIONS'])
 def get_scan_history():
     """Récupérer l'historique des scans"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     threaded_history = task_manager.get_completed_tasks(20)
     
     return jsonify({
@@ -648,9 +701,16 @@ def get_scan_history():
 
 # ==================== ROUTES THREADING ====================
 
-@app.route('/api/threading/info', methods=['GET'])
+@app.route('/api/threading/info', methods=['GET', 'OPTIONS'])
 def threading_info():
     """Information sur le multi-threading"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     stats = task_manager.get_statistics()
     return jsonify({
         'threading_enabled': True,
@@ -665,9 +725,16 @@ def threading_info():
         ]
     })
 
-@app.route('/api/threading/tasks', methods=['GET'])
+@app.route('/api/threading/tasks', methods=['GET', 'OPTIONS'])
 def get_threading_tasks():
     """Liste des tâches threadées"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     active = task_manager.get_active_tasks()
     completed = task_manager.get_completed_tasks(10)
     
@@ -678,26 +745,47 @@ def get_threading_tasks():
         'total_completed': len(task_manager.completed_tasks)
     })
 
-@app.route('/api/threading/task/<task_id>/status', methods=['GET'])
+@app.route('/api/threading/task/<task_id>/status', methods=['GET', 'OPTIONS'])
 def get_threaded_task_status(task_id):
     """Statut d'une tâche threadée"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     status = task_manager.get_task_status(task_id)
     if status:
         return jsonify(status)
     else:
         return jsonify({'error': 'Task not found'}), 404
 
-@app.route('/api/threading/task/<task_id>/cancel', methods=['POST'])
+@app.route('/api/threading/task/<task_id>/cancel', methods=['POST', 'OPTIONS'])
 def cancel_threaded_task(task_id):
     """Annuler une tâche threadée"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     if task_manager.cancel_task(task_id):
         return jsonify({'message': f'Task {task_id} cancelled', 'success': True})
     else:
         return jsonify({'error': 'Task not found or already completed'}), 404
 
-@app.route('/api/threading/dashboard', methods=['GET'])
+@app.route('/api/threading/dashboard', methods=['GET', 'OPTIONS'])
 def threading_dashboard():
     """Dashboard du multi-threading"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         stats = task_manager.get_statistics()
         active_tasks = task_manager.get_active_tasks()
@@ -721,9 +809,16 @@ def threading_dashboard():
 
 # ==================== ROUTES METASPLOIT ====================
 
-@app.route('/api/metasploit/exploits', methods=['GET'])
+@app.route('/api/metasploit/exploits', methods=['GET', 'OPTIONS'])
 def get_metasploitable_exploits():
     """Liste des exploits Metasploit disponibles"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         search = request.args.get('search', '').lower()
         platform = request.args.get('platform', '').lower()
@@ -747,9 +842,16 @@ def get_metasploitable_exploits():
         logger.error(f"❌ Error getting exploits: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/metasploit/exploit', methods=['POST'])
+@app.route('/api/metasploit/exploit', methods=['POST', 'OPTIONS'])
 def start_metasploitable_exploit():
     """Lancer un exploit Metasploit"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         data = request.get_json() or {}
         
@@ -783,9 +885,16 @@ def start_metasploitable_exploit():
         logger.error(f"❌ Error starting exploit: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/metasploit/sessions', methods=['GET'])
+@app.route('/api/metasploit/sessions', methods=['GET', 'OPTIONS'])
 def get_metasploit_sessions():
     """Liste des sessions Metasploit actives"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         return jsonify({
             'sessions': metasploit_sessions,
@@ -795,9 +904,16 @@ def get_metasploit_sessions():
         logger.error(f"❌ Error getting sessions: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/metasploit/status', methods=['GET'])
+@app.route('/api/metasploit/status', methods=['GET', 'OPTIONS'])
 def get_metasploit_status():
     """Statut général de Metasploit"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         threaded_exploits = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'exploit'])
         
@@ -816,9 +932,16 @@ def get_metasploit_status():
 
 # ==================== ROUTES HYDRA ====================
 
-@app.route('/api/hydra/attack', methods=['POST'])
+@app.route('/api/hydra/attack', methods=['POST', 'OPTIONS'])
 def launch_hydra_attack():
     """Lancer une nouvelle attaque Hydra"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         data = request.get_json()
         
@@ -855,9 +978,16 @@ def launch_hydra_attack():
         logger.error(f"❌ Error launching Hydra attack: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/api/hydra/status', methods=['GET'])
+@app.route('/api/hydra/status', methods=['GET', 'OPTIONS'])
 def get_hydra_status():
     """Statut général de Hydra"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         threaded_active = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'hydra'])
         threaded_completed = len([t for t in task_manager.get_completed_tasks() if t.get('type') == 'hydra'])
@@ -878,9 +1008,16 @@ def get_hydra_status():
 
 # ==================== ROUTES RAPPORTS ====================
 
-@app.route('/api/reports/test', methods=['GET'])
+@app.route('/api/reports/test', methods=['GET', 'OPTIONS'])
 def test_reports():
     """Test endpoint pour les rapports"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         threading_stats = task_manager.get_statistics()
         
@@ -931,9 +1068,16 @@ def test_reports():
             'error': str(e)
         }), 500
 
-@app.route('/api/reports/list', methods=['GET'])
+@app.route('/api/reports/list', methods=['GET', 'OPTIONS'])
 def list_reports():
     """Liste de tous les rapports disponibles"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         reports_dir = DIRECTORIES['reports']
         if not os.path.exists(reports_dir):
@@ -962,9 +1106,16 @@ def list_reports():
 
 # ==================== ROUTES SYSTÈME ====================
 
-@app.route('/api/system/info', methods=['GET'])
+@app.route('/api/system/info', methods=['GET', 'OPTIONS'])
 def get_system_info():
     """Informations système"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', '*')
+        return response
+        
     try:
         threading_stats = task_manager.get_statistics()
         
@@ -977,7 +1128,8 @@ def get_system_info():
             'base_directory': BASE_DIR,
             'project_root': PROJECT_ROOT,
             'directories': DIRECTORIES,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'cors_enabled': True
         })
         
     except Exception as e:
@@ -992,6 +1144,7 @@ def not_found(error):
         'error': 'Endpoint not found',
         'message': 'Check the API URL',
         'mode': 'development',
+        'cors_enabled': True,
         'available_endpoints': [
             '/api/health',
             '/api/status',
@@ -1019,8 +1172,20 @@ def internal_error(error):
     return jsonify({
         'error': 'Internal server error',
         'message': 'An unexpected error occurred',
-        'mode': 'development'
+        'mode': 'development',
+        'cors_enabled': True
     }), 500
+
+# ==================== MIDDLEWARE CORS GLOBAL ====================
+
+@app.after_request
+def after_request(response):
+    """Middleware global pour CORS"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 # ==================== GESTIONNAIRE DE SIGNAUX ====================
 
@@ -1048,29 +1213,47 @@ if __name__ == "__main__":
     logger.info(f"🔧 Metasploit exploits available: {len(METASPLOITABLE_EXPLOITS)}")
     logger.info("🔥 Multi-threading intégré et opérationnel")
     
-    # Afficher les statistiques de démarrage
     threading_stats = task_manager.get_statistics()
     logger.info(f"🎯 Task Manager: {threading_stats['max_workers']} workers prêts")
     
-    # Informations importantes pour le développement
     logger.info("✨ Mode développement actif:")
     logger.info("   - Chemins relatifs configurés")
-    logger.info("   - Permissions gérées automatiquement")
+    logger.info("   - Permissions gérées automatiquement") 
     logger.info("   - Multi-threading intégré")
     logger.info("   - Simulation complète des outils")
     logger.info("   - API complète disponible")
+    logger.info("   - CORS configuré pour React")
     
-    # Test des dépendances
+    # Test des dépendances - VERSION CORRIGÉE
     try:
         logger.info("🔍 Checking dependencies...")
-        logger.info(f"   - Flask: {Flask.__version__}")
+        try:
+            import flask
+            flask_version = getattr(flask, '__version__', 'Version not available')
+            logger.info(f"   - Flask: {flask_version}")
+        except Exception as flask_error:
+            logger.info(f"   - Flask: Installed (version check failed: {flask_error})")
+        
         logger.info(f"   - Python: {sys.version.split()[0]}")
         logger.info("   ✅ All dependencies OK")
+        
     except Exception as e:
         logger.error(f"   ❌ Dependency check failed: {e}")
     
+    # Démarrage Flask avec gestion d'erreurs
     try:
-        app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+        logger.info("🚀 Starting Flask server...")
+        logger.info("🌐 Server will be available at: http://localhost:5000")
+        logger.info("💻 React app should connect from: http://localhost:3000")
+        app.run(
+            host="0.0.0.0", 
+            port=5000, 
+            debug=False,  # Debug off pour éviter les crashes
+            threaded=True,
+            use_reloader=False  # Éviter les rechargements automatiques
+        )
     except Exception as e:
         logger.error(f"❌ Server startup error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)

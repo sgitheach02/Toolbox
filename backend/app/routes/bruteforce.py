@@ -1,6 +1,7 @@
 # backend/app/routes/bruteforce.py
 from flask import Blueprint, request, jsonify
 import threading
+import os
 from app.services.hydra_service import HydraService
 from app.utils.task_manager import create_task
 

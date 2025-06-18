@@ -1,66 +1,54 @@
 version: '3.8'
 
 services:
-  # Backend API Flask
+  postgres:
+    image: postgres:15-alpine
+    container_name: pacha-postgres
+    environment:
+      POSTGRES_DB: pacha_toolbox
+      POSTGRES_USER: pacha_user
+      POSTGRES_PASSWORD: pacha_secure_2024!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: pacha-backend
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - FLASK_DEBUG=1
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pacha_toolbox
+      - DB_USER=pacha_user
+      - DB_PASSWORD=pacha_secure_2024!
+      - ADMIN_PASSWORD=Admin123!
+      - CORS_ORIGINS=http://localhost:3000
     volumes:
       - ./backend:/app:rw
-      - reports_data:/app/reports
-      - logs_data:/app/logs
-    networks:
-      - pacha-network
+    depends_on:
+      - postgres
     restart: unless-stopped
 
-  # Frontend React - Version anti-crash
   frontend:
-    build: 
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     container_name: pacha-frontend
     ports:
       - "3000:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:5000/api
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-      - NODE_OPTIONS=--max-old-space-size=4096
-      - GENERATE_SOURCEMAP=false
-      - DISABLE_ESLINT_PLUGIN=true
     volumes:
       - ./frontend:/app:rw
       - /app/node_modules
     depends_on:
       - backend
-    networks:
-      - pacha-network
     restart: unless-stopped
-    stdin_open: true
-    tty: true
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 512M
 
 volumes:
-  reports_data:
-    driver: local
-  logs_data:
-    driver: local
-
-networks:
-  pacha-network:
-    driver: bridge
-    name: pacha-network
+  postgres_data:

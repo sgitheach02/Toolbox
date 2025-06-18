@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: pacha-postgres
+    environment:
+      POSTGRES_DB: pacha_toolbox
+      POSTGRES_USER: pacha_user
+      POSTGRES_PASSWORD: pacha_secure_2024!
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacha_user -d pacha_toolbox"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend API Flask
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pacha-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Configuration PostgreSQL
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pacha_toolbox
+      - DB_USER=pacha_user
+      - DB_PASSWORD=pacha_secure_2024!
+      # Configuration JWT
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
+      # Configuration admin
+      - ADMIN_PASSWORD=Admin123!
+      # Configuration CORS
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - ./backend:/app:rw
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+      - temp_data:/app/temp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pacha-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - NODE_OPTIONS=--max-old-space-size=4096
+      - GENERATE_SOURCEMAP=false
+      - DISABLE_ESLINT_PLUGIN=true
+      - WDS_SOCKET_HOST=0.0.0.0
+      - WDS_SOCKET_PORT=0
+    volumes:
+      - ./frontend:/app:rw
+      - /app/node_modules
+      - frontend_cache:/tmp/.cache
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Redis pour le cache (optionnel)
+  redis:
+    image: redis:7-alpine
+    container_name: pacha-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass pacha_redis_2024!
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PgAdmin pour administration PostgreSQL (optionnel)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pacha-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pacha-toolbox.local
+      PGADMIN_DEFAULT_PASSWORD: pgadmin2024!
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - pacha-network
+    restart: unless-stopped
+    profiles:
+      - admin
+
+volumes:
+  postgres_data:
+    driver: local
+  reports_data:
+    driver: local
+  logs_data:
+    driver: local
+  temp_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  frontend_cache:
+    driver: local
+
+networks:
+  pacha-network:
+    driver: bridge
+    name: pacha-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

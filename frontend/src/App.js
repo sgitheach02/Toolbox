@@ -65,48 +65,12 @@ const Globe = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
-const Zap = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"></polygon>
-  </svg>
-);
-
-const Eye = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-);
-
 const Play = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <polygon points="5,3 19,12 5,21 5,3"></polygon>
   </svg>
 );
 
-const CheckCircle = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-    <polyline points="22,4 12,14.01 9,11.01"></polyline>
-  </svg>
-);
-
-const Loader = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-    <animateTransform
-      attributeName="transform"
-      attributeType="XML"
-      type="rotate"
-      dur="1s"
-      from="0 12 12"
-      to="360 12 12"
-      repeatCount="indefinite"
-    />
-  </svg>
-);
-
-// ICÔNES MANQUANTES AJOUTÉES
 const Search = ({ size = 16, color = "#666" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <circle cx="11" cy="11" r="8"></circle>
@@ -150,6 +114,59 @@ const Filter = ({ size = 16, color = "#666" }) => (
   </svg>
 );
 
+const User = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+    <circle cx="12" cy="7" r="4"></circle>
+  </svg>
+);
+
+const LogOut = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+    <polyline points="16,17 21,12 16,7"></polyline>
+    <line x1="21" y1="12" x2="9" y2="12"></line>
+  </svg>
+);
+
+const Settings = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+);
+
+const History = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+    <path d="M3 3v5h5"></path>
+    <path d="M12 7v5l4 2"></path>
+  </svg>
+);
+
+const Loader = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        dur="1s"
+        from="0 12 12"
+        to="360 12 12"
+        repeatCount="indefinite"
+      />
+    </path>
+  </svg>
+);
+
+const Eye = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
 // ================================
 // THÈME
 // ================================
@@ -157,10 +174,10 @@ const Filter = ({ size = 16, color = "#666" }) => (
 const theme = {
   colors: {
     bg: {
-      primary: '#1a1a1a',
-      secondary: '#2a2a2a',
-      tertiary: '#3a3a3a',
-      accent: '#4a4a4a'
+      primary: '#0a0a0a',
+      secondary: '#1a1a1a',
+      tertiary: '#2a2a2a',
+      accent: '#3a3a3a'
     },
     text: {
       primary: '#e5e5e5',
@@ -174,8 +191,8 @@ const theme = {
       info: '#3b82f6'
     },
     accent: {
-      primary: '#6b7280',
-      secondary: '#9ca3af'
+      primary: '#00ff88',
+      secondary: '#00d4ff'
     }
   },
   spacing: {
@@ -202,6 +219,7 @@ const Card = ({ children, style = {} }) => (
     border: `1px solid ${theme.colors.bg.tertiary}`,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
     ...style
   }}>
     {children}
@@ -211,8 +229,8 @@ const Card = ({ children, style = {} }) => (
 const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabled = false, onClick, fullWidth = false, style = {} }) => {
   const variants = {
     primary: {
-      backgroundColor: theme.colors.accent.primary,
-      color: theme.colors.text.primary,
+      background: `linear-gradient(135deg, ${theme.colors.accent.primary} 0%, ${theme.colors.accent.secondary} 100%)`,
+      color: '#000000',
       border: 'none'
     },
     secondary: {
@@ -232,7 +250,7 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
     },
     success: {
       backgroundColor: theme.colors.status.success,
-      color: theme.colors.text.primary,
+      color: '#000000',
       border: 'none'
     }
   };
@@ -255,10 +273,24 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
         alignItems: 'center',
         justifyContent: 'center',
         gap: theme.spacing.sm,
-        fontWeight: '500',
-        transition: 'all 0.2s ease',
+        fontWeight: '600',
+        transition: 'all 0.3s ease',
         width: fullWidth ? '100%' : 'auto',
+        transform: disabled ? 'none' : 'translateY(0px)',
+        boxShadow: disabled ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.2)',
         ...style
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.target.style.transform = 'translateY(-2px)';
+          e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.target.style.transform = 'translateY(0px)';
+          e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+        }
       }}
       disabled={disabled}
       onClick={onClick}
@@ -285,7 +317,16 @@ const Input = ({ type = 'text', placeholder, value, onChange, style = {}, onKeyP
       color: theme.colors.text.primary,
       fontSize: '14px',
       outline: 'none',
+      transition: 'all 0.3s ease',
       ...style
+    }}
+    onFocus={(e) => {
+      e.target.style.borderColor = theme.colors.accent.primary;
+      e.target.style.boxShadow = `0 0 0 2px rgba(0, 255, 136, 0.2)`;
+    }}
+    onBlur={(e) => {
+      e.target.style.borderColor = theme.colors.bg.accent;
+      e.target.style.boxShadow = 'none';
     }}
   />
 );
@@ -302,7 +343,8 @@ const Select = ({ options, value, onChange, placeholder = "Sélectionnez..." }) 
       padding: theme.spacing.md,
       color: theme.colors.text.primary,
       fontSize: '14px',
-      outline: 'none'
+      outline: 'none',
+      cursor: 'pointer'
     }}
   >
     <option value="">{placeholder}</option>
@@ -317,8 +359,8 @@ const Select = ({ options, value, onChange, placeholder = "Sélectionnez..." }) 
 const Badge = ({ children, variant = 'default', style = {} }) => {
   const variants = {
     default: { bg: theme.colors.bg.tertiary, color: theme.colors.text.secondary },
-    success: { bg: theme.colors.status.success, color: theme.colors.text.primary },
-    warning: { bg: theme.colors.status.warning, color: theme.colors.bg.primary },
+    success: { bg: theme.colors.status.success, color: '#000000' },
+    warning: { bg: theme.colors.status.warning, color: '#000000' },
     error: { bg: theme.colors.status.error, color: theme.colors.text.primary },
     info: { bg: theme.colors.status.info, color: theme.colors.text.primary }
   };
@@ -327,10 +369,10 @@ const Badge = ({ children, variant = 'default', style = {} }) => {
     <span style={{
       backgroundColor: variants[variant].bg,
       color: variants[variant].color,
-      padding: '2px 8px',
+      padding: '3px 8px',
       borderRadius: theme.borderRadius.sm,
-      fontSize: '12px',
-      fontWeight: '500',
+      fontSize: '11px',
+      fontWeight: '600',
       textTransform: 'uppercase',
       letterSpacing: '0.5px',
       ...style
@@ -341,77 +383,160 @@ const Badge = ({ children, variant = 'default', style = {} }) => {
 };
 
 // ================================
-// COMPOSANT LOADING PROGRESS
+// COMPOSANT AUTHENTIFICATION
 // ================================
 
-const LoadingProgress = ({ message, progress, subMessage }) => (
-  <div style={{
-    padding: theme.spacing.xl,
-    textAlign: 'center',
-    backgroundColor: theme.colors.bg.tertiary,
-    borderRadius: theme.borderRadius.md,
-    border: `1px solid ${theme.colors.bg.accent}`
-  }}>
-    <div style={{ marginBottom: theme.spacing.lg }}>
-      <Loader size={32} color={theme.colors.status.info} />
-    </div>
+const AuthForm = ({ onLogin }) => {
+  const [mode, setMode] = useState('login');
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (error) setError('');
+    if (success) setSuccess('');
+  };
+
+  const validateForm = () => {
+    if (mode === 'register') {
+      if (!formData.username || formData.username.length < 3) {
+        setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
+        return false;
+      }
+      
+      if (!formData.email || !formData.email.includes('@')) {
+        setError('Email invalide');
+        return false;
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        setError('Les mots de passe ne correspondent pas');
+        return false;
+      }
+    }
     
-    <div style={{ 
-      color: theme.colors.text.primary, 
-      fontSize: '16px', 
-      fontWeight: '600',
-      marginBottom: theme.spacing.md 
-    }}>
-      {message}
-    </div>
+    if (!formData.username || !formData.password) {
+      setError('Nom d\'utilisateur et mot de passe requis');
+      return false;
+    }
     
-    {subMessage && (
-      <div style={{ 
-        color: theme.colors.text.muted, 
-        fontSize: '14px',
-        marginBottom: theme.spacing.lg
-      }}>
-        {subMessage}
-      </div>
-    )}
+    if (formData.password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères');
+      return false;
+    }
     
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      // Simulation d'authentification
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      if (mode === 'login') {
+        const user = {
+          id: 1,
+          username: formData.username,
+          email: formData.email || 'user@pacha-toolbox.local',
+          role: formData.username === 'admin' ? 'admin' : 'user'
+        };
+        
+        setSuccess('Connexion réussie !');
+        setTimeout(() => {
+          onLogin(user, 'demo-session-token');
+        }, 1000);
+      } else {
+        setSuccess('Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
+        setTimeout(() => {
+          setMode('login');
+          setFormData({ username: formData.username, email: '', password: '', confirmPassword: '' });
+        }, 2000);
+      }
+    } catch (error) {
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
     <div style={{
-      width: '100%',
-      height: '8px',
-      backgroundColor: theme.colors.bg.primary,
-      borderRadius: theme.borderRadius.sm,
-      overflow: 'hidden',
-      marginBottom: theme.spacing.md
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: theme.spacing.lg
     }}>
-      <div style={{
-        width: `${progress}%`,
-        height: '100%',
-        backgroundColor: theme.colors.status.info,
-        transition: 'width 0.3s ease',
-        borderRadius: theme.borderRadius.sm
-      }}></div>
+      <Card style={{ 
+        maxWidth: '450px', 
+        width: '100%',
+        border: `2px solid ${theme.colors.accent.primary}`,
+        boxShadow: `0 20px 40px rgba(0, 255, 136, 0.3)`
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: theme.spacing.xl }}>
+          <Shield size={48} color={theme.colors.accent.primary} />
+          <h1 style={{ 
+            color: theme.colors.accent.primary,
+            fontSize: '2rem',
+            fontWeight: '800',
+            margin: `${theme.spacing.md} 0`,
+            textShadow: `0 0 20px rgba(0, 255, 136, 0.5)`
+          }}>
+            PACHA TOOLBOX
+          </h1>
+          <p style={{ color: theme.colors.text.secondary, margin: 0 }}>
+            {mode === 'login' ? 'Connexion Sécurisée' : 'Créer un Compte'}
+          </p>
+        </div>
+        
+        {mode === 'login' && (
+          <div style={{
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.md,
+            background: 'rgba(0, 212, 255, 0.1)',
+            border: `1px solid rgba(0, 212, 255, 0.3)`,
+            borderRadius: theme.borderRadius.md,
+            textAlign: 'center'
+          }}>
+            <div style={{ color: theme.colors.accent.secondary, fontWeight: '600', marginBottom: theme.spacing.sm }}>
+              🧪 Compte de démonstration
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+              <strong>Admin:</strong> admin / Admin123!<br />
+              <strong>User:</strong> user / password123
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
-    
-    <div style={{ 
-      color: theme.colors.text.muted, 
-      fontSize: '12px' 
-    }}>
-      {progress}% completed
-    </div>
-  </div>
-);
+  );
+};
 
 // ================================
-// CONFIGURATION API
+// HEADER AVEC AUTHENTIFICATION
 // ================================
 
-const API_BASE = 'http://localhost:5000/api';
-
-// ================================
-// HEADER
-// ================================
-
-const Header = () => {
+const Header = ({ currentUser, onLogout }) => {
   const [systemStatus, setSystemStatus] = useState({
     api: 'checking',
     graylog: 'checking',
@@ -421,44 +546,20 @@ const Header = () => {
   useEffect(() => {
     const checkAPIStatus = async () => {
       try {
-        const response = await fetch(`${API_BASE}/health`);
-        if (response.ok) {
-          setSystemStatus(prev => ({ ...prev, api: 'online' }));
-          
-          // Vérifier Graylog
-          try {
-            const forensicsResponse = await fetch(`${API_BASE}/forensics/status`);
-            if (forensicsResponse.ok) {
-              const forensicsData = await forensicsResponse.json();
-              setSystemStatus(prev => ({ 
-                ...prev, 
-                graylog: forensicsData.graylog_status === 'connected' ? 'online' : 'checking'
-              }));
-            } else {
-              setSystemStatus(prev => ({ ...prev, graylog: 'demo' }));
-            }
-          } catch (err) {
-            setSystemStatus(prev => ({ ...prev, graylog: 'demo' }));
+        // Simulation du statut API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setSystemStatus(prev => ({ 
+          ...prev, 
+          api: 'online',
+          graylog: 'demo',
+          tools: {
+            nmap: true,
+            nikto: true,
+            metasploit: true,
+            tcpdump: true,
+            hydra: true
           }
-          
-          // Vérifier les outils disponibles
-          const toolsResponse = await fetch(`${API_BASE}/system/tools`);
-          if (toolsResponse.ok) {
-            const toolsData = await toolsResponse.json();
-            setSystemStatus(prev => ({ 
-              ...prev, 
-              tools: {
-                nmap: toolsData.nmap || false,
-                nikto: toolsData.nikto || false,
-                metasploit: toolsData.metasploit || false,
-                tcpdump: toolsData.tcpdump || false,
-                hydra: toolsData.hydra || false
-              }
-            }));
-          }
-        } else {
-          setSystemStatus(prev => ({ ...prev, api: 'offline' }));
-        }
+        }));
       } catch (error) {
         setSystemStatus(prev => ({ ...prev, api: 'offline', graylog: 'offline' }));
       }
@@ -481,7 +582,8 @@ const Header = () => {
     <header style={{
       backgroundColor: theme.colors.bg.secondary,
       borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
-      padding: theme.spacing.lg
+      padding: theme.spacing.lg,
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
@@ -509,6 +611,26 @@ const Header = () => {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.md,
+            padding: theme.spacing.md,
+            background: 'rgba(0, 255, 136, 0.1)',
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid rgba(0, 255, 136, 0.3)`
+          }}>
+            <User size={20} color={theme.colors.accent.primary} />
+            <div>
+              <div style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                {currentUser.username}
+              </div>
+              <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                {currentUser.role === 'admin' ? '👑 Administrator' : '👤 User'}
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
             <div style={{ 
               display: 'flex', 
@@ -546,9 +668,15 @@ const Header = () => {
             <Badge variant={systemStatus.api === 'online' ? 'success' : 'error'}>
               {systemStatus.api === 'online' ? 'OPERATIONAL' : 'OFFLINE'}
             </Badge>
-            <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-              {new Date().toLocaleString()}
-            </div>
+            
+            <Button
+              variant="danger"
+              size="sm"
+              icon={LogOut}
+              onClick={onLogout}
+            >
+              Déconnexion
+            </Button>
           </div>
         </div>
       </div>
@@ -557,614 +685,14 @@ const Header = () => {
 };
 
 // ================================
-// ONGLET FORENSIQUE GRAYLOG
-// ================================
-
-const ForensicsTab = () => {
-  const [activeForensicsTab, setActiveForensicsTab] = useState('search');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [timeRange, setTimeRange] = useState('1h');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [anomalies, setAnomalies] = useState([]);
-  const [networkStats, setNetworkStats] = useState({});
-  const [graylogStatus, setGraylogStatus] = useState({ status: 'checking', details: {} });
-
-  const forensicsTabs = [
-    { id: 'search', label: 'Recherche Logs', icon: Search },
-    { id: 'timeline', label: 'Timeline', icon: Clock },
-    { id: 'anomalies', label: 'Anomalies', icon: AlertTriangle },
-    { id: 'stats', label: 'Statistiques', icon: TrendingUp }
-  ];
-
-  const timeRanges = [
-    { value: '15m', label: '15 minutes' },
-    { value: '1h', label: '1 heure' },
-    { value: '4h', label: '4 heures' },
-    { value: '24h', label: '24 heures' },
-    { value: '7d', label: '7 jours' }
-  ];
-
-  // Fonctions avec useCallback pour corriger les dépendances
-  const loadAnomalies = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/forensics/anomalies?timerange=${timeRange}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAnomalies(data.anomalies || []);
-      } else {
-        // Simulation d'anomalies réalistes
-        setAnomalies([
-          {
-            id: 1,
-            type: 'Brute Force Attack',
-            severity: 'HIGH',
-            description: 'Multiple failed SSH login attempts detected from 185.220.101.32',
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            score: 0.95,
-            affected_hosts: ['192.168.1.100', '192.168.1.45']
-          },
-          {
-            id: 2,
-            type: 'DNS Tunneling',
-            severity: 'MEDIUM', 
-            description: 'Suspicious DNS queries pattern detected - possible data exfiltration',
-            timestamp: new Date(Date.now() - 7200000).toISOString(),
-            score: 0.78,
-            affected_hosts: ['192.168.1.55']
-          },
-          {
-            id: 3,
-            type: 'Port Scan',
-            severity: 'HIGH',
-            description: 'Systematic port scanning activity from external source',
-            timestamp: new Date(Date.now() - 1800000).toISOString(),
-            score: 0.88,
-            affected_hosts: ['192.168.1.200']
-          },
-          {
-            id: 4,
-            type: 'Abnormal Traffic Volume',
-            severity: 'MEDIUM',
-            description: 'Unusual outbound traffic volume detected during off-hours',
-            timestamp: new Date(Date.now() - 5400000).toISOString(),
-            score: 0.72,
-            affected_hosts: ['192.168.1.25', '192.168.1.67']
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error('Erreur chargement anomalies:', error);
-    }
-  }, [timeRange]);
-
-  const loadNetworkStats = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/forensics/stats?timerange=${timeRange}`);
-      if (response.ok) {
-        const data = await response.json();
-        setNetworkStats(data);
-      } else {
-        // Simulation de statistiques réalistes
-        setNetworkStats({
-          total_events: Math.floor(Math.random() * 50000) + 150000,
-          unique_sources: Math.floor(Math.random() * 200) + 350,
-          top_protocols: [
-            { protocol: 'TCP', count: 125678, percentage: 68 },
-            { protocol: 'UDP', count: 45934, percentage: 25 },
-            { protocol: 'ICMP', count: 12890, percentage: 7 }
-          ],
-          top_ports: [
-            { port: 443, count: 45230 },
-            { port: 80, count: 32156 },
-            { port: 22, count: 8945 },
-            { port: 53, count: 7654 },
-            { port: 3389, count: 3421 },
-            { port: 25, count: 2890 }
-          ],
-          threat_level: 'MEDIUM',
-          anomaly_score: 0.73,
-          geographic_distribution: {
-            'Internal': 78,
-            'US': 12,
-            'EU': 6,
-            'Others': 4
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    }
-  }, [timeRange]);
-
-  const checkGraylogStatus = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/forensics/status`);
-      if (response.ok) {
-        const data = await response.json();
-        setGraylogStatus({
-          status: data.graylog_status === 'connected' ? 'online' : 'checking',
-          details: data.graylog_info || {}
-        });
-      } else {
-        // Si pas de vraie API, simuler un status "checking" au lieu d'offline
-        setGraylogStatus({ 
-          status: 'checking', 
-          details: { 
-            message: 'Connecting to Graylog server...',
-            version: 'Graylog 4.3.0',
-            cluster_status: 'GREEN'
-          } 
-        });
-      }
-    } catch (error) {
-      // Simulation d'un Graylog en mode demo au lieu d'offline complet
-      setGraylogStatus({ 
-        status: 'demo', 
-        details: { 
-          message: 'Demo mode - Simulated Graylog data',
-          mode: 'simulation'
-        } 
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAnomalies();
-    loadNetworkStats();
-    checkGraylogStatus();
-  }, [timeRange, loadAnomalies, loadNetworkStats, checkGraylogStatus]);
-
-  const startForensicsSearch = async () => {
-    if (!searchQuery.trim()) {
-      alert('Veuillez saisir une requête de recherche');
-      return;
-    }
-
-    setIsSearching(true);
-    
-    try {
-      const response = await fetch(`${API_BASE}/forensics/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: searchQuery,
-          timerange: timeRange,
-          limit: 1000,
-          sort: 'timestamp:desc'
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.messages || []);
-      } else {
-        // Simulation de résultats si API pas disponible
-        setTimeout(() => {
-          const simulatedResults = generateSimulatedLogs();
-          setSearchResults(simulatedResults);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Erreur recherche forensique:', error);
-      // Fallback avec données simulées
-      setTimeout(() => {
-        const simulatedResults = generateSimulatedLogs();
-        setSearchResults(simulatedResults);
-      }, 2000);
-    } finally {
-      setTimeout(() => setIsSearching(false), 2000);
-    }
-  };
-
-  const generateSimulatedLogs = () => {
-    const logTypes = ['firewall', 'proxy', 'dns', 'dhcp', 'authentication'];
-    const sources = ['192.168.1.1', '192.168.1.100', '10.0.0.1', '172.16.1.1', '192.168.1.50', '10.0.0.5'];
-    const actions = ['ACCEPT', 'DENY', 'DROP', 'ALLOW', 'BLOCK'];
-    const realMessages = [
-      'SSH connection established from external IP',
-      'HTTP POST request to /admin blocked',
-      'DNS query for suspicious domain detected',
-      'Multiple failed login attempts detected',
-      'Port scanning activity identified',
-      'Firewall rule triggered for outbound traffic',
-      'VPN connection established successfully',
-      'Malware signature detected in HTTP traffic',
-      'Brute force attack attempt blocked',
-      'SSL certificate validation failed',
-      'Unusual data transfer volume detected',
-      'Geographic anomaly in access pattern',
-      'Service authentication successful',
-      'Network intrusion attempt detected',
-      'Database query with suspicious pattern'
-    ];
-    
-    return Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-      source: sources[Math.floor(Math.random() * sources.length)],
-      message: realMessages[Math.floor(Math.random() * realMessages.length)],
-      level: Math.random() > 0.7 ? 'WARNING' : Math.random() > 0.9 ? 'ERROR' : 'INFO',
-      action: actions[Math.floor(Math.random() * actions.length)],
-      bytes: Math.floor(Math.random() * 10000),
-      protocol: Math.random() > 0.5 ? 'TCP' : 'UDP',
-      port: [22, 80, 443, 21, 25, 53, 3389, 1433, 3306][Math.floor(Math.random() * 9)],
-      facility: 'security'
-    }));
-  };
-
-  const renderForensicsContent = () => {
-    switch (activeForensicsTab) {
-      case 'search':
-        return (
-          <div>
-            <Card style={{ marginBottom: theme.spacing.lg }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <Database size={20} color={theme.colors.status.info} />
-                <h3 style={{ color: theme.colors.text.primary, margin: 0 }}>
-                  Recherche dans les Logs Graylog
-                </h3>
-                <Badge variant={graylogStatus.status === 'online' ? 'success' : graylogStatus.status === 'demo' ? 'warning' : 'info'}>
-                  {graylogStatus.status === 'online' ? 'CONNECTED' : 
-                   graylogStatus.status === 'demo' ? 'DEMO MODE' : 'CONNECTING'}
-                </Badge>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <Input
-                  placeholder="source:192.168.1.* OR protocol:TCP OR port:22"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && startForensicsSearch()}
-                />
-                
-                <Select
-                  options={timeRanges}
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                />
-                
-                <Button
-                  onClick={startForensicsSearch}
-                  disabled={isSearching}
-                  variant="primary"
-                  icon={isSearching ? Loader : Search}
-                >
-                  {isSearching ? 'Recherche...' : 'Rechercher'}
-                </Button>
-              </div>
-
-              <div style={{ fontSize: '12px', color: theme.colors.text.muted }}>
-                <strong>Exemples de requêtes :</strong> 
-                <span style={{ marginLeft: theme.spacing.sm }}>
-                  source:192.168.1.* | action:DENY | protocol:TCP | port:22 | level:ERROR | message:ssh
-                </span>
-              </div>
-            </Card>
-
-            {searchResults.length > 0 && (
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
-                  <h3 style={{ color: theme.colors.text.primary, margin: 0 }}>
-                    Résultats Graylog ({searchResults.length})
-                  </h3>
-                  <Button size="sm" variant="ghost" icon={Filter}>
-                    Filtrer
-                  </Button>
-                </div>
-
-                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  {searchResults.map(log => (
-                    <div key={log.id} style={{
-                      padding: theme.spacing.md,
-                      marginBottom: theme.spacing.sm,
-                      backgroundColor: theme.colors.bg.tertiary,
-                      borderRadius: theme.borderRadius.md,
-                      borderLeft: `4px solid ${log.level === 'WARNING' ? theme.colors.status.warning : theme.colors.status.info}`
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.sm }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                          <Badge variant={log.level === 'WARNING' ? 'warning' : 'info'}>
-                            {log.level}
-                          </Badge>
-                          <span style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-                            {new Date(log.timestamp).toLocaleString()}
-                          </span>
-                          <span style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-                            {log.source}
-                          </span>
-                        </div>
-                        <Badge variant="default">{log.protocol}</Badge>
-                      </div>
-                      
-                      <div style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.xs }}>
-                        {log.message}
-                      </div>
-                      
-                      <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '11px', color: theme.colors.text.muted }}>
-                        <span>Action: {log.action}</span>
-                        <span>Port: {log.port}</span>
-                        <span>Bytes: {log.bytes}</span>
-                        <span>Facility: {log.facility}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-          </div>
-        );
-
-      case 'timeline':
-        return (
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-              <Clock size={20} color={theme.colors.status.success} />
-              <h3 style={{ color: theme.colors.text.primary, margin: 0 }}>
-                Timeline des Événements
-              </h3>
-              <Badge variant={graylogStatus.status === 'online' ? 'success' : 'warning'}>
-                Graylog Timeline
-              </Badge>
-            </div>
-            
-            <div style={{ textAlign: 'center', padding: theme.spacing.xl }}>
-              <Clock size={48} color={theme.colors.text.muted} />
-              <h4 style={{ color: theme.colors.text.primary, marginTop: theme.spacing.lg }}>
-                Timeline Interactive des Événements Graylog
-              </h4>
-              <p style={{ color: theme.colors.text.secondary }}>
-                Visualisation chronologique des événements de sécurité sur {timeRange}
-              </p>
-              <Button variant="primary" style={{ marginTop: theme.spacing.md }}>
-                Générer Timeline
-              </Button>
-            </div>
-          </Card>
-        );
-
-      case 'anomalies':
-        return (
-          <div>
-            <Card style={{ marginBottom: theme.spacing.lg }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-                <AlertTriangle size={20} color={theme.colors.status.warning} />
-                <h3 style={{ color: theme.colors.text.primary, margin: 0 }}>
-                  Détection d'Anomalies Graylog ({anomalies.length})
-                </h3>
-                <Badge variant={graylogStatus.status === 'online' ? 'success' : graylogStatus.status === 'demo' ? 'warning' : 'info'}>
-                  ML Detection
-                </Badge>
-              </div>
-
-              {anomalies.map(anomaly => (
-                <div key={anomaly.id} style={{
-                  padding: theme.spacing.lg,
-                  marginBottom: theme.spacing.md,
-                  backgroundColor: anomaly.severity === 'HIGH' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                  borderRadius: theme.borderRadius.md,
-                  border: `1px solid ${anomaly.severity === 'HIGH' ? theme.colors.status.error : theme.colors.status.warning}`
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                      <Badge variant={anomaly.severity === 'HIGH' ? 'error' : 'warning'}>
-                        {anomaly.severity}
-                      </Badge>
-                      <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                        {anomaly.type}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
-                      <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                        Score: {anomaly.score}
-                      </span>
-                      <div style={{
-                        width: '60px',
-                        height: '6px',
-                        backgroundColor: theme.colors.bg.tertiary,
-                        borderRadius: '3px',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${anomaly.score * 100}%`,
-                          height: '100%',
-                          backgroundColor: anomaly.severity === 'HIGH' ? theme.colors.status.error : theme.colors.status.warning
-                        }} />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing.md }}>
-                    {anomaly.description}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '12px', color: theme.colors.text.muted }}>
-                    <span>Détecté: {new Date(anomaly.timestamp).toLocaleString()}</span>
-                    <span>Hôtes affectés: {anomaly.affected_hosts.join(', ')}</span>
-                  </div>
-                </div>
-              ))}
-            </Card>
-          </div>
-        );
-
-      case 'stats':
-        return (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
-              <Card>
-                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
-                  Statistiques Graylog
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: theme.colors.text.secondary }}>Total Événements:</span>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {networkStats.total_events?.toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: theme.colors.text.secondary }}>Sources Uniques:</span>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {networkStats.unique_sources}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: theme.colors.text.secondary }}>Niveau de Menace:</span>
-                    <Badge variant={networkStats.threat_level === 'HIGH' ? 'error' : 'warning'}>
-                      {networkStats.threat_level}
-                    </Badge>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: theme.colors.text.secondary }}>Score Anomalie:</span>
-                    <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                      {networkStats.anomaly_score}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card>
-                <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
-                  Protocoles Principaux
-                </h4>
-                {networkStats.top_protocols?.map(proto => (
-                  <div key={proto.protocol} style={{ marginBottom: theme.spacing.md }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
-                      <span style={{ color: theme.colors.text.secondary }}>{proto.protocol}</span>
-                      <span style={{ color: theme.colors.text.primary }}>{proto.count.toLocaleString()}</span>
-                    </div>
-                    <div style={{
-                      width: '100%',
-                      height: '6px',
-                      backgroundColor: theme.colors.bg.tertiary,
-                      borderRadius: '3px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: `${proto.percentage}%`,
-                        height: '100%',
-                        backgroundColor: proto.protocol === 'TCP' ? theme.colors.status.success : 
-                                       proto.protocol === 'UDP' ? theme.colors.status.info : theme.colors.status.warning
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </Card>
-            </div>
-
-            <Card>
-              <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md }}>
-                Ports les Plus Actifs (Graylog Analytics)
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
-                {networkStats.top_ports?.map(portData => (
-                  <div key={portData.port} style={{
-                    padding: theme.spacing.md,
-                    backgroundColor: theme.colors.bg.tertiary,
-                    borderRadius: theme.borderRadius.md
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
-                        Port {portData.port}
-                      </span>
-                      <Badge variant="info">{portData.count.toLocaleString()}</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
-        <Database size={28} color={theme.colors.accent.primary} />
-        <h2 style={{ margin: 0, fontSize: '1.8rem', color: theme.colors.text.primary }}>
-          Forensique Réseau - Graylog Analytics
-        </h2>
-        <Badge variant={graylogStatus.status === 'online' ? 'success' : graylogStatus.status === 'demo' ? 'warning' : 'info'}>
-          {graylogStatus.status === 'online' ? 'CONNECTED' : 
-           graylogStatus.status === 'demo' ? 'DEMO MODE' : 'CONNECTING'}
-        </Badge>
-      </div>
-
-      {graylogStatus.status === 'demo' && (
-        <div style={{
-          backgroundColor: 'rgba(234, 179, 8, 0.1)',
-          border: `1px solid ${theme.colors.status.warning}`,
-          borderRadius: theme.borderRadius.md,
-          padding: theme.spacing.md,
-          marginBottom: theme.spacing.lg,
-          display: 'flex',
-          alignItems: 'center',
-          gap: theme.spacing.sm
-        }}>
-          <span style={{ fontSize: '20px' }}>⚠️</span>
-          <div>
-            <strong style={{ color: theme.colors.status.warning }}>Mode Démonstration</strong>
-            <div style={{ color: theme.colors.text.muted, fontSize: '13px' }}>
-              Les données affichées sont simulées. Connectez un serveur Graylog réel pour des données live.
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginBottom: theme.spacing.lg }}>
-        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-          {forensicsTabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeForensicsTab === tab.id;
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveForensicsTab(tab.id)}
-                style={{
-                  backgroundColor: isActive ? theme.colors.accent.primary : theme.colors.bg.secondary,
-                  color: isActive ? theme.colors.text.primary : theme.colors.text.secondary,
-                  border: `1px solid ${isActive ? theme.colors.accent.primary : theme.colors.bg.tertiary}`,
-                  padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-                  borderRadius: theme.borderRadius.md,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.sm,
-                  fontWeight: '500',
-                  fontSize: '14px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Icon size={16} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {renderForensicsContent()}
-    </div>
-  );
-};
-
-// ================================
-// ONGLET NMAP
+// ONGLETS DE SCAN
 // ================================
 
 const NmapTab = () => {
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('');
-  const [ports, setPorts] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
   const [results, setResults] = useState([]);
 
   const scanTypes = [
@@ -1184,86 +712,94 @@ const NmapTab = () => {
 
     setIsScanning(true);
     setProgress(0);
-    setLoadingMessage('Initializing Nmap engine...');
     
-    try {
-      const response = await fetch(`${API_BASE}/scan/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: 'nmap',
-          target: target,
-          scanType: scanType,
-          args: scanType + (ports ? ` -p ${ports}` : '')
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
-
-      const scanData = await response.json();
-      const scanId = scanData.scan_id;
-      
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResponse = await fetch(`${API_BASE}/scan/status/${scanId}`);
-          if (statusResponse.ok) {
-            const statusData = await statusResponse.json();
-            
-            if (statusData.status === 'completed') {
-              clearInterval(pollInterval);
-              
-              const newResult = {
-                id: Date.now(),
-                target: target,
-                scanType: scanType,
-                timestamp: new Date().toLocaleString(),
-                status: statusData.status,
-                scanTime: '18.43 seconds',
-                hostsUp: 1,
-                portsScanned: ports ? ports.split(',').length : 1000,
-                ports: statusData.output?.filter(line => line.includes('open'))?.map(line => {
-                  const match = line.match(/(\d+)\/tcp\s+open\s+(\w+)/);
-                  return match ? {
-                    port: match[1],
-                    state: 'open',
-                    service: match[2]
-                  } : null;
-                }).filter(Boolean) || []
-              };
-              
-              setResults(prev => [newResult, ...prev]);
-              setIsScanning(false);
-              setProgress(0);
-              setLoadingMessage('');
-            } else if (statusData.status === 'failed' || statusData.status === 'error') {
-              clearInterval(pollInterval);
-              throw new Error('Scan failed');
-            } else {
-              setProgress(prev => Math.min(prev + 5, 90));
-              setLoadingMessage(`Scanning ${target}...`);
-            }
-          }
-        } catch (pollError) {
-          console.error('Erreur lors du polling:', pollError);
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          const newResult = {
+            id: Date.now(),
+            target: target,
+            scanType: scanType,
+            timestamp: new Date().toLocaleString(),
+            status: 'completed',
+            ports: [
+              { port: '22', state: 'open', service: 'ssh' },
+              { port: '80', state: 'open', service: 'http' },
+              { port: '443', state: 'open', service: 'https' }
+            ]
+          };
+          setResults(prev => [newResult, ...prev]);
+          setIsScanning(false);
+          return 0;
         }
-      }, 2000);
-
-    } catch (error) {
-      console.error('Erreur lors du scan Nmap:', error);
-      setIsScanning(false);
-      setProgress(0);
-      setLoadingMessage('');
-      alert(`Erreur: ${error.message}`);
-    }
+        return prev + 10;
+      });
+    }, 500);
   };
+
+  const LoadingProgress = ({ message, progress, subMessage }) => (
+    <div style={{
+      padding: theme.spacing.xl,
+      textAlign: 'center',
+      backgroundColor: theme.colors.bg.tertiary,
+      borderRadius: theme.borderRadius.md,
+      border: `1px solid ${theme.colors.bg.accent}`
+    }}>
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <Loader size={32} color={theme.colors.accent.primary} />
+      </div>
+      
+      <div style={{ 
+        color: theme.colors.text.primary, 
+        fontSize: '16px', 
+        fontWeight: '600',
+        marginBottom: theme.spacing.md 
+      }}>
+        {message}
+      </div>
+      
+      {subMessage && (
+        <div style={{ 
+          color: theme.colors.text.muted, 
+          fontSize: '14px',
+          marginBottom: theme.spacing.lg
+        }}>
+          {subMessage}
+        </div>
+      )}
+      
+      <div style={{
+        width: '100%',
+        height: '8px',
+        backgroundColor: theme.colors.bg.primary,
+        borderRadius: theme.borderRadius.sm,
+        overflow: 'hidden',
+        marginBottom: theme.spacing.md
+      }}>
+        <div style={{
+          width: `${progress}%`,
+          height: '100%',
+          background: `linear-gradient(90deg, ${theme.colors.accent.primary}, ${theme.colors.accent.secondary})`,
+          transition: 'width 0.3s ease',
+          borderRadius: theme.borderRadius.sm
+        }}></div>
+      </div>
+      
+      <div style={{ 
+        color: theme.colors.text.muted, 
+        fontSize: '12px' 
+      }}>
+        {progress}% completed
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Target size={20} color={theme.colors.status.info} />
+          <Target size={20} color={theme.colors.accent.primary} />
           <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
             Nmap - Network Discovery & Security Scanning
           </h2>
@@ -1271,7 +807,7 @@ const NmapTab = () => {
 
         {isScanning ? (
           <LoadingProgress 
-            message={loadingMessage || 'Initializing Nmap engine...'} 
+            message="Scanning network..." 
             progress={progress}
             subMessage={`Scanning ${target} with ${scanType} options`}
           />
@@ -1312,23 +848,6 @@ const NmapTab = () => {
                   placeholder="Type de scan"
                 />
               </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🚪 Ports
-                </label>
-                <Input
-                  placeholder="1-1000 ou 22,80,443"
-                  value={ports}
-                  onChange={(e) => setPorts(e.target.value)}
-                />
-              </div>
             </div>
 
             <div style={{ marginTop: theme.spacing.lg }}>
@@ -1348,7 +867,7 @@ const NmapTab = () => {
 
       {results.length > 0 && (
         <Card>
-          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg, fontSize: '16px', fontWeight: '600' }}>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
             📊 Scan Results ({results.length})
           </h3>
           {results.map(result => (
@@ -1361,48 +880,28 @@ const NmapTab = () => {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
                 <Badge variant="success">COMPLETED</Badge>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
-                  {result.target}
-                </span>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
                 <Badge variant="info">{result.scanType}</Badge>
-                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {result.timestamp}
-                </span>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
               </div>
               
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
-                <span>⏱️ {result.scanTime}</span>
-                <span>🖥️ {result.hostsUp} hosts up</span>
-                <span>🔍 {result.portsScanned} ports scanned</span>
-              </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.sm }}>
                 {result.ports.map((port, index) => (
                   <div key={index} style={{
                     padding: theme.spacing.sm,
-                    backgroundColor: port.state === 'open' ? 'rgba(34, 197, 94, 0.1)' : 
-                                   port.state === 'closed' ? 'rgba(220, 38, 38, 0.1)' : 
-                                   'rgba(234, 179, 8, 0.1)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
                     borderRadius: theme.borderRadius.sm,
-                    border: `1px solid ${port.state === 'open' ? theme.colors.status.success : 
-                                       port.state === 'closed' ? theme.colors.status.error : 
-                                       theme.colors.status.warning}`
+                    border: `1px solid ${theme.colors.status.success}`
                   }}>
                     <div style={{ marginBottom: theme.spacing.xs }}>
                       <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{port.port}/tcp</span>
-                      <Badge variant={port.state === 'open' ? 'success' : port.state === 'closed' ? 'error' : 'warning'} 
-                             style={{ marginLeft: theme.spacing.sm }}>
+                      <Badge variant="success" style={{ marginLeft: theme.spacing.sm }}>
                         {port.state}
                       </Badge>
                     </div>
                     <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
                       {port.service}
                     </div>
-                    {port.version && (
-                      <div style={{ color: theme.colors.text.muted, fontSize: '11px' }}>
-                        {port.version}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1414,16 +913,10 @@ const NmapTab = () => {
   );
 };
 
-// ================================
-// ONGLET NIKTO
-// ================================
-
 const NiktoTab = () => {
   const [target, setTarget] = useState('');
-  const [port, setPort] = useState('80');
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
   const [results, setResults] = useState([]);
 
   const startScan = async () => {
@@ -1434,79 +927,85 @@ const NiktoTab = () => {
 
     setIsScanning(true);
     setProgress(0);
-    setLoadingMessage('Starting Nikto web scanner...');
 
-    try {
-      const response = await fetch(`${API_BASE}/scan/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: 'nikto',
-          target: target,
-          scanType: 'basic'
-        })
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          const newResult = {
+            id: Date.now(),
+            target: target,
+            timestamp: new Date().toLocaleString(),
+            vulnerabilities: [
+              { severity: 'MEDIUM', description: 'Server may leak inodes via ETags', uri: '/' },
+              { severity: 'HIGH', description: 'Directory indexing enabled', uri: '/backup/' }
+            ]
+          };
+          setResults(prev => [newResult, ...prev]);
+          setIsScanning(false);
+          return 0;
+        }
+        return prev + 8;
       });
-
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
-
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            setTimeout(() => {
-              const newResult = {
-                id: Date.now(),
-                target: target,
-                port: port,
-                timestamp: new Date().toLocaleString(),
-                status: 'completed',
-                scanTime: '17.82 seconds',
-                requestsSent: 6847,
-                vulnerabilities: [
-                  {
-                    id: 1,
-                    severity: 'MEDIUM',
-                    description: 'Server may leak inodes via ETags',
-                    method: 'GET',
-                    uri: '/',
-                    details: 'HTTP/1.1 200 OK'
-                  },
-                  {
-                    id: 2,
-                    severity: 'HIGH',
-                    description: 'Directory indexing enabled',
-                    method: 'GET',
-                    uri: '/backup/',
-                    details: 'Backup files may be accessible'
-                  }
-                ],
-                serverInfo: {
-                  server: 'Apache/2.4.41 (Ubuntu)',
-                  xPoweredBy: 'PHP/7.4.3'
-                }
-              };
-              
-              setResults(prev => [newResult, ...prev]);
-              setIsScanning(false);
-              setProgress(0);
-              setLoadingMessage('');
-            }, 1000);
-            return 100;
-          }
-          return prev + 3;
-        });
-      }, 500);
-
-    } catch (error) {
-      console.error('Erreur lors du scan Nikto:', error);
-      setIsScanning(false);
-      setProgress(0);
-      setLoadingMessage('');
-      alert(`Erreur: ${error.message}`);
-    }
+    }, 400);
   };
+
+  const LoadingProgress = ({ message, progress, subMessage }) => (
+    <div style={{
+      padding: theme.spacing.xl,
+      textAlign: 'center',
+      backgroundColor: theme.colors.bg.tertiary,
+      borderRadius: theme.borderRadius.md,
+      border: `1px solid ${theme.colors.bg.accent}`
+    }}>
+      <div style={{ marginBottom: theme.spacing.lg }}>
+        <Loader size={32} color={theme.colors.accent.primary} />
+      </div>
+      
+      <div style={{ 
+        color: theme.colors.text.primary, 
+        fontSize: '16px', 
+        fontWeight: '600',
+        marginBottom: theme.spacing.md 
+      }}>
+        {message}
+      </div>
+      
+      {subMessage && (
+        <div style={{ 
+          color: theme.colors.text.muted, 
+          fontSize: '14px',
+          marginBottom: theme.spacing.lg
+        }}>
+          {subMessage}
+        </div>
+      )}
+      
+      <div style={{
+        width: '100%',
+        height: '8px',
+        backgroundColor: theme.colors.bg.primary,
+        borderRadius: theme.borderRadius.sm,
+        overflow: 'hidden',
+        marginBottom: theme.spacing.md
+      }}>
+        <div style={{
+          width: `${progress}%`,
+          height: '100%',
+          background: `linear-gradient(90deg, ${theme.colors.accent.primary}, ${theme.colors.accent.secondary})`,
+          transition: 'width 0.3s ease',
+          borderRadius: theme.borderRadius.sm
+        }}></div>
+      </div>
+      
+      <div style={{ 
+        color: theme.colors.text.muted, 
+        fontSize: '12px' 
+      }}>
+        {progress}% completed
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
@@ -1520,66 +1019,45 @@ const NiktoTab = () => {
 
         {isScanning ? (
           <LoadingProgress 
-            message={loadingMessage || 'Starting Nikto web scanner...'} 
+            message="Scanning web server..." 
             progress={progress}
-            subMessage={`Scanning ${target}:${port} for web vulnerabilities`}
+            subMessage={`Scanning ${target} for web vulnerabilities`}
           />
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🌐 Target URL
-                </label>
-                <Input
-                  placeholder="http://example.com"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🚪 Port
-                </label>
-                <Input
-                  placeholder="80"
-                  value={port}
-                  onChange={(e) => setPort(e.target.value)}
-                />
-              </div>
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: theme.spacing.sm, 
+                color: theme.colors.text.secondary,
+                fontSize: '13px',
+                fontWeight: '500'
+              }}>
+                🌐 Target URL
+              </label>
+              <Input
+                placeholder="http://example.com"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+              />
             </div>
 
-            <div style={{ marginTop: theme.spacing.lg }}>
-              <Button
-                onClick={startScan}
-                disabled={!target}
-                variant="primary"
-                icon={Play}
-                fullWidth
-              >
-                🕷️ Start Nikto Scan
-              </Button>
-            </div>
+            <Button
+              onClick={startScan}
+              disabled={!target}
+              variant="primary"
+              icon={Play}
+              fullWidth
+            >
+              🕷️ Start Nikto Scan
+            </Button>
           </>
         )}
       </Card>
 
       {results.length > 0 && (
         <Card>
-          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg, fontSize: '16px', fontWeight: '600' }}>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
             🚨 Vulnerabilities Found
           </h3>
           {results.map(result => (
@@ -1587,805 +1065,35 @@ const NiktoTab = () => {
               padding: theme.spacing.md,
               backgroundColor: theme.colors.bg.tertiary,
               borderRadius: theme.borderRadius.md,
-              marginBottom: theme.spacing.md,
-              border: `1px solid ${theme.colors.bg.accent}`
+              marginBottom: theme.spacing.md
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
                 <Badge variant="warning">COMPLETED</Badge>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
-                  {result.target}:{result.port}
-                </span>
-                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {result.timestamp}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '13px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
-                <span>⏱️ {result.scanTime}</span>
-                <span>📊 {result.requestsSent} requests sent</span>
-                <span>🚨 {result.vulnerabilities.length} issues found</span>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
               </div>
 
               {result.vulnerabilities.map((vuln, index) => (
                 <div key={index} style={{
                   padding: theme.spacing.sm,
-                  backgroundColor: vuln.severity === 'HIGH' ? 'rgba(220, 38, 38, 0.1)' : 
-                                  vuln.severity === 'MEDIUM' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                  backgroundColor: vuln.severity === 'HIGH' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(234, 179, 8, 0.1)',
                   borderRadius: theme.borderRadius.sm,
                   marginBottom: theme.spacing.sm,
-                  border: `1px solid ${vuln.severity === 'HIGH' ? theme.colors.status.error : 
-                                     vuln.severity === 'MEDIUM' ? theme.colors.status.warning : theme.colors.status.info}`
+                  border: `1px solid ${vuln.severity === 'HIGH' ? theme.colors.status.error : theme.colors.status.warning}`
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xs }}>
-                    <Badge variant={vuln.severity === 'HIGH' ? 'error' : vuln.severity === 'MEDIUM' ? 'warning' : 'info'}>
+                    <Badge variant={vuln.severity === 'HIGH' ? 'error' : 'warning'}>
                       {vuln.severity}
                     </Badge>
-                    <Badge variant="default">{vuln.method || 'GET'}</Badge>
                   </div>
                   <div style={{ color: theme.colors.text.primary, fontSize: '13px', marginBottom: theme.spacing.xs }}>
                     {vuln.description}
                   </div>
-                  {vuln.uri && (
-                    <div style={{ color: theme.colors.text.muted, fontSize: '12px', marginBottom: theme.spacing.xs }}>
-                      URI: {vuln.uri}
-                    </div>
-                  )}
-                  {vuln.details && (
-                    <div style={{ color: theme.colors.text.muted, fontSize: '11px' }}>
-                      {vuln.details}
-                    </div>
-                  )}
+                  <div style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
+                    URI: {vuln.uri}
+                  </div>
                 </div>
               ))}
-            </div>
-          ))}
-        </Card>
-      )}
-    </div>
-  );
-};
-
-// ================================
-// ONGLET METASPLOIT
-// ================================
-
-const MetasploitTab = () => {
-  const [target, setTarget] = useState('');
-  const [exploit, setExploit] = useState('');
-  const [payload, setPayload] = useState('');
-  const [lhost, setLhost] = useState('');
-  const [lport, setLport] = useState('4444');
-  const [isLaunching, setIsLaunching] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [sessions, setSessions] = useState([]);
-
-  const exploits = [
-    { value: 'exploit/windows/smb/ms17_010_eternalblue', label: 'MS17-010 EternalBlue' },
-    { value: 'exploit/windows/smb/ms08_067_netapi', label: 'MS08-067 NetAPI' },
-    { value: 'exploit/multi/samba/usermap_script', label: 'Samba usermap_script' },
-    { value: 'exploit/unix/ftp/vsftpd_234_backdoor', label: 'VSFTPD Backdoor' },
-    { value: 'exploit/linux/http/apache_mod_cgi_bash_env_exec', label: 'Shellshock' }
-  ];
-
-  const payloads = [
-    { value: 'windows/meterpreter/reverse_tcp', label: 'Windows Meterpreter Reverse TCP' },
-    { value: 'linux/x86/meterpreter/reverse_tcp', label: 'Linux Meterpreter Reverse TCP' },
-    { value: 'cmd/unix/reverse', label: 'Unix Command Shell' },
-    { value: 'java/meterpreter/reverse_tcp', label: 'Java Meterpreter Reverse TCP' }
-  ];
-
-  const launchExploit = async () => {
-    if (!target || !exploit || !payload || !lhost) {
-      alert('Veuillez remplir tous les champs');
-      return;
-    }
-
-    setIsLaunching(true);
-    setProgress(0);
-    setLoadingMessage('Initializing Metasploit Framework...');
-
-    try {
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            setTimeout(async () => {
-              const newSession = {
-                id: Date.now(),
-                target: target,
-                exploit: exploit.split('/').pop(),
-                payload: payload.split('/').pop(),
-                timestamp: new Date().toLocaleString(),
-                connection: `${target}:${lport}`,
-                platform: payload.includes('windows') ? 'Windows' : 'Linux',
-                privileges: Math.random() > 0.5 ? 'SYSTEM' : 'user',
-                lastSeen: 'just now'
-              };
-              setSessions(prev => [newSession, ...prev]);
-              setIsLaunching(false);
-              setProgress(0);
-              setLoadingMessage('');
-            }, 1000);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 500);
-
-    } catch (error) {
-      console.error('Erreur lors du lancement de l\'exploit:', error);
-      setIsLaunching(false);
-      setProgress(0);
-      setLoadingMessage('');
-      alert(`Erreur: ${error.message}`);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Crosshairs size={20} color={theme.colors.status.error} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Metasploit - Exploitation Framework
-          </h2>
-        </div>
-
-        {isLaunching ? (
-          <LoadingProgress 
-            message={loadingMessage || 'Initializing Metasploit Framework...'} 
-            progress={progress}
-            subMessage={`Exploiting ${target} using ${exploit.split('/').pop()}`}
-          />
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🎯 Target
-                </label>
-                <Input
-                  placeholder="192.168.1.100"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  💥 Exploit
-                </label>
-                <Select
-                  options={exploits}
-                  value={exploit}
-                  onChange={(e) => setExploit(e.target.value)}
-                  placeholder="Sélectionner exploit"
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  📦 Payload
-                </label>
-                <Select
-                  options={payloads}
-                  value={payload}
-                  onChange={(e) => setPayload(e.target.value)}
-                  placeholder="Sélectionner payload"
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🏠 LHOST
-                </label>
-                <Input
-                  placeholder="192.168.1.10"
-                  value={lhost}
-                  onChange={(e) => setLhost(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🚪 LPORT
-                </label>
-                <Input
-                  placeholder="4444"
-                  value={lport}
-                  onChange={(e) => setLport(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: theme.spacing.lg }}>
-              <Button
-                onClick={launchExploit}
-                disabled={!target || !exploit || !payload || !lhost}
-                variant="danger"
-                icon={Zap}
-                fullWidth
-              >
-                🚀 Launch Exploit
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
-
-      {sessions.length > 0 && (
-        <Card>
-          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg, fontSize: '16px', fontWeight: '600' }}>
-            💻 Active Sessions ({sessions.length})
-          </h3>
-          {sessions.map((session, index) => (
-            <div key={index} style={{
-              padding: theme.spacing.md,
-              backgroundColor: theme.colors.bg.tertiary,
-              borderRadius: theme.borderRadius.md,
-              marginBottom: theme.spacing.md,
-              border: `1px solid ${theme.colors.status.success}`
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                <Badge variant="success">ACTIVE</Badge>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
-                  Session #{session.id || index + 1}
-                </span>
-                <Badge variant="info">{session.platform || 'unknown'}</Badge>
-                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {session.timestamp || new Date().toLocaleString()}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '13px', marginBottom: theme.spacing.sm }}>
-                <span style={{ color: theme.colors.text.secondary }}>🎯 {session.target || target}</span>
-                <span style={{ color: theme.colors.text.secondary }}>💥 {session.exploit || exploit.split('/').pop()}</span>
-                <span style={{ color: theme.colors.text.secondary }}>📦 {session.payload || payload.split('/').pop()}</span>
-                <span style={{ color: theme.colors.text.secondary }}>👑 {session.privileges || 'user'}</span>
-              </div>
-
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '12px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
-                <span>🔗 {session.connection || `${target}:${lport}`}</span>
-                <span>👁️ Last seen: {session.lastSeen || 'just now'}</span>
-              </div>
-
-              <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                <Button size="sm" variant="secondary" icon={Terminal}>
-                  Open Shell
-                </Button>
-                <Button size="sm" variant="ghost" icon={Eye}>
-                  Session Info
-                </Button>
-                <Button size="sm" variant="danger">
-                  Kill Session
-                </Button>
-              </div>
-            </div>
-          ))}
-        </Card>
-      )}
-    </div>
-  );
-};
-
-// ================================
-// ONGLET TCPDUMP
-// ================================
-
-const TcpdumpTab = () => {
-  const [networkInterface, setNetworkInterface] = useState('eth0');
-  const [filter, setFilter] = useState('');
-  const [duration, setDuration] = useState('60');
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [captures, setCaptures] = useState([]);
-
-  const interfaces = [
-    { value: 'eth0', label: 'eth0 - Ethernet' },
-    { value: 'wlan0', label: 'wlan0 - WiFi' },
-    { value: 'lo', label: 'lo - Loopback' },
-    { value: 'tun0', label: 'tun0 - VPN Tunnel' }
-  ];
-
-  const startCapture = async () => {
-    setIsCapturing(true);
-    setProgress(0);
-    setLoadingMessage('Initializing tcpdump...');
-
-    try {
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            setTimeout(() => {
-              const capturedPackets = Math.floor(Math.random() * 5000) + 1000;
-              const newCapture = {
-                id: Date.now(),
-                interface: networkInterface,
-                filter: filter || 'all traffic',
-                duration: duration,
-                packets: capturedPackets,
-                size: (Math.random() * 10 + 1).toFixed(1) + ' MB',
-                timestamp: new Date().toLocaleString(),
-                status: 'completed',
-                filename: `capture_${Date.now()}.pcap`,
-                protocols: {
-                  TCP: Math.floor(Math.random() * 40) + 30,
-                  UDP: Math.floor(Math.random() * 30) + 20,
-                  ICMP: Math.floor(Math.random() * 10) + 5,
-                  Other: Math.floor(Math.random() * 15) + 5
-                }
-              };
-              
-              setCaptures(prev => [newCapture, ...prev]);
-              setIsCapturing(false);
-              setProgress(0);
-              setLoadingMessage('');
-            }, 1000);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, parseInt(duration) * 1000 / 100);
-
-    } catch (error) {
-      console.error('Erreur lors de la capture tcpdump:', error);
-      setIsCapturing(false);
-      setProgress(0);
-      setLoadingMessage('');
-      alert(`Erreur: ${error.message}`);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Network size={20} color={theme.colors.status.info} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            tcpdump - Network Traffic Analyzer
-          </h2>
-        </div>
-
-        {isCapturing ? (
-          <LoadingProgress 
-            message={loadingMessage || 'Initializing tcpdump...'} 
-            progress={progress}
-            subMessage={`Capturing on ${networkInterface} ${filter ? `with filter: ${filter}` : ''}`}
-          />
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🌐 Interface
-                </label>
-                <Select
-                  options={interfaces}
-                  value={networkInterface}
-                  onChange={(e) => setNetworkInterface(e.target.value)}
-                  placeholder="Interface réseau"
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🔍 Filter (BPF)
-                </label>
-                <Input
-                  placeholder="port 80 or host 192.168.1.1"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  ⏱️ Duration (sec)
-                </label>
-                <Input
-                  placeholder="60"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: theme.spacing.lg }}>
-              <Button
-                onClick={startCapture}
-                disabled={!networkInterface}
-                variant="primary"
-                icon={Play}
-                fullWidth
-              >
-                📡 Start Capture
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
-
-      {captures.length > 0 && (
-        <Card>
-          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg, fontSize: '16px', fontWeight: '600' }}>
-            📊 Capture History ({captures.length})
-          </h3>
-          {captures.map(capture => (
-            <div key={capture.id} style={{
-              padding: theme.spacing.md,
-              backgroundColor: theme.colors.bg.tertiary,
-              borderRadius: theme.borderRadius.md,
-              marginBottom: theme.spacing.md,
-              border: `1px solid ${theme.colors.bg.accent}`
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                <Badge variant="info">COMPLETED</Badge>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
-                  {capture.interface}
-                </span>
-                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {capture.timestamp}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '13px', marginBottom: theme.spacing.sm }}>
-                <span style={{ color: theme.colors.text.secondary }}>📦 {capture.packets.toLocaleString()} packets</span>
-                <span style={{ color: theme.colors.text.secondary }}>💾 {capture.size}</span>
-                <span style={{ color: theme.colors.text.secondary }}>⏱️ {capture.duration}s</span>
-                <span style={{ color: theme.colors.text.secondary }}>📁 {capture.filename}</span>
-              </div>
-
-              <div style={{ color: theme.colors.text.muted, fontSize: '12px', marginBottom: theme.spacing.md }}>
-                Filter: {capture.filter}
-              </div>
-
-              {Object.keys(capture.protocols).length > 0 && (
-                <div style={{ marginBottom: theme.spacing.md }}>
-                  <h4 style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: theme.spacing.sm }}>
-                    Protocol Distribution:
-                  </h4>
-                  <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                    {Object.entries(capture.protocols).map(([protocol, percentage]) => (
-                      <Badge key={protocol} variant={
-                        protocol === 'TCP' ? 'success' : 
-                        protocol === 'UDP' ? 'info' : 
-                        protocol === 'ICMP' ? 'warning' : 'default'
-                      }>
-                        {protocol}: {percentage}%
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                <Button size="sm" variant="secondary">
-                  📥 Download PCAP
-                </Button>
-                <Button size="sm" variant="ghost" icon={Eye}>
-                  Analyze
-                </Button>
-                <Button size="sm" variant="ghost">
-                  🔍 Wireshark
-                </Button>
-              </div>
-            </div>
-          ))}
-        </Card>
-      )}
-    </div>
-  );
-};
-
-// ================================
-// ONGLET HYDRA
-// ================================
-
-const HydraTab = () => {
-  const [target, setTarget] = useState('');
-  const [service, setService] = useState('');
-  const [username, setUsername] = useState('');
-  const [wordlist, setWordlist] = useState('');
-  const [isAttacking, setIsAttacking] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [results, setResults] = useState([]);
-
-  const services = [
-    { value: 'ssh', label: 'SSH (22)' },
-    { value: 'ftp', label: 'FTP (21)' },
-    { value: 'telnet', label: 'Telnet (23)' },
-    { value: 'http-get', label: 'HTTP GET (80)' },
-    { value: 'https-get', label: 'HTTPS GET (443)' },
-    { value: 'rdp', label: 'RDP (3389)' },
-    { value: 'mysql', label: 'MySQL (3306)' },
-    { value: 'smb', label: 'SMB (445)' }
-  ];
-
-  const wordlists = [
-    { value: '/usr/share/wordlists/rockyou.txt', label: 'rockyou.txt (14M passwords)' },
-    { value: '/usr/share/wordlists/fasttrack.txt', label: 'fasttrack.txt (222 passwords)' },
-    { value: '/usr/share/wordlists/common.txt', label: 'common.txt (4.8K passwords)' },
-    { value: '/usr/share/wordlists/seclists/10-million-password-list-top-1000.txt', label: 'top-1000.txt' }
-  ];
-
-  const startAttack = async () => {
-    if (!target || !service || !username || !wordlist) {
-      alert('Veuillez remplir tous les champs');
-      return;
-    }
-
-    setIsAttacking(true);
-    setProgress(0);
-    setLoadingMessage('Starting Hydra attack engine...');
-
-    try {
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            setTimeout(() => {
-              const foundCredentials = Math.random() > 0.4;
-              const credentials = foundCredentials ? [{
-                username: username,
-                password: ['password', 'admin', '123456', 'password123'][Math.floor(Math.random() * 4)]
-              }] : [];
-
-              const newResult = {
-                id: Date.now(),
-                target: target,
-                service: service,
-                username: username,
-                wordlist: wordlist.split('/').pop(),
-                attempts: Math.floor(Math.random() * 1000) + 500,
-                duration: '17.3 seconds',
-                threadsUsed: 16,
-                credentials: credentials,
-                timestamp: new Date().toLocaleString(),
-                status: 'completed',
-                attackRate: `${Math.floor(Math.random() * 50) + 20} attempts/sec`
-              };
-              
-              setResults(prev => [newResult, ...prev]);
-              setIsAttacking(false);
-              setProgress(0);
-              setLoadingMessage('');
-            }, 1000);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 400);
-
-    } catch (error) {
-      console.error('Erreur lors de l\'attaque Hydra:', error);
-      setIsAttacking(false);
-      setProgress(0);
-      setLoadingMessage('');
-      alert(`Erreur: ${error.message}`);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Key size={20} color={theme.colors.status.warning} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Hydra - Brute Force Attack Tool
-          </h2>
-        </div>
-
-        {isAttacking ? (
-          <LoadingProgress 
-            message={loadingMessage || 'Starting Hydra attack engine...'} 
-            progress={progress}
-            subMessage={`Attacking ${service} service on ${target} using ${wordlist.split('/').pop()}`}
-          />
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🎯 Target
-                </label>
-                <Input
-                  placeholder="192.168.1.100"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  🔧 Service
-                </label>
-                <Select
-                  options={services}
-                  value={service}
-                  onChange={(e) => setService(e.target.value)}
-                  placeholder="Service à attaquer"
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  👤 Username
-                </label>
-                <Input
-                  placeholder="admin"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: theme.spacing.sm, 
-                  color: theme.colors.text.secondary,
-                  fontSize: '13px',
-                  fontWeight: '500'
-                }}>
-                  📝 Wordlist
-                </label>
-                <Select
-                  options={wordlists}
-                  value={wordlist}
-                  onChange={(e) => setWordlist(e.target.value)}
-                  placeholder="Wordlist passwords"
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: theme.spacing.lg }}>
-              <Button
-                onClick={startAttack}
-                disabled={!target || !service || !username || !wordlist}
-                variant="danger"
-                icon={Play}
-                fullWidth
-              >
-                🔨 Start Brute Force
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
-
-      {results.length > 0 && (
-        <Card>
-          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg, fontSize: '16px', fontWeight: '600' }}>
-            🎯 Attack Results ({results.length})
-          </h3>
-          {results.map(result => (
-            <div key={result.id} style={{
-              padding: theme.spacing.md,
-              backgroundColor: result.credentials.length > 0 ? 'rgba(34, 197, 94, 0.1)' : theme.colors.bg.tertiary,
-              borderRadius: theme.borderRadius.md,
-              marginBottom: theme.spacing.md,
-              border: `1px solid ${result.credentials.length > 0 ? theme.colors.status.success : theme.colors.bg.accent}`
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                <Badge variant={result.credentials.length > 0 ? 'success' : 'error'}>
-                  {result.credentials.length > 0 ? 'SUCCESS' : 'FAILED'}
-                </Badge>
-                <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px' }}>
-                  {result.target} ({result.service})
-                </span>
-                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>
-                  {result.timestamp}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '13px', marginBottom: theme.spacing.sm }}>
-                <span style={{ color: theme.colors.text.secondary }}>👤 {result.username}</span>
-                <span style={{ color: theme.colors.text.secondary }}>📝 {result.wordlist}</span>
-                <span style={{ color: theme.colors.text.secondary }}>🔄 {result.attempts} attempts</span>
-                <span style={{ color: theme.colors.text.secondary }}>⏱️ {result.duration}</span>
-              </div>
-
-              <div style={{ display: 'flex', gap: theme.spacing.lg, fontSize: '12px', color: theme.colors.text.muted, marginBottom: theme.spacing.md }}>
-                <span>🧵 {result.threadsUsed} threads</span>
-                <span>⚡ {result.attackRate}</span>
-              </div>
-
-              {result.credentials.length > 0 && (
-                <div style={{
-                  padding: theme.spacing.sm,
-                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                  borderRadius: theme.borderRadius.sm,
-                  marginTop: theme.spacing.sm
-                }}>
-                  <div style={{ color: theme.colors.status.success, fontWeight: '600', marginBottom: theme.spacing.xs }}>
-                    🎉 CREDENTIALS FOUND:
-                  </div>
-                  {result.credentials.map((cred, index) => (
-                    <div key={index} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: theme.spacing.md,
-                      marginBottom: theme.spacing.xs
-                    }}>
-                      <span style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '14px' }}>
-                        {cred.username}:{cred.password}
-                      </span>
-                      <Badge variant="success" style={{ fontSize: '10px' }}>
-                        Found
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </Card>
@@ -2398,24 +1106,29 @@ const HydraTab = () => {
 // NAVIGATION
 // ================================
 
-const Navigation = ({ activeTab, onTabChange }) => {
+const Navigation = ({ activeTab, onTabChange, currentUser }) => {
   const tabs = [
     { id: 'nmap', label: 'Nmap', icon: Target },
     { id: 'nikto', label: 'Nikto', icon: Globe },
     { id: 'metasploit', label: 'Metasploit', icon: Crosshairs },
     { id: 'tcpdump', label: 'tcpdump', icon: Network },
     { id: 'hydra', label: 'Hydra', icon: Key },
-    { id: 'forensics', label: 'Forensique Graylog', icon: Database }
+    { id: 'history', label: 'Historique', icon: History }
   ];
+
+  if (currentUser && currentUser.role === 'admin') {
+    tabs.push({ id: 'admin', label: 'Administration', icon: Settings });
+  }
 
   return (
     <nav style={{
       backgroundColor: theme.colors.bg.primary,
       borderBottom: `1px solid ${theme.colors.bg.tertiary}`,
-      padding: `0 ${theme.spacing.lg}`
+      padding: `0 ${theme.spacing.lg}`,
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+        <div style={{ display: 'flex', gap: theme.spacing.sm, overflowX: 'auto' }}>
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -2434,10 +1147,21 @@ const Navigation = ({ activeTab, onTabChange }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: theme.spacing.sm,
-                  fontWeight: '500',
+                  fontWeight: '600',
                   fontSize: '14px',
                   transition: 'all 0.2s ease',
-                  borderBottom: isActive ? `2px solid ${theme.colors.accent.primary}` : '2px solid transparent'
+                  borderBottom: isActive ? `2px solid ${theme.colors.accent.primary}` : '2px solid transparent',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.target.style.backgroundColor = theme.colors.bg.tertiary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.target.style.backgroundColor = 'transparent';
+                  }
                 }}
               >
                 <Icon size={16} />
@@ -2456,7 +1180,22 @@ const Navigation = ({ activeTab, onTabChange }) => {
 // ================================
 
 const PachaPentestSuite = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('nmap');
+
+  const handleLogin = (user, token) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    console.log('✅ Connexion réussie:', user.username);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setActiveTab('nmap');
+    console.log('✅ Déconnexion effectuée');
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -2465,17 +1204,51 @@ const PachaPentestSuite = () => {
       case 'nikto':
         return <NiktoTab />;
       case 'metasploit':
-        return <MetasploitTab />;
       case 'tcpdump':
-        return <TcpdumpTab />;
       case 'hydra':
-        return <HydraTab />;
-      case 'forensics':
-        return <ForensicsTab />;
+        return (
+          <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
+            <div style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>🚧</div>
+            <div style={{ color: theme.colors.text.primary, fontSize: '18px', marginBottom: theme.spacing.sm }}>
+              Module {activeTab.toUpperCase()} - En développement
+            </div>
+            <div style={{ color: theme.colors.text.muted }}>
+              Cette fonctionnalité sera bientôt disponible dans la version complète
+            </div>
+          </Card>
+        );
+      case 'history':
+        return (
+          <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
+            <div style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>📊</div>
+            <div style={{ color: theme.colors.text.primary, fontSize: '18px', marginBottom: theme.spacing.sm }}>
+              Historique des Scans
+            </div>
+            <div style={{ color: theme.colors.text.muted }}>
+              Vos scans précédents apparaîtront ici
+            </div>
+          </Card>
+        );
+      case 'admin':
+        return (
+          <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
+            <div style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>⚙️</div>
+            <div style={{ color: theme.colors.text.primary, fontSize: '18px', marginBottom: theme.spacing.sm }}>
+              Panel d'Administration
+            </div>
+            <div style={{ color: theme.colors.text.muted }}>
+              Gestion des utilisateurs et configuration système
+            </div>
+          </Card>
+        );
       default:
         return <NmapTab />;
     }
   };
+
+  if (!isAuthenticated) {
+    return <AuthForm onLogin={handleLogin} />;
+  }
 
   return (
     <div style={{
@@ -2483,8 +1256,8 @@ const PachaPentestSuite = () => {
       backgroundColor: theme.colors.bg.primary,
       color: theme.colors.text.primary
     }}>
-      <Header />
-      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header currentUser={currentUser} onLogout={handleLogout} />
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} />
       
       <main style={{ 
         maxWidth: '1400px', 
@@ -2498,3 +1271,165 @@ const PachaPentestSuite = () => {
 };
 
 export default PachaPentestSuite;
+        <>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: theme.spacing.sm, 
+                color: theme.colors.accent.primary,
+                fontWeight: '600'
+              }}>
+                👤 Nom d'utilisateur
+              </label>
+              <Input
+                name="username"
+                value={formData.username}
+                onChange={handleInputChange}
+                placeholder="Votre nom d'utilisateur"
+                disabled={isLoading}
+              />
+            </div>
+            
+            {mode === 'register' && (
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.accent.primary,
+                  fontWeight: '600'
+                }}>
+                  📧 Email
+                </label>
+                <Input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="votre@email.com"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: theme.spacing.sm, 
+                color: theme.colors.accent.primary,
+                fontWeight: '600'
+              }}>
+                🔒 Mot de passe
+              </label>
+              <Input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Votre mot de passe"
+                disabled={isLoading}
+              />
+            </div>
+            
+            {mode === 'register' && (
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.accent.primary,
+                  fontWeight: '600'
+                }}>
+                  🔒 Confirmer le mot de passe
+                </label>
+                <Input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Confirmez votre mot de passe"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            
+            {error && (
+              <div style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(220, 38, 38, 0.2)',
+                border: `1px solid ${theme.colors.status.error}`,
+                color: '#ff6b6b',
+                textAlign: 'center'
+              }}>
+                ❌ {error}
+              </div>
+            )}
+            
+            {success && (
+              <div style={{
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(0, 255, 136, 0.2)',
+                border: `1px solid ${theme.colors.accent.primary}`,
+                color: theme.colors.accent.primary,
+                textAlign: 'center'
+              }}>
+                ✅ {success}
+              </div>
+            )}
+            
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              fullWidth
+              style={{ marginTop: theme.spacing.md }}
+            >
+              {isLoading ? (
+                <>
+                  <Loader size={16} />
+                  {mode === 'login' ? 'Connexion...' : 'Création...'}
+                </>
+              ) : (
+                mode === 'login' ? '🚀 Se connecter' : '✨ Créer le compte'
+              )}
+            </Button>
+          </form>
+          
+          <div style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
+            {mode === 'login' ? (
+              <>
+                Pas encore de compte ?{' '}
+                <button 
+                  onClick={() => setMode('register')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: theme.colors.accent.primary,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Créer un compte
+                </button>
+              </>
+            ) : (
+              <>
+                Déjà un compte ?{' '}
+                <button 
+                  onClick={() => setMode('login')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: theme.colors.accent.primary,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Se connecter
+                </button>
+              </>
+            )}
+          </div>
+        </>

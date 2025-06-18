@@ -1,74 +1,85 @@
-# backend/auth/database.py
+# backend/auth/database.py - Adaptation PostgreSQL
 import os
-import sqlite3
 import hashlib
 import secrets
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Union
 import jwt
+import psycopg2
+import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
 
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    """Gestionnaire de base de données sécurisé pour l'authentification"""
+    """Gestionnaire de base de données PostgreSQL pour l'authentification"""
     
-    def __init__(self, db_path: str = "data/toolbox.db"):
-        self.db_path = db_path
+    def __init__(self):
+        self.connection_params = {
+            'host': os.environ.get('DB_HOST', 'postgres'),
+            'port': os.environ.get('DB_PORT', '5432'),
+            'database': os.environ.get('DB_NAME', 'pacha_toolbox'),
+            'user': os.environ.get('DB_USER', 'pacha_user'),
+            'password': os.environ.get('DB_PASSWORD', 'pacha_secure_2024!')
+        }
         self.secret_key = os.environ.get('JWT_SECRET_KEY', secrets.token_hex(32))
-        self._ensure_db_directory()
         self._init_database()
     
-    def _ensure_db_directory(self):
-        """Créer le répertoire de base de données s'il n'existe pas"""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+    def _get_connection(self):
+        """Obtenir une connexion à la base de données PostgreSQL"""
+        try:
+            conn = psycopg2.connect(**self.connection_params)
+            conn.autocommit = True
+            return conn
+        except psycopg2.Error as e:
+            logger.error(f"❌ Erreur connexion PostgreSQL: {e}")
+            raise
     
     def _init_database(self):
         """Initialiser la base de données avec toutes les tables nécessaires"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute("PRAGMA foreign_keys = ON")
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 # Table des utilisateurs
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     email VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     role VARCHAR(20) DEFAULT 'user',
-                    is_active BOOLEAN DEFAULT 1,
-                    is_verified BOOLEAN DEFAULT 0,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    is_verified BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
                     login_attempts INTEGER DEFAULT 0,
                     locked_until TIMESTAMP,
                     two_factor_secret VARCHAR(32),
-                    two_factor_enabled BOOLEAN DEFAULT 0,
+                    two_factor_enabled BOOLEAN DEFAULT FALSE,
                     profile_data TEXT
                 )''')
                 
                 # Table des sessions
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS user_sessions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     session_token VARCHAR(255) UNIQUE NOT NULL,
-                    ip_address VARCHAR(45),
+                    ip_address INET,
                     user_agent TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP NOT NULL,
-                    is_active BOOLEAN DEFAULT 1,
+                    is_active BOOLEAN DEFAULT TRUE,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )''')
                 
                 # Table des scans liés aux utilisateurs
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS user_scans (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     scan_id VARCHAR(50) NOT NULL,
                     tool VARCHAR(20) NOT NULL,
@@ -79,20 +90,20 @@ class DatabaseManager:
                     completed_at TIMESTAMP,
                     results TEXT,
                     report_path VARCHAR(255),
-                    is_private BOOLEAN DEFAULT 1,
+                    is_private BOOLEAN DEFAULT TRUE,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )''')
                 
                 # Table des logs d'activité
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS activity_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     user_id INTEGER,
                     action VARCHAR(100) NOT NULL,
                     resource VARCHAR(100),
-                    ip_address VARCHAR(45),
+                    ip_address INET,
                     user_agent TEXT,
-                    success BOOLEAN DEFAULT 1,
+                    success BOOLEAN DEFAULT TRUE,
                     details TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -101,11 +112,11 @@ class DatabaseManager:
                 # Table des tokens de réinitialisation
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     token VARCHAR(255) UNIQUE NOT NULL,
                     expires_at TIMESTAMP NOT NULL,
-                    used BOOLEAN DEFAULT 0,
+                    used BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )''')
@@ -118,8 +129,7 @@ class DatabaseManager:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_user ON user_scans(user_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_user ON activity_logs(user_id)')
                 
-                conn.commit()
-                logger.info("✅ Base de données initialisée avec succès")
+                logger.info("✅ Base de données PostgreSQL initialisée avec succès")
                 
         except Exception as e:
             logger.error(f"❌ Erreur initialisation base de données: {e}")
@@ -138,22 +148,21 @@ class DatabaseManager:
             # Hash sécurisé du mot de passe
             password_hash = generate_password_hash(password, method='pbkdf2:sha256')
             
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 # Vérifier si l'utilisateur existe déjà
-                cursor.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+                cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
                 if cursor.fetchone():
                     raise ValueError("Nom d'utilisateur ou email déjà utilisé")
                 
                 # Créer l'utilisateur
                 cursor.execute('''
                     INSERT INTO users (username, email, password_hash, role)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s) RETURNING id
                 ''', (username, email, password_hash, role))
                 
-                user_id = cursor.lastrowid
-                conn.commit()
+                user_id = cursor.fetchone()[0]
                 
                 logger.info(f"✅ Utilisateur créé: {username} (ID: {user_id})")
                 return user_id
@@ -165,14 +174,13 @@ class DatabaseManager:
     def authenticate_user(self, username: str, password: str, ip_address: str = None) -> Optional[Dict]:
         """Authentifier un utilisateur"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
+            with self._get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 # Récupérer l'utilisateur
                 cursor.execute('''
                     SELECT * FROM users 
-                    WHERE (username = ? OR email = ?) AND is_active = 1
+                    WHERE (username = %s OR email = %s) AND is_active = TRUE
                 ''', (username, username))
                 
                 user = cursor.fetchone()
@@ -182,7 +190,7 @@ class DatabaseManager:
                     return None
                 
                 # Vérifier si le compte est verrouillé
-                if user['locked_until'] and datetime.fromisoformat(user['locked_until']) > datetime.now():
+                if user['locked_until'] and user['locked_until'] > datetime.now():
                     self._log_activity(user['id'], 'login_blocked', 'authentication', ip_address, False, 
                                      'Tentative de connexion sur compte verrouillé')
                     raise ValueError("Compte temporairement verrouillé")
@@ -194,27 +202,24 @@ class DatabaseManager:
                     locked_until = None
                     
                     if attempts >= 5:  # Verrouiller après 5 tentatives
-                        locked_until = (datetime.now() + timedelta(minutes=15)).isoformat()
+                        locked_until = datetime.now() + timedelta(minutes=15)
                     
                     cursor.execute('''
                         UPDATE users 
-                        SET login_attempts = ?, locked_until = ?
-                        WHERE id = ?
+                        SET login_attempts = %s, locked_until = %s
+                        WHERE id = %s
                     ''', (attempts, locked_until, user['id']))
                     
                     self._log_activity(user['id'], 'login_failed', 'authentication', ip_address, False, 
                                      f'Mot de passe incorrect (tentative {attempts}/5)')
-                    conn.commit()
                     return None
                 
                 # Réinitialiser les tentatives de connexion
                 cursor.execute('''
                     UPDATE users 
                     SET login_attempts = 0, locked_until = NULL, last_login = CURRENT_TIMESTAMP
-                    WHERE id = ?
+                    WHERE id = %s
                 ''', (user['id'],))
-                
-                conn.commit()
                 
                 # Convertir en dictionnaire
                 user_dict = dict(user)
@@ -234,17 +239,15 @@ class DatabaseManager:
         """Créer une session utilisateur"""
         try:
             session_token = secrets.token_urlsafe(32)
-            expires_at = (datetime.now() + timedelta(days=7)).isoformat()
+            expires_at = datetime.now() + timedelta(days=7)
             
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
                     INSERT INTO user_sessions (user_id, session_token, ip_address, user_agent, expires_at)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s)
                 ''', (user_id, session_token, ip_address, user_agent, expires_at))
-                
-                conn.commit()
                 
             logger.info(f"✅ Session créée pour utilisateur {user_id}")
             return session_token
@@ -256,15 +259,14 @@ class DatabaseManager:
     def validate_session(self, session_token: str) -> Optional[Dict]:
         """Valider une session"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
+            with self._get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 cursor.execute('''
                     SELECT s.*, u.username, u.email, u.role, u.is_active
                     FROM user_sessions s
                     JOIN users u ON s.user_id = u.id
-                    WHERE s.session_token = ? AND s.is_active = 1 AND s.expires_at > datetime('now')
+                    WHERE s.session_token = %s AND s.is_active = TRUE AND s.expires_at > NOW()
                 ''', (session_token,))
                 
                 session = cursor.fetchone()
@@ -280,16 +282,15 @@ class DatabaseManager:
     def revoke_session(self, session_token: str) -> bool:
         """Révoquer une session"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
                     UPDATE user_sessions 
-                    SET is_active = 0 
-                    WHERE session_token = ?
+                    SET is_active = FALSE 
+                    WHERE session_token = %s
                 ''', (session_token,))
                 
-                conn.commit()
                 return True
                 
         except Exception as e:
@@ -299,13 +300,13 @@ class DatabaseManager:
     def save_scan_result(self, user_id: int, scan_data: Dict) -> bool:
         """Sauvegarder un résultat de scan pour un utilisateur"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
                     INSERT INTO user_scans 
                     (user_id, scan_id, tool, target, scan_type, status, results, report_path)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     user_id,
                     scan_data.get('scan_id'),
@@ -317,7 +318,6 @@ class DatabaseManager:
                     scan_data.get('report_filename')
                 ))
                 
-                conn.commit()
                 return True
                 
         except Exception as e:
@@ -327,15 +327,14 @@ class DatabaseManager:
     def get_user_scans(self, user_id: int, limit: int = 50) -> List[Dict]:
         """Récupérer les scans d'un utilisateur"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
+            with self._get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 cursor.execute('''
                     SELECT * FROM user_scans 
-                    WHERE user_id = ? 
+                    WHERE user_id = %s 
                     ORDER BY created_at DESC 
-                    LIMIT ?
+                    LIMIT %s
                 ''', (user_id, limit))
                 
                 return [dict(row) for row in cursor.fetchall()]
@@ -348,16 +347,14 @@ class DatabaseManager:
                      ip_address: str = None, success: bool = True, details: str = None):
         """Enregistrer une activité dans les logs"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
                     INSERT INTO activity_logs 
                     (user_id, action, resource, ip_address, success, details)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 ''', (user_id, action, resource, ip_address, success, details))
-                
-                conn.commit()
                 
         except Exception as e:
             logger.error(f"❌ Erreur log activité: {e}")
@@ -365,11 +362,10 @@ class DatabaseManager:
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
         """Récupérer un utilisateur par son ID"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
+            with self._get_connection() as conn:
+                cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
-                cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+                cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
                 user = cursor.fetchone()
                 
                 if user:
@@ -389,7 +385,7 @@ class DatabaseManager:
             admin_password = os.environ.get('ADMIN_PASSWORD', 'Admin123!')
             
             # Vérifier si admin existe déjà
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT id FROM users WHERE username = 'admin'")
                 if cursor.fetchone():
@@ -400,14 +396,13 @@ class DatabaseManager:
             admin_id = self.create_user('admin', 'admin@pacha-toolbox.local', admin_password, 'admin')
             
             # Marquer comme vérifié et actif
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     UPDATE users 
-                    SET is_active = 1, is_verified = 1 
-                    WHERE id = ?
+                    SET is_active = TRUE, is_verified = TRUE 
+                    WHERE id = %s
                 ''', (admin_id,))
-                conn.commit()
             
             logger.info(f"✅ Utilisateur admin créé avec le mot de passe: {admin_password}")
             

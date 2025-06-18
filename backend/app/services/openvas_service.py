@@ -2,6 +2,7 @@
 import requests
 import xml.etree.ElementTree as ET
 import time
+import os
 from datetime import datetime
 from app.utils.task_manager import update_task_status
 
