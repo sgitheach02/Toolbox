@@ -1,1259 +1,967 @@
-#!/usr/bin/env python3
-"""
-Pacha Toolbox Backend v2.1 - Version CORRIGÉE pour React
-Backend unifié avec multi-threading intégré - chemins corrigés
-"""
-
+# backend/main.py - Backend CORRIGÉ Pacha Toolbox
 import os
 import sys
+import logging
 import json
 import uuid
-import signal
-import time
-import threading
 import subprocess
-import requests
-import logging
-import random
-from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, send_file
+import threading
+import time
+import signal
+from datetime import datetime
+from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from functools import wraps
 
-# ==================== CONFIGURATION DÉVELOPPEMENT ====================
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('./logs/pacha-toolbox.log') if os.path.exists('./logs') else logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
-# Obtenir le répertoire de base du projet
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BASE_DIR)  # Dossier parent (pacha-toolbox)
-
-# Configuration des répertoires pour développement local
-DIRECTORIES = {
-    'reports': os.path.join(PROJECT_ROOT, 'data', 'reports'),
-    'reports_pdf': os.path.join(PROJECT_ROOT, 'data', 'reports', 'pdf'),
-    'logs': os.path.join(PROJECT_ROOT, 'data', 'logs'),
-    'data': os.path.join(PROJECT_ROOT, 'data'),
-    'temp': os.path.join(PROJECT_ROOT, 'data', 'temp')
-}
-
-# Créer l'application Flask
-app = Flask(__name__)
-
-# ==================== CORS CONFIGURATION CORRIGÉE ====================
-# Configuration CORS étendue pour React
-CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-     supports_credentials=True)
-
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max
-
-# ==================== LOGGING ====================
-
-class Logger:
-    @staticmethod
-    def info(msg):
-        print(f"[INFO] {datetime.now().strftime('%H:%M:%S')} {msg}")
-    
-    @staticmethod
-    def error(msg):
-        print(f"[ERROR] {datetime.now().strftime('%H:%M:%S')} {msg}")
-    
-    @staticmethod
-    def warning(msg):
-        print(f"[WARNING] {datetime.now().strftime('%H:%M:%S')} {msg}")
-
-logger = Logger()
-
-# ==================== MULTI-THREADING INTÉGRÉ ====================
-
-class PachaTaskManager:
-    """Gestionnaire de tâches multi-threading intégré"""
-    
-    def __init__(self, max_workers=8):
-        self.max_workers = max_workers
-        self.active_tasks = {}
-        self.completed_tasks = {}
-        self.task_counter = 1
-        self._lock = threading.RLock()
-        
-        logger.info(f"🎯 TaskManager initialisé avec {max_workers} workers")
-    
-    def create_scan_task(self, tool, target, scan_type='basic', priority='normal'):
-        """Créer une tâche de scan"""
-        task_id = f"{tool}_{self.task_counter:04d}"
-        self.task_counter += 1
-        
-        task = {
-            'id': task_id,
-            'tool': tool,
-            'target': target,
-            'scan_type': scan_type,
-            'priority': priority,
-            'status': 'queued',
-            'created_at': datetime.now().isoformat(),
-            'progress': 0,
-            'output': [],
-            'result': None
-        }
-        
-        with self._lock:
-            self.active_tasks[task_id] = task
-        
-        # Démarrer l'exécution en arrière-plan
-        thread = threading.Thread(target=self._execute_scan_task, args=(task,), daemon=True)
-        thread.start()
-        
-        return task_id
-    
-    def create_exploit_task(self, module, target, payload, **kwargs):
-        """Créer une tâche d'exploit"""
-        task_id = f"exploit_{self.task_counter:04d}"
-        self.task_counter += 1
-        
-        task = {
-            'id': task_id,
-            'type': 'exploit',
-            'module': module,
-            'target': target,
-            'payload': payload,
-            'status': 'queued',
-            'created_at': datetime.now().isoformat(),
-            'progress': 0,
-            'output': [],
-            'metadata': kwargs
-        }
-        
-        with self._lock:
-            self.active_tasks[task_id] = task
-        
-        thread = threading.Thread(target=self._execute_exploit_task, args=(task,), daemon=True)
-        thread.start()
-        
-        return task_id
-    
-    def create_hydra_task(self, target, service, username=None, **kwargs):
-        """Créer une tâche Hydra"""
-        task_id = f"hydra_{self.task_counter:04d}"
-        self.task_counter += 1
-        
-        task = {
-            'id': task_id,
-            'type': 'hydra',
-            'target': target,
-            'service': service,
-            'username': username,
-            'status': 'queued',
-            'created_at': datetime.now().isoformat(),
-            'progress': 0,
-            'output': [],
-            'credentials': [],
-            'metadata': kwargs
-        }
-        
-        with self._lock:
-            self.active_tasks[task_id] = task
-        
-        thread = threading.Thread(target=self._execute_hydra_task, args=(task,), daemon=True)
-        thread.start()
-        
-        return task_id
-    
-    def _execute_scan_task(self, task):
-        """Exécuter une tâche de scan"""
-        task['status'] = 'running'
-        task['started_at'] = datetime.now().isoformat()
-        
-        try:
-            tool = task['tool']
-            target = task['target']
-            scan_type = task['scan_type']
-            
-            logger.info(f"🚀 Démarrage scan {tool}: {target}")
-            
-            # Phases de simulation réalistes
-            phases = self._get_scan_phases(tool)
-            
-            for i, (phase, progress) in enumerate(phases):
-                if task['status'] == 'cancelled':
-                    break
-                
-                task['progress'] = progress
-                message = f"[{datetime.now().strftime('%H:%M:%S')}] {phase}"
-                task['output'].append(message)
-                
-                # Délai réaliste
-                time.sleep(random.uniform(0.5, 2))
-            
-            # Résultats simulés
-            if task['status'] != 'cancelled':
-                task['result'] = self._generate_scan_results(tool, target)
-                task['status'] = 'completed'
-                task['progress'] = 100
-            
-        except Exception as e:
-            task['status'] = 'failed'
-            task['error'] = str(e)
-            logger.error(f"❌ Erreur scan {task['id']}: {e}")
-        
-        finally:
-            task['completed_at'] = datetime.now().isoformat()
-            self._move_to_completed(task['id'])
-    
-    def _execute_exploit_task(self, task):
-        """Exécuter une tâche d'exploit"""
-        task['status'] = 'running'
-        task['started_at'] = datetime.now().isoformat()
-        
-        try:
-            module = task['module']
-            target = task['target']
-            
-            logger.info(f"🎯 Démarrage exploit {module}: {target}")
-            
-            phases = [
-                ("Loading exploit module", 15),
-                ("Setting payload", 30),
-                ("Targeting system", 50),
-                ("Launching exploit", 75),
-                ("Checking for session", 90),
-                ("Exploit completed", 100)
-            ]
-            
-            session_created = False
-            
-            for phase, progress in phases:
-                if task['status'] == 'cancelled':
-                    break
-                
-                task['progress'] = progress
-                message = f"[{datetime.now().strftime('%H:%M:%S')}] [*] {phase}"
-                task['output'].append(message)
-                
-                # Simulation de succès (60% de chance)
-                if "Launching exploit" in phase:
-                    if random.random() > 0.4:
-                        session_created = True
-                        session_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+] Session opened successfully!"
-                        task['output'].append(session_msg)
-                        
-                        # Créer une session globale
-                        global metasploit_sessions
-                        session = {
-                            'id': len(metasploit_sessions) + 1,
-                            'target': target,
-                            'type': 'shell',
-                            'exploit_used': module,
-                            'opened_at': datetime.now().isoformat(),
-                            'status': 'active'
-                        }
-                        metasploit_sessions.append(session)
-                        task['session_id'] = session['id']
-                
-                time.sleep(random.uniform(0.5, 1.5))
-            
-            if task['status'] != 'cancelled':
-                task['result'] = {
-                    'success': session_created,
-                    'session_created': session_created,
-                    'target': target,
-                    'module': module
-                }
-                task['status'] = 'completed'
-            
-        except Exception as e:
-            task['status'] = 'failed'
-            task['error'] = str(e)
-            logger.error(f"❌ Erreur exploit {task['id']}: {e}")
-        
-        finally:
-            task['completed_at'] = datetime.now().isoformat()
-            self._move_to_completed(task['id'])
-    
-    def _execute_hydra_task(self, task):
-        """Exécuter une tâche Hydra"""
-        task['status'] = 'running'
-        task['started_at'] = datetime.now().isoformat()
-        
-        try:
-            target = task['target']
-            service = task['service']
-            
-            logger.info(f"🔓 Démarrage Hydra {service}: {target}")
-            
-            phases = [
-                ("Starting Hydra", 10),
-                ("Loading wordlist", 25),
-                ("Testing credentials", 70),
-                ("Analyzing results", 90),
-                ("Attack completed", 100)
-            ]
-            
-            for phase, progress in phases:
-                if task['status'] == 'cancelled':
-                    break
-                
-                task['progress'] = progress
-                message = f"[{datetime.now().strftime('%H:%M:%S')}] {phase}..."
-                task['output'].append(message)
-                
-                time.sleep(random.uniform(0.5, 1.5))
-            
-            # Simulation de découverte (25% de chance)
-            if task['status'] != 'cancelled' and random.random() > 0.75:
-                username = task['username'] or 'admin'
-                password = random.choice(['password', '123456', 'admin', 'test'])
-                
-                credential = {
-                    'username': username,
-                    'password': password,
-                    'service': service,
-                    'target': target
-                }
-                task['credentials'].append(credential)
-                
-                success_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+] Found: {username}:{password}"
-                task['output'].append(success_msg)
-            
-            if task['status'] != 'cancelled':
-                task['result'] = {
-                    'credentials_found': len(task['credentials']) > 0,
-                    'credentials': task['credentials'],
-                    'target': target,
-                    'service': service
-                }
-                task['status'] = 'completed'
-            
-        except Exception as e:
-            task['status'] = 'failed'
-            task['error'] = str(e)
-            logger.error(f"❌ Erreur Hydra {task['id']}: {e}")
-        
-        finally:
-            task['completed_at'] = datetime.now().isoformat()
-            self._move_to_completed(task['id'])
-    
-    def _get_scan_phases(self, tool):
-        """Récupérer les phases de scan selon l'outil"""
-        if tool == 'nmap':
-            return [
-                ("Initializing Nmap", 10),
-                ("Host discovery", 25),
-                ("Port scanning", 60),
-                ("Service detection", 80),
-                ("Script scanning", 95),
-                ("Scan completed", 100)
-            ]
-        elif tool == 'nikto':
-            return [
-                ("Starting Nikto", 10),
-                ("Testing server", 30),
-                ("Checking vulnerabilities", 70),
-                ("Analyzing results", 90),
-                ("Scan completed", 100)
-            ]
-        else:
-            return [
-                ("Initializing", 25),
-                ("Scanning", 75),
-                ("Completed", 100)
-            ]
-    
-    def _generate_scan_results(self, tool, target):
-        """Générer des résultats de scan simulés"""
-        if tool == 'nmap':
-            ports = random.sample([22, 80, 443, 8080, 21, 25, 53, 3389], random.randint(2, 5))
-            return {
-                'tool': 'nmap',
-                'target': target,
-                'ports_found': len(ports),
-                'open_ports': ports,
-                'services': {str(p): f"service-{p}" for p in ports}
-            }
-        elif tool == 'nikto':
-            vulns = random.randint(0, 5)
-            return {
-                'tool': 'nikto',
-                'target': target,
-                'vulnerabilities_found': vulns,
-                'security_issues': [f"Issue {i+1}" for i in range(vulns)]
-            }
-        else:
-            return {'tool': tool, 'target': target, 'completed': True}
-    
-    def _move_to_completed(self, task_id):
-        """Déplacer une tâche vers completed"""
-        with self._lock:
-            if task_id in self.active_tasks:
-                task = self.active_tasks.pop(task_id)
-                self.completed_tasks[task_id] = task
-    
-    def get_task_status(self, task_id):
-        """Récupérer le statut d'une tâche"""
-        with self._lock:
-            if task_id in self.active_tasks:
-                return self.active_tasks[task_id]
-            if task_id in self.completed_tasks:
-                return self.completed_tasks[task_id]
-        return None
-    
-    def get_active_tasks(self):
-        """Récupérer toutes les tâches actives"""
-        with self._lock:
-            return list(self.active_tasks.values())
-    
-    def get_completed_tasks(self, limit=10):
-        """Récupérer les tâches complétées"""
-        with self._lock:
-            tasks = list(self.completed_tasks.values())
-            tasks.sort(key=lambda x: x.get('completed_at', ''), reverse=True)
-            return tasks[:limit]
-    
-    def cancel_task(self, task_id):
-        """Annuler une tâche"""
-        with self._lock:
-            if task_id in self.active_tasks:
-                self.active_tasks[task_id]['status'] = 'cancelled'
-                logger.info(f"🚫 Tâche {task_id} annulée")
-                return True
-        return False
-    
-    def get_statistics(self):
-        """Obtenir les statistiques"""
-        with self._lock:
-            active_count = len(self.active_tasks)
-            completed_count = len(self.completed_tasks)
-            failed_count = len([t for t in self.completed_tasks.values() if t.get('status') == 'failed'])
-        
-        return {
-            'active_tasks': active_count,
-            'completed_tasks': completed_count,
-            'failed_tasks': failed_count,
-            'success_rate': ((completed_count - failed_count) / max(completed_count, 1)) * 100,
-            'max_workers': self.max_workers
-        }
-
-# Initialiser le gestionnaire de tâches
-task_manager = PachaTaskManager(max_workers=8)
-
-# Ajouter au contexte Flask
-app.task_manager = task_manager
-app.create_threaded_scan = task_manager.create_scan_task
-app.create_threaded_exploit = task_manager.create_exploit_task
-app.create_threaded_attack = task_manager.create_hydra_task
-app.get_threaded_task_status = task_manager.get_task_status
-
-logger.info("🔥 Multi-threading intégré activé!")
-
-# ==================== INITIALISATION ====================
-
-def ensure_directories():
-    """Créer tous les répertoires nécessaires (version sécurisée)"""
-    for name, path in DIRECTORIES.items():
-        try:
-            if not os.path.exists(path):
-                os.makedirs(path, exist_ok=True)
-                logger.info(f"📁 Directory created: {path}")
-        except PermissionError:
-            # Créer dans un dossier temporaire si permission refusée
-            temp_path = os.path.join(os.path.expanduser("~"), f"pacha-toolbox-{name}")
-            if not os.path.exists(temp_path):
-                os.makedirs(temp_path, exist_ok=True)
-                DIRECTORIES[name] = temp_path
-                logger.warning(f"⚠️ Permission denied for {path}, using {temp_path}")
-
-ensure_directories()
-
-# Variables globales
-scan_history = []
+# Variables globales pour le suivi des tâches
 active_scans = {}
 scan_outputs = {}
-metasploit_sessions = []
-active_exploits = {}
-exploit_outputs = {}
-hydra_attacks = {}
-hydra_counter = 1
+scan_history = []
+task_status = {}
 
-# ==================== BASE DE DONNÉES D'EXPLOITS ====================
+# Configuration des répertoires
+DIRECTORIES = {
+    'reports': './data/reports',
+    'logs': './data/logs',
+    'temp': './data/temp',
+    'data': './data'
+}
 
-METASPLOITABLE_EXPLOITS = [
-    {
-        'name': 'samba_usermap_script',
-        'module': 'exploit/multi/samba/usermap_script',
-        'description': 'Samba "username map script" Command Execution',
-        'platform': 'Linux',
-        'targets': ['Metasploitable', 'Samba 3.0.20-3.0.25rc3'],
-        'rank': 'Excellent',
-        'defaultPort': 139,
-        'category': 'Remote',
-        'cve': ['CVE-2007-2447'],
-        'difficulty': 'Easy',
-        'reliability': 'Excellent',
-        'payloads': ['cmd/unix/reverse', 'cmd/unix/reverse_netcat', 'cmd/unix/bind_netcat'],
-        'color': '#22c55e'
-    },
-    {
-        'name': 'vsftpd_234_backdoor',
-        'module': 'exploit/unix/ftp/vsftpd_234_backdoor',
-        'description': 'VSFTPD v2.3.4 Backdoor Command Execution',
-        'platform': 'Linux',
-        'targets': ['VSFTPD 2.3.4'],
-        'rank': 'Excellent',
-        'defaultPort': 21,
-        'category': 'Remote',
-        'cve': ['CVE-2011-2523'],
-        'difficulty': 'Easy',
-        'reliability': 'Excellent',
-        'payloads': ['cmd/unix/interact', 'cmd/unix/reverse', 'cmd/unix/reverse_netcat'],
-        'color': '#3b82f6'
-    },
-    {
-        'name': 'unreal_ircd_3281_backdoor',
-        'module': 'exploit/unix/irc/unreal_ircd_3281_backdoor',
-        'description': 'UnrealIRCd 3.2.8.1 Backdoor Command Execution',
-        'platform': 'Linux',
-        'targets': ['UnrealIRCd 3.2.8.1'],
-        'rank': 'Excellent',
-        'defaultPort': 6667,
-        'category': 'Remote',
-        'cve': ['CVE-2010-2075'],
-        'difficulty': 'Easy',
-        'reliability': 'Excellent',
-        'payloads': ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
-        'color': '#8b5cf6'
-    },
-    {
-        'name': 'distcc_exec',
-        'module': 'exploit/unix/misc/distcc_exec',
-        'description': 'DistCC Daemon Command Execution',
-        'platform': 'Linux',
-        'targets': ['DistCC Daemon'],
-        'rank': 'Excellent',
-        'defaultPort': 3632,
-        'category': 'Remote',
-        'cve': ['CVE-2004-2687'],
-        'difficulty': 'Easy',
-        'reliability': 'Excellent',
-        'payloads': ['cmd/unix/reverse', 'cmd/unix/bind_netcat', 'cmd/unix/reverse_netcat'],
-        'color': '#f59e0b'
-    }
-]
-
-# ==================== ROUTES DE BASE ====================
-
-@app.route('/api/health', methods=['GET', 'OPTIONS'])
-def health_check():
-    """Vérification de santé de l'API"""
-    # Gérer les requêtes OPTIONS pour CORS
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    return jsonify({
-        'status': 'healthy',
-        'message': 'Pacha Toolbox API operational (Development Mode)',
-        'version': '2.1.0-dev',
-        'timestamp': datetime.now().isoformat(),
-        'active_scans': len(active_scans),
-        'threading_enabled': True,
-        'threading_stats': task_manager.get_statistics(),
-        'directories_ok': all(os.path.exists(path) for path in DIRECTORIES.values()),
-        'base_dir': BASE_DIR,
-        'project_root': PROJECT_ROOT,
-        'cors_enabled': True
-    })
-
-@app.route('/api/status', methods=['GET', 'OPTIONS'])
-def get_status():
-    """Statut complet de l'API"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        threading_stats = task_manager.get_statistics()
-        
-        return jsonify({
-            'api_version': '2.1.0-dev',
-            'status': 'operational',
-            'mode': 'development',
-            'active_scans': len(active_scans),
-            'scan_history_count': len(scan_history),
-            'active_metasploit_sessions': len(metasploit_sessions),
-            'threading_enabled': True,
-            'threading_stats': threading_stats,
-            'directories': {name: os.path.exists(path) for name, path in DIRECTORIES.items()},
-            'available_tools': ['nmap', 'nikto', 'metasploit', 'hydra'],
-            'timestamp': datetime.now().isoformat(),
-            'cors_enabled': True
-        })
-    except Exception as e:
-        logger.error(f"❌ Error getting status: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES SCAN ====================
-
-@app.route('/api/scan/start', methods=['POST', 'OPTIONS'])
-def start_scan():
-    """Démarrer un nouveau scan avec multi-threading"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        data = request.get_json() or {}
-        tool = data.get('tool', 'nmap')
-        target = data.get('target', '')
-        scan_type = data.get('scanType', data.get('scan_type', 'basic'))
-        
-        if not target:
-            return jsonify({'error': 'Target is required'}), 400
-        
-        # Validation pour Nikto
-        if tool == 'nikto':
-            if not (target.startswith('http://') or target.startswith('https://')):
-                return jsonify({'error': 'Nikto requires HTTP/HTTPS URL'}), 400
-        elif tool == 'nmap':
-            if target.startswith(('http://', 'https://')):
-                target = target.replace('http://', '').replace('https://', '').split('/')[0]
-        
-        # Mode threadé (par défaut)
+def ensure_directories():
+    """Créer les répertoires nécessaires"""
+    for name, path in DIRECTORIES.items():
         try:
-            task_id = task_manager.create_scan_task(tool, target, scan_type)
+            os.makedirs(path, exist_ok=True)
+            os.chmod(path, 0o755)
+            logger.info(f"✅ Répertoire {name}: {path}")
+        except Exception as e:
+            logger.warning(f"⚠️ Erreur création répertoire {name} ({path}): {e}")
+
+# ============================================================
+# UTILS ET HELPERS GLOBAUX
+# ============================================================
+
+def update_task_status(task_id, status, data=None):
+    """Mettre à jour le statut d'une tâche"""
+    global task_status
+    if task_id not in task_status:
+        task_status[task_id] = {}
+    
+    task_status[task_id].update({
+        'status': status,
+        'updated_at': datetime.now().isoformat(),
+        'data': data or {}
+    })
+    
+    if status in ['completed', 'failed']:
+        task_status[task_id]['completed_at'] = datetime.now().isoformat()
+    
+    logger.info(f"📊 Task {task_id}: {status}")
+
+def generate_task_id(tool):
+    """Générer un ID de tâche unique"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{tool}_{timestamp}_{uuid.uuid4().hex[:8]}"
+
+# ============================================================
+# PARSERS GLOBAUX
+# ============================================================
+
+def parse_nmap_output(output):
+    """Parser la sortie Nmap - VERSION ULTRA COMPLÈTE"""
+    results = {
+        "hosts_up": 0,
+        "ports_open": [],
+        "services": [],
+        "summary": "Scan terminé",
+        "detailed_ports": [],
+        "os_detection": [],
+        "service_details": [],
+        "scripts_output": [],
+        "scan_stats": {},
+        "target_info": {}
+    }
+    
+    lines = output.split('\n')
+    logger.info(f"🔍 Parsing {len(lines)} lignes de sortie Nmap COMPLÈTE")
+    
+    current_port = None
+    in_port_section = False
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # Host UP detection
+        if 'Host is up' in line:
+            results["hosts_up"] += 1
+            # Extraire latency si disponible
+            if '(' in line and ')' in line:
+                latency = line.split('(')[1].split(')')[0]
+                results["target_info"]["latency"] = latency
+            logger.info(f"✅ Host UP trouvé")
+            
+        # Target info
+        elif 'Nmap scan report for' in line:
+            target_info = line.replace('Nmap scan report for ', '')
+            results["target_info"]["target"] = target_info
+            logger.info(f"🎯 Target: {target_info}")
+            
+        # Ports découverts (pendant le scan)
+        elif 'Discovered open port' in line:
+            port_match = line.split('Discovered open port ')[1].split(' on ')[0]
+            if port_match not in [p.get('raw', '') for p in results["detailed_ports"]]:
+                results["detailed_ports"].append({
+                    "port": port_match.split('/')[0],
+                    "protocol": port_match.split('/')[1] if '/' in port_match else 'tcp',
+                    "state": "open",
+                    "service": "unknown",
+                    "raw": f"{port_match} open discovered"
+                })
+            logger.info(f"🔍 Port découvert: {port_match}")
+            
+        # Section des ports (format tableau)
+        elif line_stripped.startswith('PORT') and 'STATE' in line and 'SERVICE' in line:
+            in_port_section = True
+            logger.info("📊 Début section ports")
+            continue
+            
+        elif in_port_section and '/' in line_stripped and any(state in line_stripped for state in ['open', 'closed', 'filtered']):
+            # Parser ligne de port détaillée
+            parts = line_stripped.split()
+            if len(parts) >= 3:
+                port_num = parts[0].split('/')[0]
+                protocol = parts[0].split('/')[1] if '/' in parts[0] else 'tcp'
+                state = parts[1]
+                service = parts[2] if len(parts) > 2 else 'unknown'
+                version = ' '.join(parts[3:]) if len(parts) > 3 else ''
+                
+                port_info = f"{parts[0]} {state} {service}"
+                if version:
+                    port_info += f" {version}"
+                
+                results["ports_open"].append(port_info)
+                results["services"].append(service)
+                
+                # Mise à jour ou ajout du port détaillé
+                existing_port = None
+                for p in results["detailed_ports"]:
+                    if p["port"] == port_num and p["protocol"] == protocol:
+                        existing_port = p
+                        break
+                
+                if existing_port:
+                    existing_port.update({
+                        "state": state,
+                        "service": service,
+                        "version": version,
+                        "raw": port_info
+                    })
+                else:
+                    results["detailed_ports"].append({
+                        "port": port_num,
+                        "protocol": protocol,
+                        "state": state,
+                        "service": service,
+                        "version": version,
+                        "raw": port_info
+                    })
+                
+                logger.info(f"🔓 Port détaillé: {port_info}")
+        
+        # Scripts NSE output
+        elif line.startswith('|') or line.startswith('|_'):
+            script_output = line.strip()
+            results["scripts_output"].append(script_output)
+            # Associer au port courant si possible
+            if current_port and results["detailed_ports"]:
+                if "scripts" not in results["detailed_ports"][-1]:
+                    results["detailed_ports"][-1]["scripts"] = []
+                results["detailed_ports"][-1]["scripts"].append(script_output)
+            logger.debug(f"📜 Script output: {script_output[:50]}...")
+            
+        # OS Detection
+        elif 'OS CPE:' in line or 'Running' in line and 'GUESSING' in line:
+            results["os_detection"].append(line_stripped)
+            logger.info(f"💻 OS info: {line_stripped[:100]}...")
+            
+        elif 'Aggressive OS guesses:' in line and i+1 < len(lines):
+            # Capturer les OS guesses sur les lignes suivantes
+            j = i + 1
+            while j < len(lines) and (lines[j].strip().startswith('-') or '%)' in lines[j]):
+                if lines[j].strip():
+                    results["os_detection"].append(lines[j].strip())
+                j += 1
+                
+        # Service detection details
+        elif 'Service Info:' in line:
+            service_info = line.replace('Service Info:', '').strip()
+            results["service_details"].append(service_info)
+            logger.info(f"🔧 Service info: {service_info}")
+            
+        # Scan statistics
+        elif 'Nmap done:' in line:
+            stats = line.strip()
+            results["scan_stats"]["summary"] = stats
+            logger.info(f"📈 Stats: {stats}")
+            
+        elif 'Raw packets sent:' in line:
+            results["scan_stats"]["packets"] = line.strip()
+            
+        # Uptime guess
+        elif 'Uptime guess:' in line:
+            results["target_info"]["uptime"] = line.replace('Uptime guess:', '').strip()
+            
+        # Network distance
+        elif 'Network Distance:' in line:
+            results["target_info"]["distance"] = line.replace('Network Distance:', '').strip()
+    
+    # Nettoyer les doublons
+    results["services"] = list(set(results["services"]))
+    
+    # Enrichir le summary
+    open_ports = len([p for p in results["detailed_ports"] if p.get("state") == "open"])
+    results["summary"] = f"Scan terminé: {results['hosts_up']} host(s), {open_ports} port(s) ouverts"
+    
+    logger.info(f"🎯 RÉSULTATS FINAUX:")
+    logger.info(f"   - Hosts: {results['hosts_up']}")
+    logger.info(f"   - Ports ouverts: {open_ports}")
+    logger.info(f"   - Services: {len(results['services'])}")
+    logger.info(f"   - Scripts NSE: {len(results['scripts_output'])}")
+    logger.info(f"   - OS detection: {len(results['os_detection'])}")
+    
+    return results
+
+def parse_nikto_output(output):
+    """Parser la sortie Nikto"""
+    results = {
+        "vulnerabilities": [],
+        "total_checks": 0,
+        "scan_time": "Unknown"
+    }
+    
+    lines = output.split('\n')
+    for line in lines:
+        if line.startswith('+ '):
+            vuln = line.replace('+ ', '')
+            results["vulnerabilities"].append({
+                "description": vuln,
+                "severity": "MEDIUM"
+            })
+    
+    results["total_checks"] = len(results["vulnerabilities"])
+    return results
+
+def parse_hydra_output(output):
+    """Parser la sortie Hydra"""
+    results = {
+        "credentials_found": [],
+        "attempts": 0,
+        "success": False
+    }
+    
+    lines = output.split('\n')
+    for line in lines:
+        if 'login:' in line and 'password:' in line:
+            results["credentials_found"].append(line.strip())
+            results["success"] = True
+    
+    return results
+
+def parse_metasploit_output(output):
+    """Parser la sortie Metasploit"""
+    results = {
+        "sessions": [],
+        "success": False,
+        "errors": []
+    }
+    
+    lines = output.split('\n')
+    for line in lines:
+        if 'Meterpreter session' in line and 'opened' in line:
+            results["sessions"].append(line.strip())
+            results["success"] = True
+        elif 'error' in line.lower():
+            results["errors"].append(line.strip())
+    
+    return results
+
+# ============================================================
+# SERVICES DE SCAN GLOBAUX
+# ============================================================
+
+def run_nmap_scan(target, scan_type, task_id):
+    """Exécuter un scan Nmap - FONCTION GLOBALE"""
+    try:
+        logger.info(f"🚀 DÉMARRAGE RÉEL du scan Nmap pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Exécution en cours..."})
+        
+        # Configuration des types de scan
+        scan_configs = {
+            'quick': ['-T4', '-F'],
+            'basic': ['-sV', '-sC'],
+            'intense': ['-T4', '-A', '-v'],
+            'comprehensive': ['-sS', '-sV', '-sC', '-A', '-T4']
+        }
+        
+        # Construire la commande
+        cmd = ['nmap'] + scan_configs.get(scan_type, ['-sn']) + [target]
+        
+        logger.info(f"🔍 COMMANDE RÉELLE: {' '.join(cmd)}")
+        
+        # Exécuter le scan
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        
+        logger.info(f"🏁 Scan terminé avec code: {result.returncode}")
+        logger.info(f"📄 Sortie: {result.stdout[:200]}...")
+        
+        if result.returncode == 0:
+            # Parser les résultats
+            results = parse_nmap_output(result.stdout)
+            
+            logger.info(f"✅ Résultats parsés: {results}")
+            
+            update_task_status(task_id, "completed", {
+                "target": target,
+                "scan_type": scan_type,
+                "results": results,
+                "raw_output": result.stdout
+            })
+        else:
+            logger.error(f"❌ Erreur scan: {result.stderr}")
+            update_task_status(task_id, "failed", {
+                "error": result.stderr or "Erreur inconnue"
+            })
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ Timeout du scan {task_id}")
+        update_task_status(task_id, "failed", {"error": "Timeout du scan (5 minutes)"})
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION scan Nmap {task_id}: {e}")
+        import traceback
+        logger.error(f"❌ TRACEBACK: {traceback.format_exc()}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+def run_nikto_scan(target, scan_type, task_id):
+    """Exécuter un scan Nikto"""
+    try:
+        update_task_status(task_id, "running", {"message": "Démarrage scan Nikto"})
+        
+        # Configuration des scans
+        scan_configs = {
+            'quick': ['-maxtime', '120'],
+            'basic': ['-maxtime', '300'],
+            'comprehensive': ['-maxtime', '600', '-Tuning', 'x']
+        }
+        
+        # Construire la commande
+        cmd = ['nikto', '-h', target] + scan_configs.get(scan_type, ['-maxtime', '300'])
+        
+        logger.info(f"🕷️ Exécution Nikto: {' '.join(cmd)}")
+        
+        # Exécuter le scan
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=700
+        )
+        
+        if result.returncode == 0:
+            # Parser les résultats
+            results = parse_nikto_output(result.stdout)
+            
+            update_task_status(task_id, "completed", {
+                "target": target,
+                "scan_type": scan_type,
+                "results": results,
+                "raw_output": result.stdout
+            })
+        else:
+            update_task_status(task_id, "failed", {
+                "error": result.stderr or "Erreur scan Nikto"
+            })
+            
+    except subprocess.TimeoutExpired:
+        update_task_status(task_id, "failed", {"error": "Timeout du scan Nikto"})
+    except Exception as e:
+        logger.error(f"❌ Erreur scan Nikto: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+def run_tcpdump_capture(interface, duration, filter_expr, task_id):
+    """Exécuter une capture tcpdump"""
+    try:
+        update_task_status(task_id, "running", {"message": "Démarrage capture tcpdump"})
+        
+        # Fichier de capture
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pcap_file = f"{DIRECTORIES['reports']}/capture_{timestamp}.pcap"
+        
+        # Construire la commande
+        cmd = ['tcpdump', '-i', interface, '-w', pcap_file, '-G', str(duration), '-W', '1']
+        if filter_expr:
+            cmd.append(filter_expr)
+        
+        logger.info(f"📡 Exécution tcpdump: {' '.join(cmd)}")
+        
+        # Exécuter la capture
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=duration + 30
+        )
+        
+        if result.returncode == 0 and os.path.exists(pcap_file):
+            file_size = os.path.getsize(pcap_file)
+            
+            update_task_status(task_id, "completed", {
+                "interface": interface,
+                "duration": duration,
+                "filter": filter_expr,
+                "pcap_file": os.path.basename(pcap_file),
+                "file_size": file_size,
+                "packets_captured": "Analysis needed"
+            })
+        else:
+            update_task_status(task_id, "failed", {
+                "error": result.stderr or "Erreur capture tcpdump"
+            })
+            
+    except subprocess.TimeoutExpired:
+        update_task_status(task_id, "failed", {"error": "Timeout de la capture"})
+    except Exception as e:
+        logger.error(f"❌ Erreur capture tcpdump: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+def run_hydra_attack(target, service, username, wordlist, task_id):
+    """Exécuter une attaque Hydra"""
+    try:
+        update_task_status(task_id, "running", {"message": "Démarrage attaque Hydra"})
+        
+        # Construire la commande selon le service
+        if service == 'ssh':
+            cmd = ['hydra', '-l', username, '-P', wordlist, f'ssh://{target}']
+        elif service == 'ftp':
+            cmd = ['hydra', '-l', username, '-P', wordlist, f'ftp://{target}']
+        elif service == 'rdp':
+            cmd = ['hydra', '-l', username, '-P', wordlist, f'rdp://{target}']
+        else:
+            update_task_status(task_id, "failed", {"error": f"Service {service} non supporté"})
+            return
+        
+        logger.info(f"🔨 Exécution Hydra: {' '.join(cmd)}")
+        
+        # Exécuter l'attaque
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=1800  # 30 minutes max
+        )
+        
+        # Parser les résultats
+        results = parse_hydra_output(result.stdout)
+        
+        update_task_status(task_id, "completed", {
+            "target": target,
+            "service": service,
+            "username": username,
+            "results": results,
+            "raw_output": result.stdout
+        })
+            
+    except subprocess.TimeoutExpired:
+        update_task_status(task_id, "failed", {"error": "Timeout de l'attaque (30 minutes)"})
+    except Exception as e:
+        logger.error(f"❌ Erreur attaque Hydra: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+def run_metasploit_exploit(exploit, target, payload, lhost, task_id):
+    """Exécuter un exploit Metasploit"""
+    try:
+        update_task_status(task_id, "running", {"message": "Démarrage exploit Metasploit"})
+        
+        # Créer un script MSF
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        script_file = f"{DIRECTORIES['temp']}/msf_script_{timestamp}.rc"
+        
+        msf_script = f"""use {exploit}
+set RHOSTS {target}
+set PAYLOAD {payload}
+set LHOST {lhost}
+set LPORT 4444
+exploit -j
+sessions -l
+exit
+"""
+        
+        with open(script_file, 'w') as f:
+            f.write(msf_script)
+        
+        # Exécuter via msfconsole
+        cmd = ['msfconsole', '-q', '-r', script_file]
+        
+        logger.info(f"💣 Exécution Metasploit: {exploit} contre {target}")
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        
+        # Parser les résultats
+        results = parse_metasploit_output(result.stdout)
+        
+        update_task_status(task_id, "completed", {
+            "exploit": exploit,
+            "target": target,
+            "payload": payload,
+            "results": results,
+            "raw_output": result.stdout
+        })
+        
+        # Nettoyer
+        if os.path.exists(script_file):
+            os.remove(script_file)
+            
+    except subprocess.TimeoutExpired:
+        update_task_status(task_id, "failed", {"error": "Timeout de l'exploit (5 minutes)"})
+    except Exception as e:
+        logger.error(f"❌ Erreur exploit Metasploit: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+# ============================================================
+# FONCTION FLASK APP
+# ============================================================
+
+def create_app():
+    """Factory pour créer l'application Flask"""
+    
+    app = Flask(__name__)
+    
+    # Configuration
+    app.config.update(
+        SECRET_KEY=os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-prod'),
+        DEBUG=os.environ.get('FLASK_DEBUG', '1') == '1',
+        JSON_SORT_KEYS=False,
+        JSONIFY_PRETTYPRINT_REGULAR=True
+    )
+    
+    # CORS
+    cors_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    CORS(app, 
+         origins=cors_origins,
+         allow_headers=["Content-Type", "Authorization", "Accept"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         supports_credentials=True)
+    
+    # Initialisation des répertoires
+    ensure_directories()
+    
+    # ============================================================
+    # AUTHENTIFICATION
+    # ============================================================
+    
+    # Base de données utilisateurs simple
+    users_db = {
+        'admin': {
+            'id': 1,
+            'username': 'admin',
+            'password_hash': generate_password_hash('admin123'),
+            'email': 'admin@pacha-toolbox.local',
+            'role': 'admin'
+        },
+        'user': {
+            'id': 2,
+            'username': 'user',
+            'password_hash': generate_password_hash('user123'),
+            'email': 'user@pacha-toolbox.local',
+            'role': 'user'
+        }
+    }
+    
+    def token_required(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token = request.headers.get('Authorization')
+            if token and token.startswith('Bearer '):
+                token = token.split(' ')[1]
+            
+            if not token:
+                return jsonify({'error': 'Token manquant'}), 401
+            
+            try:
+                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+                current_user = users_db.get(data['username'])
+                if not current_user:
+                    return jsonify({'error': 'Token invalide'}), 401
+            except jwt.ExpiredSignatureError:
+                return jsonify({'error': 'Token expiré'}), 401
+            except jwt.InvalidTokenError:
+                return jsonify({'error': 'Token invalide'}), 401
+            
+            return f(current_user, *args, **kwargs)
+        return decorated
+    
+    # ============================================================
+    # ROUTES PRINCIPALES
+    # ============================================================
+    
+    @app.route('/', methods=['GET'])
+    def root():
+        """Route racine"""
+        return jsonify({
+            'name': 'Pacha Security Toolbox API',
+            'version': '2.0.0',
+            'status': 'running',
+            'timestamp': datetime.now().isoformat(),
+            'description': 'Professional Penetration Testing Suite + Graylog Forensics',
+            'endpoints': [
+                '/api/health',
+                '/api/auth/login',
+                '/api/auth/register',
+                '/api/scan/nmap',
+                '/api/scan/nikto',
+                '/api/scan/tcpdump',
+                '/api/scan/hydra',
+                '/api/scan/metasploit',
+                '/api/scan/status/<task_id>',
+                '/api/scan/history'
+            ]
+        })
+    
+    @app.route('/api/health', methods=['GET', 'POST', 'OPTIONS'])
+    def health_check():
+        """Vérification de santé de l'API"""
+        try:
+            # Test des outils
+            tools_status = {
+                'nmap': subprocess.run(['which', 'nmap'], capture_output=True).returncode == 0,
+                'nikto': subprocess.run(['which', 'nikto'], capture_output=True).returncode == 0,
+                'tcpdump': subprocess.run(['which', 'tcpdump'], capture_output=True).returncode == 0,
+                'hydra': subprocess.run(['which', 'hydra'], capture_output=True).returncode == 0,
+                'msfconsole': subprocess.run(['which', 'msfconsole'], capture_output=True).returncode == 0
+            }
+            
+            logger.info("💚 Health check appelé - Système opérationnel")
             
             return jsonify({
-                'scan_id': task_id,
-                'task_id': task_id,
-                'tool': tool,
-                'target': target,
-                'scan_type': scan_type,
-                'status': 'queued',
-                'message': f'{tool} scan started with threading',
-                'threaded': True,
-                'monitor_url': f'/api/threading/task/{task_id}/status'
+                'status': 'healthy',
+                'message': 'API Pacha Toolbox opérationnelle',
+                'tools': tools_status,
+                'active_tasks': len([t for t in task_status.values() if t.get('status') == 'running']),
+                'method': request.method,
+                'cors_enabled': True,
+                'version': '2.0.0',
+                'timestamp': datetime.now().isoformat()
             })
+            
         except Exception as e:
-            logger.error(f"❌ Threading error: {e}")
-            return jsonify({'error': f'Threading failed: {str(e)}'}), 500
-        
-    except Exception as e:
-        logger.error(f"❌ Error starting scan: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/scan/status/<scan_id>', methods=['GET', 'OPTIONS'])
-def get_scan_status(scan_id):
-    """Récupérer le statut d'un scan"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    # Mode threadé
-    task_status = task_manager.get_task_status(scan_id)
-    if task_status:
-        return jsonify(task_status)
+            logger.error(f"❌ Erreur health check: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Erreur health check: {str(e)}',
+                'timestamp': datetime.now().isoformat()
+            }), 500
     
-    return jsonify({'error': 'Scan not found'}), 404
-
-@app.route('/api/scan/active', methods=['GET', 'OPTIONS'])
-def get_active_scans():
-    """Récupérer tous les scans actifs"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    threaded_scans = [task for task in task_manager.get_active_tasks() if task.get('tool')]
+    # ============================================================
+    # ROUTES D'AUTHENTIFICATION
+    # ============================================================
     
-    return jsonify({
-        'threaded_scans': threaded_scans,
-        'total_active': len(threaded_scans)
-    })
-
-@app.route('/api/scan/history', methods=['GET', 'OPTIONS'])
-def get_scan_history():
-    """Récupérer l'historique des scans"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
+    @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
+    def login():
+        """Connexion utilisateur"""
+        if request.method == 'OPTIONS':
+            return '', 200
         
-    threaded_history = task_manager.get_completed_tasks(20)
-    
-    return jsonify({
-        'threaded_history': threaded_history,
-        'total_completed': len(task_manager.completed_tasks)
-    })
-
-# ==================== ROUTES THREADING ====================
-
-@app.route('/api/threading/info', methods=['GET', 'OPTIONS'])
-def threading_info():
-    """Information sur le multi-threading"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    stats = task_manager.get_statistics()
-    return jsonify({
-        'threading_enabled': True,
-        'mode': 'integrated',
-        'stats': stats,
-        'features': [
-            'Scans parallèles',
-            'Exploits threadés', 
-            'Attaques Hydra parallèles',
-            'Annulation de tâches',
-            'Monitoring en temps réel'
-        ]
-    })
-
-@app.route('/api/threading/tasks', methods=['GET', 'OPTIONS'])
-def get_threading_tasks():
-    """Liste des tâches threadées"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    active = task_manager.get_active_tasks()
-    completed = task_manager.get_completed_tasks(10)
-    
-    return jsonify({
-        'active_tasks': active,
-        'completed_tasks': completed,
-        'total_active': len(active),
-        'total_completed': len(task_manager.completed_tasks)
-    })
-
-@app.route('/api/threading/task/<task_id>/status', methods=['GET', 'OPTIONS'])
-def get_threaded_task_status(task_id):
-    """Statut d'une tâche threadée"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    status = task_manager.get_task_status(task_id)
-    if status:
-        return jsonify(status)
-    else:
-        return jsonify({'error': 'Task not found'}), 404
-
-@app.route('/api/threading/task/<task_id>/cancel', methods=['POST', 'OPTIONS'])
-def cancel_threaded_task(task_id):
-    """Annuler une tâche threadée"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    if task_manager.cancel_task(task_id):
-        return jsonify({'message': f'Task {task_id} cancelled', 'success': True})
-    else:
-        return jsonify({'error': 'Task not found or already completed'}), 404
-
-@app.route('/api/threading/dashboard', methods=['GET', 'OPTIONS'])
-def threading_dashboard():
-    """Dashboard du multi-threading"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        stats = task_manager.get_statistics()
-        active_tasks = task_manager.get_active_tasks()
-        completed_tasks = task_manager.get_completed_tasks(5)
-        
-        return jsonify({
-            'threading_enabled': True,
-            'stats': stats,
-            'active_tasks_count': len(active_tasks),
-            'active_tasks_detail': active_tasks,
-            'recent_completed': completed_tasks,
-            'performance': {
-                'total_processed': stats.get('completed_tasks', 0),
-                'success_rate': stats.get('success_rate', 0),
-                'current_throughput': len(active_tasks)
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES METASPLOIT ====================
-
-@app.route('/api/metasploit/exploits', methods=['GET', 'OPTIONS'])
-def get_metasploitable_exploits():
-    """Liste des exploits Metasploit disponibles"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        search = request.args.get('search', '').lower()
-        platform = request.args.get('platform', '').lower()
-        
-        exploits = METASPLOITABLE_EXPLOITS.copy()
-        
-        if search:
-            exploits = [e for e in exploits if 
-                       search in e['name'].lower() or 
-                       search in e['description'].lower()]
-        
-        if platform:
-            exploits = [e for e in exploits if platform in e['platform'].lower()]
-        
-        return jsonify({
-            'exploits': exploits,
-            'total': len(exploits)
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting exploits: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/exploit', methods=['POST', 'OPTIONS'])
-def start_metasploitable_exploit():
-    """Lancer un exploit Metasploit"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        data = request.get_json() or {}
-        
-        module = data.get('module', '')
-        payload = data.get('payload', '')
-        target = data.get('target', '')
-        
-        if not all([module, payload, target]):
-            return jsonify({'error': 'Module, payload et target requis'}), 400
-        
-        # Mode threadé
-        task_id = task_manager.create_exploit_task(
-            module=module,
-            target=target,
-            payload=payload,
-            lhost=data.get('lhost', '127.0.0.1'),
-            lport=data.get('lport', '4444'),
-            port=data.get('port', '445')
-        )
-        
-        return jsonify({
-            'exploit_id': task_id,
-            'task_id': task_id,
-            'status': 'queued',
-            'message': f'Exploit {module} queued against {target}',
-            'threaded': True,
-            'monitor_url': f'/api/threading/task/{task_id}/status'
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error starting exploit: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/sessions', methods=['GET', 'OPTIONS'])
-def get_metasploit_sessions():
-    """Liste des sessions Metasploit actives"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        return jsonify({
-            'sessions': metasploit_sessions,
-            'total_sessions': len(metasploit_sessions)
-        })
-    except Exception as e:
-        logger.error(f"❌ Error getting sessions: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/metasploit/status', methods=['GET', 'OPTIONS'])
-def get_metasploit_status():
-    """Statut général de Metasploit"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        threaded_exploits = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'exploit'])
-        
-        return jsonify({
-            'metasploit_available': True,
-            'active_exploits': threaded_exploits,
-            'active_sessions': len(metasploit_sessions),
-            'total_exploits_available': len(METASPLOITABLE_EXPLOITS),
-            'version': 'Metasploit Framework 6.3.x (Simulation + Threading)',
-            'last_updated': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting Metasploit status: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES HYDRA ====================
-
-@app.route('/api/hydra/attack', methods=['POST', 'OPTIONS'])
-def launch_hydra_attack():
-    """Lancer une nouvelle attaque Hydra"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        data = request.get_json()
-        
-        required_fields = ['target', 'service']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Champ requis manquant: {field}'
-                }), 400
-        
-        # Mode threadé
-        task_id = task_manager.create_hydra_task(
-            target=data['target'],
-            service=data['service'],
-            username=data.get('username'),
-            port=data.get('port', '22'),
-            threads=data.get('threads', '4'),
-            timeout=data.get('timeout', '30')
-        )
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Attaque Hydra threadée lancée',
-            'attack_id': task_id,
-            'task_id': task_id,
-            'target': data['target'],
-            'service': data['service'],
-            'threaded': True,
-            'monitor_url': f'/api/threading/task/{task_id}/status'
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error launching Hydra attack: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-@app.route('/api/hydra/status', methods=['GET', 'OPTIONS'])
-def get_hydra_status():
-    """Statut général de Hydra"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        threaded_active = len([t for t in task_manager.get_active_tasks() if t.get('type') == 'hydra'])
-        threaded_completed = len([t for t in task_manager.get_completed_tasks() if t.get('type') == 'hydra'])
-        
-        return jsonify({
-            'hydra_available': True,
-            'active_attacks': threaded_active,
-            'total_attacks': threaded_completed + threaded_active,
-            'completed_attacks': threaded_completed,
-            'version': 'THC Hydra v9.4 (Simulation + Threading)',
-            'last_updated': datetime.now().isoformat(),
-            'supported_services': ['ssh', 'ftp', 'telnet', 'http-get', 'rdp', 'smb']
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting Hydra status: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES RAPPORTS ====================
-
-@app.route('/api/reports/test', methods=['GET', 'OPTIONS'])
-def test_reports():
-    """Test endpoint pour les rapports"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        threading_stats = task_manager.get_statistics()
-        
-        report_content = f"""
-        <html>
-        <head><title>Pacha Toolbox Report</title></head>
-        <body>
-            <h1>Pacha Toolbox Development Report</h1>
-            <p>Generated at: {datetime.now().isoformat()}</p>
-            <p>Version: 2.1.0-dev</p>
-            <p>Base Directory: {BASE_DIR}</p>
-            
-            <h2>Threading Status</h2>
-            <ul>
-                <li>Active tasks: {threading_stats['active_tasks']}</li>
-                <li>Completed tasks: {threading_stats['completed_tasks']}</li>
-                <li>Success rate: {threading_stats['success_rate']:.1f}%</li>
-                <li>Max workers: {threading_stats['max_workers']}</li>
-            </ul>
-            
-            <h2>Directories</h2>
-            <ul>
-                {''.join([f"<li>{name}: {path} ({'✓' if os.path.exists(path) else '✗'})</li>" for name, path in DIRECTORIES.items()])}
-            </ul>
-        </body>
-        </html>
-        """
-        
-        filename = f"test_report_{int(time.time())}.html"
-        filepath = os.path.join(DIRECTORIES['reports'], filename)
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(report_content)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Test report created',
-            'filename': filename,
-            'path': filepath,
-            'download_url': f'/api/reports/download/{filename}'
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error creating test report: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': 'Reports module error',
-            'error': str(e)
-        }), 500
-
-@app.route('/api/reports/list', methods=['GET', 'OPTIONS'])
-def list_reports():
-    """Liste de tous les rapports disponibles"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        reports_dir = DIRECTORIES['reports']
-        if not os.path.exists(reports_dir):
-            return jsonify({'reports': []})
-        
-        reports = []
-        for filename in os.listdir(reports_dir):
-            if filename.endswith(('.html', '.pdf', '.txt')):
-                filepath = os.path.join(reports_dir, filename)
-                stat = os.stat(filepath)
-                reports.append({
-                    'filename': filename,
-                    'size': stat.st_size,
-                    'created': datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    'download_url': f'/api/reports/download/{filename}'
-                })
-        
-        return jsonify({
-            'reports': sorted(reports, key=lambda x: x['modified'], reverse=True)
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error listing reports: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== ROUTES SYSTÈME ====================
-
-@app.route('/api/system/info', methods=['GET', 'OPTIONS'])
-def get_system_info():
-    """Informations système"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-        
-    try:
-        threading_stats = task_manager.get_statistics()
-        
-        return jsonify({
-            'version': '2.1.0-dev',
-            'mode': 'development',
-            'threading_enabled': True,
-            'threading_stats': threading_stats,
-            'python_version': sys.version,
-            'base_directory': BASE_DIR,
-            'project_root': PROJECT_ROOT,
-            'directories': DIRECTORIES,
-            'timestamp': datetime.now().isoformat(),
-            'cors_enabled': True
-        })
-        
-    except Exception as e:
-        logger.error(f"❌ Error getting system info: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ==================== GESTIONNAIRES D'ERREURS ====================
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({
-        'error': 'Endpoint not found',
-        'message': 'Check the API URL',
-        'mode': 'development',
-        'cors_enabled': True,
-        'available_endpoints': [
-            '/api/health',
-            '/api/status',
-            '/api/scan/start',
-            '/api/scan/status/<scan_id>',
-            '/api/scan/active',
-            '/api/scan/history',
-            '/api/threading/info',
-            '/api/threading/tasks',
-            '/api/threading/dashboard',
-            '/api/metasploit/exploits',
-            '/api/metasploit/exploit',
-            '/api/metasploit/sessions',
-            '/api/hydra/attack',
-            '/api/hydra/status',
-            '/api/reports/test',
-            '/api/reports/list',
-            '/api/system/info'
-        ]
-    }), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    logger.error(f"Internal server error: {error}")
-    return jsonify({
-        'error': 'Internal server error',
-        'message': 'An unexpected error occurred',
-        'mode': 'development',
-        'cors_enabled': True
-    }), 500
-
-# ==================== MIDDLEWARE CORS GLOBAL ====================
-
-@app.after_request
-def after_request(response):
-    """Middleware global pour CORS"""
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
-
-# ==================== GESTIONNAIRE DE SIGNAUX ====================
-
-def signal_handler(sig, frame):
-    logger.info("🛑 Server shutdown requested")
-    try:
-        for task in task_manager.get_active_tasks():
-            task_manager.cancel_task(task['id'])
-        logger.info("🧹 Task manager cleaned up")
-    except Exception as e:
-        logger.error(f"Error during cleanup: {e}")
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-# ==================== DÉMARRAGE ====================
-
-if __name__ == "__main__":
-    logger.info("🚀 Starting Pacha Toolbox Backend v2.1 (Development Mode)")
-    logger.info("🌐 CORS configured for localhost:3000")
-    logger.info(f"📁 Base directory: {BASE_DIR}")
-    logger.info(f"📂 Project root: {PROJECT_ROOT}")
-    logger.info(f"🗂️ Data directories: {DIRECTORIES}")
-    logger.info(f"🔧 Metasploit exploits available: {len(METASPLOITABLE_EXPLOITS)}")
-    logger.info("🔥 Multi-threading intégré et opérationnel")
-    
-    threading_stats = task_manager.get_statistics()
-    logger.info(f"🎯 Task Manager: {threading_stats['max_workers']} workers prêts")
-    
-    logger.info("✨ Mode développement actif:")
-    logger.info("   - Chemins relatifs configurés")
-    logger.info("   - Permissions gérées automatiquement") 
-    logger.info("   - Multi-threading intégré")
-    logger.info("   - Simulation complète des outils")
-    logger.info("   - API complète disponible")
-    logger.info("   - CORS configuré pour React")
-    
-    # Test des dépendances - VERSION CORRIGÉE
-    try:
-        logger.info("🔍 Checking dependencies...")
         try:
-            import flask
-            flask_version = getattr(flask, '__version__', 'Version not available')
-            logger.info(f"   - Flask: {flask_version}")
-        except Exception as flask_error:
-            logger.info(f"   - Flask: Installed (version check failed: {flask_error})")
-        
-        logger.info(f"   - Python: {sys.version.split()[0]}")
-        logger.info("   ✅ All dependencies OK")
-        
-    except Exception as e:
-        logger.error(f"   ❌ Dependency check failed: {e}")
+            data = request.get_json() or {}
+            username = data.get('username', '')
+            password = data.get('password', '')
+            
+            if not username or not password:
+                return jsonify({'error': 'Nom d\'utilisateur et mot de passe requis'}), 400
+            
+            user = users_db.get(username)
+            if not user or not check_password_hash(user['password_hash'], password):
+                return jsonify({'error': 'Identifiants invalides'}), 401
+            
+            # Générer le token JWT
+            token = jwt.encode({
+                'username': username,
+                'exp': datetime.utcnow().timestamp() + 86400  # 24h
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            logger.info(f"✅ Connexion réussie: {username}")
+            
+            return jsonify({
+                'token': token,
+                'user': {
+                    'id': user['id'],
+                    'username': user['username'],
+                    'email': user['email'],
+                    'role': user['role']
+                },
+                'expires_in': 86400
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur login: {e}")
+            return jsonify({'error': 'Erreur de connexion'}), 500
     
-    # Démarrage Flask avec gestion d'erreurs
-    try:
-        logger.info("🚀 Starting Flask server...")
-        logger.info("🌐 Server will be available at: http://localhost:5000")
-        logger.info("💻 React app should connect from: http://localhost:3000")
-        app.run(
-            host="0.0.0.0", 
-            port=5000, 
-            debug=False,  # Debug off pour éviter les crashes
-            threaded=True,
-            use_reloader=False  # Éviter les rechargements automatiques
-        )
-    except Exception as e:
-        logger.error(f"❌ Server startup error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+    def register():
+        """Inscription utilisateur"""
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json() or {}
+            username = data.get('username', '')
+            email = data.get('email', '')
+            password = data.get('password', '')
+            
+            if not username or not email or not password:
+                return jsonify({'error': 'Tous les champs sont requis'}), 400
+            
+            if username in users_db:
+                return jsonify({'error': 'Nom d\'utilisateur déjà utilisé'}), 400
+            
+            if len(password) < 8:
+                return jsonify({'error': 'Le mot de passe doit contenir au moins 8 caractères'}), 400
+            
+            # Créer le nouvel utilisateur
+            new_user = {
+                'id': len(users_db) + 1,
+                'username': username,
+                'password_hash': generate_password_hash(password),
+                'email': email,
+                'role': 'user'
+            }
+            
+            users_db[username] = new_user
+            
+            logger.info(f"✅ Nouvel utilisateur créé: {username}")
+            
+            return jsonify({
+                'message': 'Compte créé avec succès',
+                'user': {
+                    'id': new_user['id'],
+                    'username': new_user['username'],
+                    'email': new_user['email'],
+                    'role': new_user['role']
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur register: {e}")
+            return jsonify({'error': 'Erreur de création de compte'}), 500
+    
+    # ============================================================
+    # ROUTES DE SCAN
+    # ============================================================
+    
+    @app.route('/api/scan/nmap', methods=['POST', 'OPTIONS'])
+    def nmap_scan():
+        """Endpoint pour les scans Nmap"""
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json() or {}
+            target = data.get('target', '127.0.0.1')
+            scan_type = data.get('scanType', 'basic')
+            
+            if not target:
+                return jsonify({'error': 'Target requis'}), 400
+            
+            # Générer l'ID de tâche
+            task_id = generate_task_id('nmap')
+            
+            # Initialiser le statut
+            update_task_status(task_id, "starting", {
+                "target": target,
+                "scan_type": scan_type
+            })
+            
+            logger.info(f"🎯 LANCEMENT THREAD pour task {task_id}")
+            
+            # Démarrer le scan en arrière-plan avec les FONCTIONS GLOBALES
+            thread = threading.Thread(
+                target=run_nmap_scan,
+                args=(target, scan_type, task_id)
+            )
+            thread.daemon = True
+            thread.start()
+            
+            logger.info(f"🔍 Scan Nmap démarré: {task_id} - {target}")
+            
+            return jsonify({
+                'task_id': task_id,
+                'status': 'started',
+                'message': f'Scan Nmap de {target} démarré',
+                'target': target,
+                'scan_type': scan_type
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur scan Nmap: {e}")
+            import traceback
+            logger.error(f"❌ TRACEBACK: {traceback.format_exc()}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Erreur lors du scan: {str(e)}'
+            }), 500
+    
+    @app.route('/api/scan/status/<task_id>', methods=['GET'])
+    def get_scan_status(task_id):
+        """Récupérer le statut d'une tâche"""
+        try:
+            if task_id not in task_status:
+                return jsonify({'error': 'Tâche non trouvée'}), 404
+            
+            status = task_status[task_id]
+            logger.info(f"📊 Status demandé pour {task_id}: {status.get('status')}")
+            return jsonify({
+                'task_id': task_id,
+                'status': status.get('status', 'unknown'),
+                'data': status.get('data', {}),
+                'updated_at': status.get('updated_at'),
+                'completed_at': status.get('completed_at')
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération statut: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/scan/history', methods=['GET'])
+    def scan_history():
+        """Historique des scans"""
+        try:
+            # Retourner l'historique des tâches terminées
+            history = []
+            for task_id, status_data in task_status.items():
+                if status_data.get('status') in ['completed', 'failed']:
+                    history.append({
+                        'task_id': task_id,
+                        'status': status_data.get('status'),
+                        'data': status_data.get('data', {}),
+                        'completed_at': status_data.get('completed_at'),
+                        'tool': task_id.split('_')[0]  # Extraire l'outil depuis l'ID
+                    })
+            
+            # Trier par date de completion (plus récent en premier)
+            history.sort(key=lambda x: x.get('completed_at', ''), reverse=True)
+            
+            return jsonify({
+                'scans': history,
+                'total': len(history)
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération historique: {e}")
+            return jsonify({
+                'scans': [],
+                'total': 0,
+                'error': str(e)
+            }), 500
+    
+    # ============================================================
+    # GESTION DES ERREURS
+    # ============================================================
+    
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            'error': 'Endpoint non trouvé',
+            'message': 'L\'endpoint demandé n\'existe pas',
+            'status': 404
+        }), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        logger.error(f"Erreur interne 500: {error}")
+        return jsonify({
+            'error': 'Erreur interne du serveur',
+            'message': 'Une erreur inattendue s\'est produite',
+            'status': 500
+        }), 500
+    
+    @app.before_request
+    def log_request_info():
+        """Log des requêtes pour debug"""
+        if app.config['DEBUG']:
+            logger.debug(f"📥 {request.method} {request.path} - IP: {request.remote_addr}")
+    
+    @app.after_request
+    def after_request(response):
+        """Headers de sécurité"""
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        
+        if app.config['DEBUG']:
+            logger.debug(f"📤 Response {response.status_code} pour {request.path}")
+        
+        return response
+    
+    return app
+
+# ============================================================
+# POINT D'ENTRÉE
+# ============================================================
+
+if __name__ == '__main__':
+    # Créer l'application
+    app = create_app()
+    
+    # Démarrer le serveur
+    port = int(os.environ.get('PORT', 5000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    
+    logger.info(f"🚀 Démarrage Pacha Toolbox API sur {host}:{port}")
+    logger.info("🎯 Endpoints disponibles:")
+    logger.info("   • GET  /                    - Informations API")
+    logger.info("   • GET  /api/health          - Health check")
+    logger.info("   • POST /api/auth/login      - Connexion")
+    logger.info("   • POST /api/auth/register   - Inscription")
+    logger.info("   • POST /api/scan/nmap       - Scan Nmap")
+    logger.info("   • POST /api/scan/nikto      - Scan Nikto")
+    logger.info("   • POST /api/scan/tcpdump    - Capture tcpdump")
+    logger.info("   • POST /api/scan/hydra      - Attaque Hydra")
+    logger.info("   • POST /api/scan/metasploit - Exploit Metasploit")
+    logger.info("   • GET  /api/scan/status/<id> - Statut tâche")
+    logger.info("   • GET  /api/scan/history    - Historique scans")
+    logger.info("")
+    logger.info("👤 Comptes par défaut:")
+    logger.info("   • admin:admin123 (administrateur)")
+    logger.info("   • user:user123 (utilisateur)")
+    logger.info("")
+    logger.info("🔧 DEBUG: Fonctions de scan définies au niveau global")
+    logger.info(f"🔧 DEBUG: run_nmap_scan = {run_nmap_scan}")
+    
+    app.run(
+        host=host,
+        port=port,
+        debug=app.config['DEBUG'],
+        threaded=True
+    )
