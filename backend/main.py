@@ -80,8 +80,8 @@ def generate_task_id(tool):
 # PARSERS GLOBAUX
 # ============================================================
 
-def parse_nmap_output(output):
-    """Parser la sortie Nmap - VERSION ULTRA COMPLÈTE"""
+def parse_nmap_output_fixed(output):
+    """Parser Nmap corrigé - VERSION CLEAN sans doublons"""
     results = {
         "hosts_up": 0,
         "ports_open": [],
@@ -96,9 +96,8 @@ def parse_nmap_output(output):
     }
     
     lines = output.split('\n')
-    logger.info(f"🔍 Parsing {len(lines)} lignes de sortie Nmap COMPLÈTE")
+    logger.info(f"🔍 Parsing {len(lines)} lignes de sortie Nmap CORRIGÉ")
     
-    current_port = None
     in_port_section = False
     
     for i, line in enumerate(lines):
@@ -119,27 +118,26 @@ def parse_nmap_output(output):
             results["target_info"]["target"] = target_info
             logger.info(f"🎯 Target: {target_info}")
             
-        # Ports découverts (pendant le scan)
+        # ❌ IGNORER les "Discovered open port" - source non fiable !
         elif 'Discovered open port' in line:
-            port_match = line.split('Discovered open port ')[1].split(' on ')[0]
-            if port_match not in [p.get('raw', '') for p in results["detailed_ports"]]:
-                results["detailed_ports"].append({
-                    "port": port_match.split('/')[0],
-                    "protocol": port_match.split('/')[1] if '/' in port_match else 'tcp',
-                    "state": "open",
-                    "service": "unknown",
-                    "raw": f"{port_match} open discovered"
-                })
-            logger.info(f"🔍 Port découvert: {port_match}")
-            
-        # Section des ports (format tableau)
-        elif line_stripped.startswith('PORT') and 'STATE' in line and 'SERVICE' in line:
-            in_port_section = True
-            logger.info("📊 Début section ports")
+            # Ces ports peuvent être fermés dans les résultats finaux
+            # On les ignore pour éviter les doublons et incohérences
+            logger.debug(f"🚫 Ignoré: {line_stripped}")
             continue
             
+        # Section des ports (format tableau) - SEULE SOURCE FIABLE
+        elif line_stripped.startswith('PORT') and 'STATE' in line and 'SERVICE' in line:
+            in_port_section = True
+            logger.info("📊 Début section ports (source autoritaire)")
+            continue
+            
+        # Fin de la section des ports
+        elif in_port_section and (line_stripped == '' or line_stripped.startswith('Service Info') or line_stripped.startswith('OS')):
+            in_port_section = False
+            logger.info("📊 Fin section ports")
+            
+        # Parser les ports UNIQUEMENT depuis la section finale
         elif in_port_section and '/' in line_stripped and any(state in line_stripped for state in ['open', 'closed', 'filtered']):
-            # Parser ligne de port détaillée
             parts = line_stripped.split()
             if len(parts) >= 3:
                 port_num = parts[0].split('/')[0]
@@ -148,59 +146,50 @@ def parse_nmap_output(output):
                 service = parts[2] if len(parts) > 2 else 'unknown'
                 version = ' '.join(parts[3:]) if len(parts) > 3 else ''
                 
-                port_info = f"{parts[0]} {state} {service}"
+                # Créer l'entrée du port
+                port_info = {
+                    "port": port_num,
+                    "protocol": protocol,
+                    "state": state,
+                    "service": service,
+                    "version": version,
+                    "raw": f"{parts[0]} {state} {service}"
+                }
+                
                 if version:
-                    port_info += f" {version}"
+                    port_info["raw"] += f" {version}"
                 
-                results["ports_open"].append(port_info)
-                results["services"].append(service)
+                results["detailed_ports"].append(port_info)
                 
-                # Mise à jour ou ajout du port détaillé
-                existing_port = None
-                for p in results["detailed_ports"]:
-                    if p["port"] == port_num and p["protocol"] == protocol:
-                        existing_port = p
-                        break
+                # Ajouter aux listes pour compatibilité
+                if state == 'open':
+                    results["ports_open"].append(port_info["raw"])
+                    if service != 'unknown':
+                        results["services"].append(service)
                 
-                if existing_port:
-                    existing_port.update({
-                        "state": state,
-                        "service": service,
-                        "version": version,
-                        "raw": port_info
-                    })
-                else:
-                    results["detailed_ports"].append({
-                        "port": port_num,
-                        "protocol": protocol,
-                        "state": state,
-                        "service": service,
-                        "version": version,
-                        "raw": port_info
-                    })
-                
-                logger.info(f"🔓 Port détaillé: {port_info}")
+                logger.info(f"🔓 Port ajouté: {port_info['raw']}")
         
         # Scripts NSE output
         elif line.startswith('|') or line.startswith('|_'):
             script_output = line.strip()
             results["scripts_output"].append(script_output)
-            # Associer au port courant si possible
-            if current_port and results["detailed_ports"]:
-                if "scripts" not in results["detailed_ports"][-1]:
-                    results["detailed_ports"][-1]["scripts"] = []
-                results["detailed_ports"][-1]["scripts"].append(script_output)
-            logger.debug(f"📜 Script output: {script_output[:50]}...")
+            # Associer au dernier port si possible
+            if results["detailed_ports"]:
+                last_port = results["detailed_ports"][-1]
+                if "scripts" not in last_port:
+                    last_port["scripts"] = []
+                last_port["scripts"].append(script_output)
+            logger.debug(f"📜 Script: {script_output[:50]}...")
             
         # OS Detection
-        elif 'OS CPE:' in line or 'Running' in line and 'GUESSING' in line:
+        elif 'OS CPE:' in line or ('Running' in line and 'OS' in line):
             results["os_detection"].append(line_stripped)
-            logger.info(f"💻 OS info: {line_stripped[:100]}...")
+            logger.info(f"💻 OS: {line_stripped[:50]}...")
             
-        elif 'Aggressive OS guesses:' in line and i+1 < len(lines):
-            # Capturer les OS guesses sur les lignes suivantes
+        elif 'Aggressive OS guesses:' in line:
+            # Capturer les OS guesses suivants
             j = i + 1
-            while j < len(lines) and (lines[j].strip().startswith('-') or '%)' in lines[j]):
+            while j < len(lines) and (lines[j].strip().startswith('-') or '%' in lines[j]):
                 if lines[j].strip():
                     results["os_detection"].append(lines[j].strip())
                 j += 1
@@ -228,19 +217,112 @@ def parse_nmap_output(output):
         elif 'Network Distance:' in line:
             results["target_info"]["distance"] = line.replace('Network Distance:', '').strip()
     
-    # Nettoyer les doublons
+    # Nettoyer les doublons dans les services
     results["services"] = list(set(results["services"]))
     
-    # Enrichir le summary
+    # Compter les ports ouverts
     open_ports = len([p for p in results["detailed_ports"] if p.get("state") == "open"])
     results["summary"] = f"Scan terminé: {results['hosts_up']} host(s), {open_ports} port(s) ouverts"
     
-    logger.info(f"🎯 RÉSULTATS FINAUX:")
+    logger.info(f"🎯 RÉSULTATS FINAUX CORRIGÉS:")
     logger.info(f"   - Hosts: {results['hosts_up']}")
     logger.info(f"   - Ports ouverts: {open_ports}")
-    logger.info(f"   - Services: {len(results['services'])}")
-    logger.info(f"   - Scripts NSE: {len(results['scripts_output'])}")
-    logger.info(f"   - OS detection: {len(results['os_detection'])}")
+    logger.info(f"   - Services uniques: {len(results['services'])}")
+    logger.info(f"   - Total ports détaillés: {len(results['detailed_ports'])}")
+    
+    return results
+
+
+def run_nmap_scan_fixed(target, scan_type, task_id):
+    """Version corrigée du scan Nmap avec parser amélioré"""
+    try:
+        logger.info(f"🚀 DÉMARRAGE scan Nmap CORRIGÉ pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Exécution en cours..."})
+        
+        # Configuration des types de scan
+        scan_configs = {
+            'quick': ['-T4', '-F'],                 # Fast scan, top ports
+            'basic': ['-sV'],                       # Version detection only
+            'standard': ['-sV', '-sC'],             # Version + default scripts
+            'intense': ['-sV', '-sC', '-A', '-T4'], # Aggressive + OS detection
+            'comprehensive': ['-sS', '-sV', '-sC', '-A', '-T4', '-p-']  # All ports
+        }
+        
+        # Construire la commande
+        cmd = ['nmap'] + scan_configs.get(scan_type, ['-sV']) + [target]
+        
+        logger.info(f"🔍 COMMANDE EXACTE: {' '.join(cmd)}")
+        
+        # Exécuter le scan avec timeout approprié
+        timeout = 600 if scan_type == 'comprehensive' else 300
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        
+        logger.info(f"🏁 Scan terminé avec code: {result.returncode}")
+        
+        if result.returncode == 0:
+            # Parser avec la version corrigée
+            results = parse_nmap_output_fixed(result.stdout)
+            
+            # Validation des résultats
+            if results["hosts_up"] == 0:
+                logger.warning("⚠️ Aucun host détecté - possible problème de parsing")
+            
+            logger.info(f"✅ Résultats parsés et validés")
+            
+            update_task_status(task_id, "completed", {
+                "target": target,
+                "scan_type": scan_type,
+                "command": ' '.join(cmd),  # Enregistrer la commande exacte
+                "results": results,
+                "raw_output": result.stdout,
+                "parsing_version": "fixed_v1"
+            })
+        else:
+            logger.error(f"❌ Erreur scan: {result.stderr}")
+            update_task_status(task_id, "failed", {
+                "error": result.stderr or "Erreur inconnue",
+                "command": ' '.join(cmd)
+            })
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ Timeout du scan {task_id}")
+        update_task_status(task_id, "failed", {"error": f"Timeout du scan ({timeout//60} minutes)"})
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION scan Nmap {task_id}: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+
+# Test function pour valider le parsing
+def test_parsing_consistency():
+    """Fonction de test pour vérifier la cohérence du parsing"""
+    test_output = """
+Starting Nmap 7.97 ( https://nmap.org ) at 2025-06-18 21:43 +0200
+Nmap scan report for scanme.nmap.org (50.116.1.184)
+Host is up (0.061s latency).
+Not shown: 996 filtered tcp ports (no-responses)
+PORT    STATE  SERVICE  VERSION
+22/tcp  open   ssh      OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13
+80/tcp  open   http     Apache httpd 2.4.7
+113/tcp closed ident
+443/tcp open   https    Apache httpd 2.4.7
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Nmap done: 1 IP address (1 host up) scanned in 3.91 seconds
+"""
+    
+    results = parse_nmap_output_fixed(test_output)
+    
+    print("🧪 Test du parsing corrigé:")
+    print(f"   Hosts UP: {results['hosts_up']}")
+    print(f"   Ports détaillés: {len(results['detailed_ports'])}")
+    print(f"   Ports ouverts: {len([p for p in results['detailed_ports'] if p['state'] == 'open'])}")
+    print(f"   Services: {results['services']}")
     
     return results
 
@@ -334,8 +416,8 @@ def run_nmap_scan(target, scan_type, task_id):
         
         if result.returncode == 0:
             # Parser les résultats
-            results = parse_nmap_output(result.stdout)
-            
+            results = parse_nmap_output_fixed(result.stdout)
+            parse_nmap_output = parse_nmap_output_fixed
             logger.info(f"✅ Résultats parsés: {results}")
             
             update_task_status(task_id, "completed", {

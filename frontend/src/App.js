@@ -4,14 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 // CONFIGURATION API
 // ================================
 
-// Configuration API compatible navigateur
 const getApiBaseUrl = () => {
-  // Vérifier si on est dans un environnement React avec variables d'environnement
   if (typeof window !== 'undefined' && window.REACT_APP_API_URL) {
     return window.REACT_APP_API_URL;
   }
-  
-  // Par défaut, utiliser localhost
   return 'http://localhost:5000/api';
 };
 
@@ -79,27 +75,6 @@ const apiService = {
     });
   },
 
-  async startTcpdumpCapture(networkInterface, duration, filter) {
-    return this.request('/scan/tcpdump', {
-      method: 'POST',
-      body: JSON.stringify({ interface: networkInterface, duration, filter })
-    });
-  },
-
-  async startHydraAttack(target, service, username, wordlist) {
-    return this.request('/scan/hydra', {
-      method: 'POST',
-      body: JSON.stringify({ target, service, username, wordlist })
-    });
-  },
-
-  async startMetasploitExploit(exploit, target, payload, lhost) {
-    return this.request('/scan/metasploit', {
-      method: 'POST',
-      body: JSON.stringify({ exploit, target, payload, lhost })
-    });
-  },
-
   async getTaskStatus(taskId) {
     return this.request(`/scan/status/${taskId}`);
   },
@@ -110,7 +85,7 @@ const apiService = {
 };
 
 // ================================
-// ICÔNES SVG
+// ICÔNES SVG COMPLÈTES
 // ================================
 
 const Shield = ({ size = 16, color = "#666" }) => (
@@ -124,6 +99,20 @@ const Target = ({ size = 16, color = "#666" }) => (
     <circle cx="12" cy="12" r="10"></circle>
     <circle cx="12" cy="12" r="6"></circle>
     <circle cx="12" cy="12" r="2"></circle>
+  </svg>
+);
+
+const Spider = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <path d="M12 2L12 6"></path>
+    <path d="M12 18L12 22"></path>
+    <path d="M4.93 4.93L7.76 7.76"></path>
+    <path d="M16.24 16.24L19.07 19.07"></path>
+    <path d="M2 12L6 12"></path>
+    <path d="M18 12L22 12"></path>
+    <path d="M4.93 19.07L7.76 16.24"></path>
+    <path d="M16.24 7.76L19.07 4.93"></path>
   </svg>
 );
 
@@ -150,14 +139,6 @@ const Crosshairs = ({ size = 16, color = "#666" }) => (
     <line x1="6" y1="12" x2="2" y2="12"></line>
     <line x1="12" y1="6" x2="12" y2="2"></line>
     <line x1="12" y1="22" x2="12" y2="18"></line>
-  </svg>
-);
-
-const Globe = ({ size = 16, color = "#666" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="2" y1="12" x2="22" y2="12"></line>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
   </svg>
 );
 
@@ -205,6 +186,65 @@ const Loader = ({ size = 16, color = "#666" }) => (
     </path>
   </svg>
 );
+
+// ================================
+// SYSTÈME DE PERSISTENCE
+// ================================
+
+const persistenceService = {
+  save(key, data) {
+    try {
+      const serializedData = JSON.stringify({
+        data,
+        timestamp: Date.now(),
+        version: '1.0'
+      });
+      localStorage.setItem(`pacha_${key}`, serializedData);
+      console.log(`💾 État sauvegardé: ${key}`);
+    } catch (error) {
+      console.error(`❌ Erreur sauvegarde ${key}:`, error);
+    }
+  },
+
+  load(key, defaultValue = null) {
+    try {
+      const stored = localStorage.getItem(`pacha_${key}`);
+      if (!stored) return defaultValue;
+      
+      const parsed = JSON.parse(stored);
+      const age = Date.now() - parsed.timestamp;
+      const maxAge = key.includes('results') ? 24 * 60 * 60 * 1000 : Infinity;
+      
+      if (age > maxAge) {
+        console.log(`⏰ Données expirées pour ${key}, suppression`);
+        this.remove(key);
+        return defaultValue;
+      }
+      
+      console.log(`📂 État chargé: ${key}`);
+      return parsed.data;
+    } catch (error) {
+      console.error(`❌ Erreur chargement ${key}:`, error);
+      return defaultValue;
+    }
+  },
+
+  remove(key) {
+    try {
+      localStorage.removeItem(`pacha_${key}`);
+      console.log(`🗑️ État supprimé: ${key}`);
+    } catch (error) {
+      console.error(`❌ Erreur suppression ${key}:`, error);
+    }
+  },
+
+  clearAll() {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('pacha_'))
+      .forEach(k => localStorage.removeItem(k));
+    console.log('🧹 Tous les états supprimés');
+  }
+};
 
 // ================================
 // THÈME ET COMPOSANTS UI
@@ -280,11 +320,6 @@ const Button = ({ children, variant = 'primary', size = 'md', icon: Icon, disabl
     },
     success: {
       backgroundColor: theme.colors.status.success,
-      color: '#000000',
-      border: 'none'
-    },
-    warning: {
-      backgroundColor: theme.colors.status.warning,
       color: '#000000',
       border: 'none'
     }
@@ -397,47 +432,37 @@ const Badge = ({ children, variant = 'default', style = {} }) => {
 };
 
 // ================================
-// HOOK POUR LE POLLING DES TÂCHES - VERSION CORRIGÉE
+// HOOK POUR LE POLLING DES TÂCHES
 // ================================
 
 const useTaskPolling = (taskId, onComplete) => {
   const [taskStatus, setTaskStatus] = useState(null);
-  const [isPolling, setIsPolling] = useState(false);
 
   useEffect(() => {
     if (!taskId) return;
 
     console.log(`🔄 Démarrage polling pour task: ${taskId}`);
-    setIsPolling(true);
     
     const pollInterval = setInterval(async () => {
       try {
-        console.log(`📊 Polling status pour ${taskId}...`);
         const status = await apiService.getTaskStatus(taskId);
-        console.log(`📊 Status reçu:`, status);
-        
         setTaskStatus(status);
 
         if (status.status === 'completed' || status.status === 'failed') {
           console.log(`✅ Task ${taskId} terminée: ${status.status}`);
           clearInterval(pollInterval);
-          setIsPolling(false);
           if (onComplete) {
-            console.log(`🎯 Appel onComplete pour ${taskId}`);
             onComplete(status);
           }
         }
       } catch (error) {
         console.error(`❌ Erreur polling ${taskId}:`, error);
         clearInterval(pollInterval);
-        setIsPolling(false);
       }
-    }, 1000); // Polling toutes les secondes
+    }, 1000);
 
     return () => {
-      console.log(`🛑 Arrêt polling pour ${taskId}`);
       clearInterval(pollInterval);
-      setIsPolling(false);
     };
   }, [taskId, onComplete]);
 
@@ -485,9 +510,7 @@ const AuthForm = ({ onLogin }) => {
     try {
       if (mode === 'login') {
         const response = await apiService.login(formData.username, formData.password);
-        
         localStorage.setItem('pacha_token', response.token);
-        
         setSuccess('Connexion réussie !');
         setTimeout(() => {
           onLogin(response.user, response.token);
@@ -543,7 +566,7 @@ const AuthForm = ({ onLogin }) => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
           <div>
             <label style={{ 
               display: 'block', 
@@ -650,7 +673,7 @@ const AuthForm = ({ onLogin }) => {
           )}
           
           <Button 
-            type="submit" 
+            onClick={handleSubmit}
             disabled={isLoading}
             fullWidth
             icon={isLoading ? Loader : null}
@@ -661,7 +684,7 @@ const AuthForm = ({ onLogin }) => {
               (mode === 'login' ? '🚀 Se connecter' : '✨ Créer le compte')
             }
           </Button>
-        </form>
+        </div>
         
         <div style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
           {mode === 'login' ? (
@@ -706,7 +729,7 @@ const AuthForm = ({ onLogin }) => {
 };
 
 // ================================
-// ONGLET NMAP
+// MODULE NMAP
 // ================================
 
 const NmapTab = () => {
@@ -716,6 +739,31 @@ const NmapTab = () => {
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
 
+  // 📂 CHARGEMENT INITIAL
+  useEffect(() => {
+    const savedResults = persistenceService.load('nmap_results', []);
+    const savedForm = persistenceService.load('nmap_form', {});
+    
+    setResults(savedResults);
+    if (savedForm.target) setTarget(savedForm.target);
+    if (savedForm.scanType) setScanType(savedForm.scanType);
+    
+    console.log('📂 Nmap: Données restaurées');
+  }, []);
+
+  // 💾 SAUVEGARDE AUTO
+  useEffect(() => {
+    if (target || scanType) {
+      persistenceService.save('nmap_form', { target, scanType });
+    }
+  }, [target, scanType]);
+
+  useEffect(() => {
+    if (results.length > 0) {
+      persistenceService.save('nmap_results', results.slice(0, 20));
+    }
+  }, [results]);
+
   const scanTypes = [
     { value: 'quick', label: 'Quick Scan (-T4 -F)' },
     { value: 'basic', label: 'Basic Scan (-sV -sC)' },
@@ -724,10 +772,7 @@ const NmapTab = () => {
   ];
 
   const taskStatus = useTaskPolling(currentTaskId, useCallback((status) => {
-    console.log('🎯 Callback onComplete appelé avec:', status);
-    
     if (status.status === 'completed') {
-      console.log('✅ Scan terminé avec succès, ajout aux résultats');
       const newResult = {
         id: currentTaskId,
         target: target,
@@ -735,17 +780,13 @@ const NmapTab = () => {
         timestamp: new Date().toLocaleString(),
         status: 'completed',
         results: status.data.results || {},
-        raw_output: status.data.raw_output
+        raw_output: status.data.raw_output,
+        command: status.data.command
       };
-      console.log('📊 Nouveau résultat:', newResult);
-      setResults(prev => {
-        const updated = [newResult, ...prev];
-        console.log('📊 Résultats mis à jour:', updated);
-        return updated;
-      });
-      setError(''); // Clear any previous errors
+      
+      setResults(prev => [newResult, ...prev]);
+      setError('');
     } else if (status.status === 'failed') {
-      console.log('❌ Scan échoué:', status.data.error);
       setError(status.data.error || 'Erreur inconnue');
     }
     setCurrentTaskId(null);
@@ -757,18 +798,18 @@ const NmapTab = () => {
       return;
     }
 
-    console.log(`🚀 Démarrage scan Nmap: ${target} (${scanType})`);
     setError('');
-    
     try {
       const response = await apiService.startNmapScan(target, scanType);
-      console.log('✅ Réponse API:', response);
-      console.log(`🎯 Task ID créé: ${response.task_id}`);
       setCurrentTaskId(response.task_id);
     } catch (error) {
-      console.error('❌ Erreur démarrage scan:', error);
       setError(error.message);
     }
+  };
+
+  const clearResults = () => {
+    setResults([]);
+    persistenceService.remove('nmap_results');
   };
 
   const isScanning = currentTaskId && taskStatus?.status === 'running';
@@ -776,11 +817,19 @@ const NmapTab = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-          <Target size={20} color={theme.colors.accent.primary} />
-          <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Nmap - Network Discovery & Security Scanning
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Target size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Nmap - Network Discovery & Security Scanning
+            </h2>
+          </div>
+          {results.length > 0 && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+              <Badge variant="success">{results.length} sauvés</Badge>
+              <Button variant="danger" size="sm" onClick={clearResults}>🧹 Clear</Button>
+            </div>
+          )}
         </div>
 
         {isScanning ? (
@@ -791,22 +840,22 @@ const NmapTab = () => {
             borderRadius: theme.borderRadius.md,
             border: `1px solid ${theme.colors.bg.accent}`
           }}>
-            <div style={{ marginBottom: theme.spacing.lg }}>
-              <Loader size={32} color={theme.colors.accent.primary} />
-            </div>
-            <div style={{ 
-              color: theme.colors.text.primary, 
-              fontSize: '16px', 
-              fontWeight: '600',
-              marginBottom: theme.spacing.md 
-            }}>
+            <Loader size={32} color={theme.colors.accent.primary} />
+            <div style={{ color: theme.colors.text.primary, fontSize: '16px', fontWeight: '600', marginTop: theme.spacing.md }}>
               Scan Nmap en cours...
             </div>
-            <div style={{ 
-              color: theme.colors.text.muted, 
-              fontSize: '14px'
-            }}>
+            <div style={{ color: theme.colors.text.muted, fontSize: '14px', marginTop: theme.spacing.sm }}>
               Scan {scanType} de {target}
+            </div>
+            <div style={{
+              marginTop: theme.spacing.md,
+              padding: theme.spacing.sm,
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              💾 Résultats sauvegardés automatiquement
             </div>
           </div>
         ) : (
@@ -820,7 +869,7 @@ const NmapTab = () => {
                   fontSize: '13px',
                   fontWeight: '500'
                 }}>
-                  🎯 Target
+                  🎯 Target {target && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
                 </label>
                 <Input
                   placeholder="192.168.1.0/24 ou scanme.nmap.org"
@@ -837,7 +886,7 @@ const NmapTab = () => {
                   fontSize: '13px',
                   fontWeight: '500'
                 }}>
-                  ⚡ Scan Type
+                  ⚡ Scan Type {scanType && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
                 </label>
                 <Select
                   options={scanTypes}
@@ -861,17 +910,16 @@ const NmapTab = () => {
               </div>
             )}
 
-            <div style={{ marginTop: theme.spacing.lg }}>
-              <Button
-                onClick={startScan}
-                disabled={!target || !scanType}
-                variant="primary"
-                icon={Play}
-                fullWidth
-              >
-                🚀 Start Nmap Scan
-              </Button>
-            </div>
+            <Button
+              onClick={startScan}
+              disabled={!target || !scanType}
+              variant="primary"
+              icon={Play}
+              fullWidth
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              🚀 Start Nmap Scan
+            </Button>
           </>
         )}
       </Card>
@@ -879,7 +927,7 @@ const NmapTab = () => {
       {results.length > 0 && (
         <Card>
           <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
-            📊 Scan Results ({results.length})
+            📊 Scan Results ({results.length}) - Auto-sauvegardés
           </h3>
           {results.map(result => (
             <div key={result.id} style={{
@@ -890,23 +938,23 @@ const NmapTab = () => {
               border: `1px solid ${theme.colors.bg.accent}`
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
-                <Badge variant="success">COMPLETED</Badge>
+                <Badge variant="success">SAVED</Badge>
                 <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
                 <Badge variant="info">{result.scanType}</Badge>
                 <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.sm }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: theme.spacing.sm }}>
                 <div style={{
                   padding: theme.spacing.sm,
                   backgroundColor: 'rgba(34, 197, 94, 0.1)',
                   borderRadius: theme.borderRadius.sm,
                   border: `1px solid ${theme.colors.status.success}`
                 }}>
-                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
                     🏠 Hosts Up
                   </div>
-                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
                     {result.results.hosts_up || 0}
                   </div>
                 </div>
@@ -916,75 +964,335 @@ const NmapTab = () => {
                   borderRadius: theme.borderRadius.sm,
                   border: `1px solid ${theme.colors.status.success}`
                 }}>
-                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
                     🔓 Open Ports
                   </div>
-                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-                    {result.results.detailed_ports?.filter(p => p.state === 'open').length || result.results.ports_open?.length || 0}
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.results.detailed_ports?.filter(p => p.state === 'open').length || 0}
                   </div>
                 </div>
-                {result.results.target_info?.latency && (
+                {result.command && (
                   <div style={{
                     padding: theme.spacing.sm,
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderRadius: theme.borderRadius.sm,
                     border: `1px solid ${theme.colors.status.info}`
                   }}>
-                    <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
-                      ⚡ Latency
+                    <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                      ⚡ Command
                     </div>
-                    <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-                      {result.results.target_info.latency}
-                    </div>
-                  </div>
-                )}
-                {result.results.service_details?.length > 0 && (
-                  <div style={{
-                    padding: theme.spacing.sm,
-                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
-                    borderRadius: theme.borderRadius.sm,
-                    border: `1px solid ${theme.colors.status.warning}`
-                  }}>
-                    <div style={{ color: theme.colors.text.primary, fontWeight: '600', marginBottom: theme.spacing.xs }}>
-                      🔧 Services
-                    </div>
-                    <div style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
-                      {result.results.services?.length || 0} detected
+                    <div style={{ 
+                      color: theme.colors.text.secondary, 
+                      fontSize: '10px',
+                      fontFamily: 'monospace'
+                    }}>
+                      {result.command}
                     </div>
                   </div>
                 )}
               </div>
-              
-              {/* Target Info */}
-              {result.results.target_info?.target && (
+
+              {/* Ports détaillés */}
+              {result.results.detailed_ports && result.results.detailed_ports.length > 0 && (
                 <div style={{ marginTop: theme.spacing.md }}>
                   <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
-                    🎯 Target Information:
+                    🔓 Ports Details:
                   </h4>
                   <div style={{ 
                     backgroundColor: theme.colors.bg.primary,
                     borderRadius: theme.borderRadius.sm,
                     padding: theme.spacing.sm,
-                    fontFamily: 'monospace',
-                    fontSize: '11px',
-                    color: theme.colors.accent.secondary
+                    maxHeight: '200px',
+                    overflowY: 'auto'
                   }}>
-                    {result.results.target_info.target}
-                    {result.results.target_info.uptime && (
-                      <div>Uptime: {result.results.target_info.uptime}</div>
-                    )}
-                    {result.results.target_info.distance && (
-                      <div>Distance: {result.results.target_info.distance}</div>
-                    )}
+                    {result.results.detailed_ports.slice(0, 10).map((port, index) => (
+                      <div key={index} style={{
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                        color: port.state === 'open' ? theme.colors.status.success : theme.colors.text.muted,
+                        marginBottom: '3px'
+                      }}>
+                        {port.port}/{port.protocol} {port.state} {port.service} {port.version}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ================================
+// MODULE NIKTO
+// ================================
+
+const NiktoTab = () => {
+  const [target, setTarget] = useState('');
+  const [scanType, setScanType] = useState('');
+  const [currentTaskId, setCurrentTaskId] = useState(null);
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState('');
+
+  // 📂 CHARGEMENT INITIAL
+  useEffect(() => {
+    const savedResults = persistenceService.load('nikto_results', []);
+    const savedForm = persistenceService.load('nikto_form', {});
+    
+    setResults(savedResults);
+    if (savedForm.target) setTarget(savedForm.target);
+    if (savedForm.scanType) setScanType(savedForm.scanType);
+    
+    console.log('📂 Nikto: Données restaurées');
+  }, []);
+
+  // 💾 SAUVEGARDE AUTO
+  useEffect(() => {
+    if (target || scanType) {
+      persistenceService.save('nikto_form', { target, scanType });
+    }
+  }, [target, scanType]);
+
+  useEffect(() => {
+    if (results.length > 0) {
+      persistenceService.save('nikto_results', results.slice(0, 20));
+    }
+  }, [results]);
+
+  const scanTypes = [
+    { value: 'quick', label: 'Quick Scan (2 min)' },
+    { value: 'basic', label: 'Basic Scan (5 min)' },
+    { value: 'comprehensive', label: 'Comprehensive Scan (10 min)' }
+  ];
+
+  const taskStatus = useTaskPolling(currentTaskId, useCallback((status) => {
+    if (status.status === 'completed') {
+      const newResult = {
+        id: currentTaskId,
+        target: target,
+        scanType: scanType,
+        timestamp: new Date().toLocaleString(),
+        status: 'completed',
+        results: status.data.results || {},
+        raw_output: status.data.raw_output,
+        vulnerabilities: status.data.results?.vulnerabilities || [],
+        total_checks: status.data.results?.total_checks || 0
+      };
+      
+      setResults(prev => [newResult, ...prev]);
+      setError('');
+    } else if (status.status === 'failed') {
+      setError(status.data.error || 'Erreur inconnue');
+    }
+    setCurrentTaskId(null);
+  }, [currentTaskId, target, scanType]));
+
+  const startScan = async () => {
+    if (!target || !scanType) {
+      setError('Veuillez renseigner une cible et un type de scan');
+      return;
+    }
+
+    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+      setError('La cible doit commencer par http:// ou https://');
+      return;
+    }
+
+    setError('');
+    try {
+      const response = await apiService.startNiktoScan(target, scanType);
+      setCurrentTaskId(response.task_id);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const clearResults = () => {
+    setResults([]);
+    persistenceService.remove('nikto_results');
+  };
+
+  const getSeverityBadge = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'high': case 'critical': return 'error';
+      case 'medium': return 'warning';
+      case 'low': case 'info': return 'info';
+      default: return 'default';
+    }
+  };
+
+  const isScanning = currentTaskId && taskStatus?.status === 'running';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Spider size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Nikto - Web Application Security Scanner
+            </h2>
+          </div>
+          {results.length > 0 && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+              <Badge variant="success">{results.length} sauvés</Badge>
+              <Button variant="danger" size="sm" onClick={clearResults}>🧹 Clear</Button>
+            </div>
+          )}
+        </div>
+
+        {isScanning ? (
+          <div style={{
+            padding: theme.spacing.xl,
+            textAlign: 'center',
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <Loader size={32} color={theme.colors.accent.primary} />
+            <div style={{ color: theme.colors.text.primary, fontSize: '16px', fontWeight: '600', marginTop: theme.spacing.md }}>
+              🕷️ Scan Nikto en cours...
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '14px', marginTop: theme.spacing.sm }}>
+              Analyse de sécurité web: {scanType} de {target}
+            </div>
+            <div style={{
+              marginTop: theme.spacing.md,
+              padding: theme.spacing.sm,
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              💾 Résultats sauvegardés automatiquement
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🌐 Target URL {target && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Input
+                  placeholder="https://example.com"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                  ⚠️ Assurez-vous d'avoir l'autorisation de scanner cette cible
+                </div>
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  ⚡ Scan Type {scanType && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={scanTypes}
+                  value={scanType}
+                  onChange={(e) => setScanType(e.target.value)}
+                  placeholder="Type de scan"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div style={{
+                marginTop: theme.spacing.md,
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(220, 38, 38, 0.2)',
+                border: `1px solid ${theme.colors.status.error}`,
+                color: '#ff6b6b'
+              }}>
+                ❌ {error}
+              </div>
+            )}
+
+            <Button
+              onClick={startScan}
+              disabled={!target || !scanType}
+              variant="primary"
+              icon={Play}
+              fullWidth
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              🕷️ Start Nikto Scan
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            🕷️ Nikto Results ({results.length})
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="success">SAVED</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <Badge variant="info">{result.scanType}</Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
               
-              {/* Ports détaillés avec versions */}
-              {result.results.detailed_ports && result.results.detailed_ports.length > 0 && (
-                <div style={{ marginTop: theme.spacing.md }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.warning}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🔍 Checks
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.total_checks || 0}
+                  </div>
+                </div>
+                
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: result.vulnerabilities?.length > 0 ? 'rgba(220, 38, 38, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${result.vulnerabilities?.length > 0 ? theme.colors.status.error : theme.colors.status.success}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🚨 Vulns
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.vulnerabilities?.length || 0}
+                  </div>
+                </div>
+              </div>
+
+              {result.vulnerabilities && result.vulnerabilities.length > 0 ? (
+                <div>
                   <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
-                    🔓 Detailed Port Analysis:
+                    🚨 Vulnerabilities ({result.vulnerabilities.length})
                   </h4>
                   <div style={{ 
                     maxHeight: '300px', 
@@ -993,133 +1301,51 @@ const NmapTab = () => {
                     borderRadius: theme.borderRadius.sm,
                     padding: theme.spacing.sm
                   }}>
-                    {result.results.detailed_ports.map((port, index) => (
+                    {result.vulnerabilities.slice(0, 10).map((vuln, index) => (
                       <div key={index} style={{
                         marginBottom: theme.spacing.sm,
                         padding: theme.spacing.sm,
-                        backgroundColor: port.state === 'open' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
                         borderRadius: theme.borderRadius.sm,
-                        border: `1px solid ${port.state === 'open' ? theme.colors.status.success : theme.colors.status.error}`
+                        border: `1px solid ${theme.colors.status.error}`
                       }}>
-                        <div style={{
-                          fontFamily: 'monospace',
-                          fontSize: '12px',
-                          color: theme.colors.text.primary,
-                          fontWeight: '600',
-                          marginBottom: '4px'
-                        }}>
-                          {port.port}/{port.protocol} {port.state} {port.service}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: '4px' }}>
+                          <Badge variant={getSeverityBadge(vuln.severity || 'MEDIUM')}>
+                            {vuln.severity || 'MEDIUM'}
+                          </Badge>
+                          <span style={{ fontSize: '10px', color: theme.colors.text.muted }}>
+                            #{index + 1}
+                          </span>
                         </div>
-                        {port.version && (
-                          <div style={{
-                            fontFamily: 'monospace',
-                            fontSize: '11px',
-                            color: theme.colors.text.secondary,
-                            marginBottom: '4px'
-                          }}>
-                            Version: {port.version}
-                          </div>
-                        )}
-                        {port.scripts && port.scripts.length > 0 && (
-                          <div style={{ marginTop: '4px' }}>
-                            {port.scripts.slice(0, 3).map((script, scriptIndex) => (
-                              <div key={scriptIndex} style={{
-                                fontFamily: 'monospace',
-                                fontSize: '10px',
-                                color: theme.colors.text.muted,
-                                marginBottom: '2px'
-                              }}>
-                                {script.length > 80 ? script.substring(0, 80) + '...' : script}
-                              </div>
-                            ))}
-                            {port.scripts.length > 3 && (
-                              <div style={{
-                                fontSize: '10px',
-                                color: theme.colors.accent.primary,
-                                fontStyle: 'italic'
-                              }}>
-                                +{port.scripts.length - 3} more scripts...
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div style={{
+                          fontSize: '11px',
+                          color: theme.colors.text.secondary,
+                          lineHeight: '1.4'
+                        }}>
+                          {vuln.description || vuln}
+                        </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* OS Detection */}
-              {result.results.os_detection && result.results.os_detection.length > 0 && (
-                <div style={{ marginTop: theme.spacing.md }}>
-                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
-                    💻 OS Detection:
-                  </h4>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: theme.spacing.sm,
-                    maxHeight: '150px',
-                    overflowY: 'auto'
-                  }}>
-                    {result.results.os_detection.slice(0, 5).map((os, index) => (
-                      <div key={index} style={{
-                        fontFamily: 'monospace',
-                        fontSize: '11px',
-                        color: theme.colors.text.secondary,
-                        marginBottom: '2px'
-                      }}>
-                        {os}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Services détectés */}
-              {result.results.services && result.results.services.length > 0 && (
-                <div style={{ marginTop: theme.spacing.sm }}>
-                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.xs, fontSize: '14px' }}>
-                    🔧 Services Detected:
-                  </h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {result.results.services.map((service, index) => (
-                      <Badge key={index} variant="info" style={{ fontSize: '10px' }}>
-                        {service}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Scan Statistics */}
-              {result.results.scan_stats?.summary && (
-                <div style={{ marginTop: theme.spacing.md }}>
-                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
-                    📊 Scan Statistics:
-                  </h4>
-                  <div style={{ 
-                    backgroundColor: theme.colors.bg.primary,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: theme.spacing.sm
-                  }}>
-                    <div style={{
-                      fontFamily: 'monospace',
-                      fontSize: '11px',
-                      color: theme.colors.text.muted,
-                      marginBottom: '2px'
-                    }}>
-                      {result.results.scan_stats.summary}
-                    </div>
-                    {result.results.scan_stats.packets && (
-                      <div style={{
-                        fontFamily: 'monospace',
-                        fontSize: '11px',
-                        color: theme.colors.text.muted
-                      }}>
-                        {result.results.scan_stats.packets}
+                    {result.vulnerabilities.length > 10 && (
+                      <div style={{ textAlign: 'center', padding: theme.spacing.sm, fontSize: '11px', color: theme.colors.text.muted }}>
+                        +{result.vulnerabilities.length - 10} more vulnerabilities...
                       </div>
                     )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  padding: theme.spacing.md,
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.success}`,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ color: theme.colors.status.success, fontWeight: '600', fontSize: '14px' }}>
+                    ✅ No Critical Vulnerabilities Found
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '11px' }}>
+                    Basic security measures appear to be in place
                   </div>
                 </div>
               )}
@@ -1138,7 +1364,7 @@ const NmapTab = () => {
 const Header = ({ currentUser, onLogout }) => {
   const [systemStatus, setSystemStatus] = useState({
     api: 'checking',
-    tools: { nmap: false, nikto: false, metasploit: false, tcpdump: false, hydra: false }
+    tools: { nmap: false, nikto: false }
   });
 
   useEffect(() => {
@@ -1256,7 +1482,7 @@ const Header = ({ currentUser, onLogout }) => {
 const Navigation = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'nmap', label: 'Nmap', icon: Target },
-    { id: 'nikto', label: 'Nikto', icon: Globe },
+    { id: 'nikto', label: 'Nikto', icon: Spider },
     { id: 'metasploit', label: 'Metasploit', icon: Crosshairs },
     { id: 'tcpdump', label: 'tcpdump', icon: Network },
     { id: 'hydra', label: 'Hydra', icon: Key },
@@ -1318,46 +1544,59 @@ const PachaPentestSuite = () => {
   const [activeTab, setActiveTab] = useState('nmap');
   const [isLoading, setIsLoading] = useState(true);
 
+  // 📂 CHARGEMENT INITIAL AVEC PERSISTENCE
   useEffect(() => {
-    const token = localStorage.getItem('pacha_token');
-    if (token) {
+    console.log('🔄 Vérification session...');
+    
+    const savedAuth = persistenceService.load('auth_state');
+    const savedTab = persistenceService.load('active_tab', 'nmap');
+    
+    if (savedAuth && savedAuth.isAuthenticated) {
       apiService.healthCheck()
         .then(() => {
+          console.log('✅ Session restaurée');
           setIsAuthenticated(true);
-          setCurrentUser({
-            username: 'Utilisateur connecté',
-            role: 'user'
-          });
+          setCurrentUser(savedAuth.user);
+          setActiveTab(savedTab);
         })
         .catch(() => {
-          localStorage.removeItem('pacha_token');
+          console.log('❌ Session expirée');
+          persistenceService.clearAll();
         })
-        .finally(() => {
-          setIsLoading(false);
-        });
+        .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
   }, []);
 
+  // 💾 SAUVEGARDE AUTO DE L'ONGLET
+  useEffect(() => {
+    if (isAuthenticated) {
+      persistenceService.save('active_tab', activeTab);
+    }
+  }, [activeTab, isAuthenticated]);
+
   const handleLogin = (user, token) => {
     setIsAuthenticated(true);
     setCurrentUser(user);
-    console.log('✅ Connexion réussie:', user.username);
+    persistenceService.save('auth_state', { isAuthenticated: true, user, token });
+    console.log('✅ Connexion sauvegardée');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('pacha_token');
+    persistenceService.clearAll();
     setIsAuthenticated(false);
     setCurrentUser(null);
     setActiveTab('nmap');
-    console.log('✅ Déconnexion effectuée');
+    console.log('✅ Déconnexion et nettoyage');
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'nmap':
         return <NmapTab />;
+      case 'nikto':
+        return <NiktoTab />;
       case 'history':
         return (
           <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
@@ -1366,7 +1605,7 @@ const PachaPentestSuite = () => {
               Historique des Scans
             </div>
             <div style={{ color: theme.colors.text.muted }}>
-              Vos scans précédents apparaîtront ici
+              Vos scans sont sauvegardés automatiquement
             </div>
           </Card>
         );
@@ -1392,9 +1631,13 @@ const PachaPentestSuite = () => {
         backgroundColor: theme.colors.bg.primary,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        flexDirection: 'column'
       }}>
         <Loader size={48} color={theme.colors.accent.primary} />
+        <div style={{ color: theme.colors.text.primary, marginTop: theme.spacing.md }}>
+          🔄 Restauration de session...
+        </div>
       </div>
     );
   }
@@ -1419,6 +1662,23 @@ const PachaPentestSuite = () => {
       }}>
         {renderTabContent()}
       </main>
+      
+      {/* Indicateur de persistence */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        backgroundColor: 'rgba(0, 255, 136, 0.9)',
+        color: '#000000',
+        padding: '8px 12px',
+        borderRadius: '20px',
+        fontSize: '12px',
+        fontWeight: '600',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+        zIndex: 1000
+      }}>
+        💾 Auto-Save
+      </div>
     </div>
   );
 };
