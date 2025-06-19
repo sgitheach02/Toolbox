@@ -1,4 +1,4 @@
-# backend/main.py - COMPLET SANS ERREURS - Toutes les fonctions incluses
+# backend/main.py - CORRIGÉ - Structure fixée
 import os
 import sys
 import logging
@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 import signal
+import re
 from datetime import datetime
 from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
@@ -269,34 +270,84 @@ def parse_nikto_output_enhanced(output):
     
     return results
 
-def parse_hydra_output(output):
-    """Parser la sortie Hydra"""
+def parse_hydra_output_enhanced(output):
+    """Parser amélioré pour la sortie Hydra"""
     results = {
         "credentials_found": [],
         "attempts": 0,
         "success": False,
-        "summary": "Aucune credential trouvée"
+        "summary": "Aucune credential trouvée",
+        "detailed_attempts": [],
+        "errors": [],
+        "target_responses": []
     }
     
     lines = output.split('\n')
     for line in lines:
-        if 'login:' in line and 'password:' in line:
-            results["credentials_found"].append(line.strip())
-            results["success"] = True
-        elif 'attempt' in line.lower():
-            try:
-                # Extraire le nombre de tentatives
-                words = line.split()
-                for word in words:
-                    if word.isdigit():
-                        results["attempts"] = max(results["attempts"], int(word))
-            except:
-                pass
+        line_stripped = line.strip()
+        
+        # Credentials trouvés - patterns multiples
+        if any(pattern in line_stripped for pattern in ['login:', 'password:', '[SUCCESS]', 'valid password found']):
+            # Pattern standard: [22][ssh] host: 192.168.6.130   login: kali   password: kali
+            login_match = re.search(r'login:\s*(\S+)\s+password:\s*(\S+)', line_stripped)
+            if login_match:
+                cred = f"login: {login_match.group(1)} password: {login_match.group(2)}"
+                results["credentials_found"].append(cred)
+                results["success"] = True
+        
+        # Tentatives détaillées
+        elif '[ATTEMPT]' in line_stripped or 'attempt' in line_stripped.lower():
+            results["attempts"] += 1
+            results["detailed_attempts"].append(line_stripped)
+        
+        # Erreurs spécifiques
+        elif any(err in line_stripped.lower() for err in ['error', 'failed', 'timeout', 'refused']):
+            results["errors"].append(line_stripped)
+        
+        # Informations sur les réponses du serveur
+        elif any(info in line_stripped.lower() for info in ['connected', 'banner', 'version']):
+            results["target_responses"].append(line_stripped)
     
+    # Mise à jour du summary
     if results["success"]:
         results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s)"
     else:
         results["summary"] = f"Aucune credential trouvée après {results['attempts']} tentatives"
+    
+    return results
+
+def parse_medusa_output(output):
+    """Parser la sortie de Medusa"""
+    results = {
+        "credentials_found": [],
+        "attempts": 0,
+        "success": False,
+        "summary": "Aucune credential trouvée",
+        "tool_used": "medusa"
+    }
+    
+    lines = output.split('\n')
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # Credentials trouvés dans medusa
+        if 'SUCCESS:' in line_stripped or 'FOUND:' in line_stripped:
+            results["credentials_found"].append(line_stripped)
+            results["success"] = True
+        elif 'Attempted' in line_stripped:
+            try:
+                # Extraire le nombre de tentatives
+                parts = line_stripped.split()
+                for part in parts:
+                    if part.isdigit():
+                        results["attempts"] = max(results["attempts"], int(part))
+            except:
+                pass
+    
+    if results["success"]:
+        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via Medusa"
+    else:
+        results["summary"] = f"Aucune credential trouvée via Medusa après {results['attempts']} tentatives"
     
     return results
 
@@ -480,53 +531,297 @@ def run_nikto_scan_real(target, scan_type, task_id):
         update_task_status(task_id, "failed", {"error": str(e)})
 
 def run_hydra_attack(target, service, username, wordlist, task_id):
-    """Exécuter une attaque Hydra"""
+    """Exécuter une attaque Hydra ENHANCED avec bruteforce usernames"""
     try:
-        logger.info(f"🔨 DÉMARRAGE attaque Hydra pour task {task_id}")
+        logger.info(f"🔨 DÉMARRAGE attaque Hydra ENHANCED pour task {task_id}")
+        logger.info(f"🎯 Paramètres: target={target}, service={service}, username={username}, wordlist={wordlist}")
         update_task_status(task_id, "running", {"message": "Attaque Hydra en cours..."})
         
-        # Construire la commande selon le service
-        if service == 'ssh':
-            cmd = ['hydra', '-l', username, '-P', wordlist, f'ssh://{target}', '-t', '4']
-        elif service == 'ftp':
-            cmd = ['hydra', '-l', username, '-P', wordlist, f'ftp://{target}', '-t', '4']
-        elif service == 'http':
-            cmd = ['hydra', '-l', username, '-P', wordlist, f'http-get://{target}', '-t', '4']
+        # Validation des paramètres d'entrée
+        if not target or not service or not username:
+            raise ValueError("Paramètres manquants: target, service et username requis")
+        
+        # Wordlists améliorées selon le contexte
+        enhanced_wordlist_mapping = {
+            '/usr/share/wordlists/rockyou.txt': [
+                '/usr/share/wordlists/rockyou.txt',
+                '/usr/share/wordlists/fasttrack.txt',
+                '/usr/share/seclists/Passwords/Common-Credentials/10-million-password-list-top-1000.txt',
+                '/usr/share/wordlists/dirb/common.txt'
+            ],
+            '/usr/share/wordlists/darkweb2017.txt': [
+                '/usr/share/wordlists/darkweb2017-top1000.txt',
+                '/usr/share/wordlists/fasttrack.txt',
+                '/usr/share/wordlists/dirb/common.txt'
+            ],
+            '/usr/share/wordlists/fasttrack.txt': [
+                '/usr/share/wordlists/fasttrack.txt',
+                '/usr/share/wordlists/dirb/common.txt'
+            ],
+            '/usr/share/wordlists/common.txt': [
+                '/usr/share/wordlists/dirb/common.txt',
+                '/usr/share/wordlists/fasttrack.txt'
+            ]
+        }
+        
+        # Trouver une wordlist disponible
+        actual_wordlist = None
+        
+        # S'assurer que wordlist n'est pas None
+        if not wordlist:
+            wordlist = '/usr/share/wordlists/rockyou.txt'
+        
+        # Essayer de trouver une wordlist existante
+        candidates = enhanced_wordlist_mapping.get(wordlist, [wordlist])
+        if isinstance(candidates, str):
+            candidates = [candidates]
+        
+        for candidate in candidates:
+            if candidate and os.path.exists(candidate):
+                actual_wordlist = candidate
+                logger.info(f"📝 Wordlist trouvée: {candidate}")
+                break
+        
+        if not actual_wordlist:
+            # Créer une wordlist ENHANCED avec patterns courants
+            actual_wordlist = '/tmp/enhanced_passwords.txt'
+            
+            try:
+                # Passwords de base + variations du username
+                base_passwords = [
+                    'password', 'admin', '123456', 'root', 'toor', 
+                    'pass', 'test', 'guest', 'user', 'login',
+                    'password123', 'admin123', '12345', 'qwerty',
+                    'letmein', 'welcome', 'monkey', 'dragon', 'master',
+                    'github', 'ubuntu', 'kali', 'penetration', 'security',
+                    'secret', 'access', 'changeme', 'default', 'temp'
+                ]
+                
+                # Ajouter le username lui-même et ses variations
+                username_variations = []
+                if username:
+                    username_variations.extend([
+                        username,                    # kali
+                        username.lower(),           # kali
+                        username.upper(),           # KALI
+                        username.capitalize(),      # Kali
+                        f"{username}123",          # kali123
+                        f"{username}1",            # kali1
+                        f"{username}{username}",   # kalikali
+                        f"123{username}",          # 123kali
+                        f"{username}@123",         # kali@123
+                        f"{username}_123",         # kali_123
+                    ])
+                
+                # Combiner toutes les passwords
+                all_passwords = username_variations + base_passwords
+                
+                with open(actual_wordlist, 'w') as f:
+                    f.write('\n'.join(all_passwords))
+                
+                logger.info(f"📝 Wordlist ENHANCED créée: {actual_wordlist} ({len(all_passwords)} entrées)")
+                
+            except Exception as e:
+                logger.error(f"❌ Erreur création wordlist temporaire: {e}")
+                # Si on ne peut pas créer de wordlist temporaire, on utilisera auto-guess
+                actual_wordlist = None
+        
+        # Test de connectivité DÉTAILLÉ
+        connectivity_info = {}
+        try:
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(10)
+            
+            # Déterminer le port selon le service
+            port_mapping = {
+                'ssh': 22, 'ftp': 21, 'telnet': 23, 'http-get': 80, 
+                'https-get': 443, 'mysql': 3306, 'rdp': 3389, 'smb': 445
+            }
+            port = port_mapping.get(service, 22)
+            
+            start_time = time.time()
+            result = sock.connect_ex((target, port))
+            connect_time = time.time() - start_time
+            sock.close()
+            
+            connectivity_info = {
+                'port': port,
+                'connect_result': result,
+                'connect_time': f"{connect_time:.2f}s",
+                'accessible': result == 0
+            }
+            
+            if result == 0:
+                logger.info(f"✅ Port {port} ouvert sur {target} (temps: {connect_time:.2f}s)")
+            else:
+                logger.warning(f"⚠️ Port {port} fermé/filtré sur {target} (code: {result})")
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Test connectivité échoué: {e}")
+            connectivity_info['error'] = str(e)
+        
+        logger.info(f"🔧 État de la connectivité: {connectivity_info}")
+        logger.info(f"📝 Wordlist finale: {actual_wordlist}")
+        
+        # Construire la commande Hydra OPTIMISÉE
+        cmd = ['hydra']
+        
+        # Options de base optimisées
+        cmd.extend(['-l', username])        # Login spécifique
+        
+        # Vérifier que actual_wordlist existe avant de l'utiliser
+        if actual_wordlist and os.path.exists(actual_wordlist):
+            cmd.extend(['-P', actual_wordlist]) # Password list enhanced
         else:
-            logger.error(f"❌ Service {service} non supporté")
-            update_task_status(task_id, "failed", {"error": f"Service {service} non supporté"})
-            return
+            # Fallback: utiliser auto-guess si pas de wordlist
+            cmd.extend(['-e', 'nsr'])       # n=null, s=same as login, r=reverse login
+            logger.warning(f"⚠️ Wordlist introuvable, utilisation auto-guess")
         
-        logger.info(f"🔨 Commande Hydra: {' '.join(cmd)}")
+        # Options spécifiques selon le service
+        threads_count = '1' if service == 'ssh' else '4'
+        timeout_value = '10' if service == 'ssh' else '5'
         
-        # Exécuter l'attaque avec timeout
+        cmd.extend(['-t', threads_count])   # Threads selon le service
+        cmd.extend(['-w', timeout_value])   # Timeout selon le service
+        cmd.extend(['-f'])                  # Stop on first success
+        cmd.extend(['-v'])                  # Verbose
+        cmd.extend(['-s', str(connectivity_info.get('port', 22))])  # Port explicite
+        
+        # Format de cible selon le service
+        if service == 'ssh':
+            # Pour contourner les problèmes avec les vieux serveurs SSH,
+            # utiliser une approche alternative avec sshpass si disponible
+            try:
+                # Vérifier si sshpass est disponible
+                sshpass_check = subprocess.run(['which', 'sshpass'], capture_output=True)
+                if sshpass_check.returncode == 0:
+                    logger.info(f"🔧 Utilisation de sshpass pour contourner les problèmes SSH legacy")
+                    # Utiliser sshpass avec des options SSH compatibles
+                    cmd = ['hydra', '-l', username]
+                    if actual_wordlist and os.path.exists(actual_wordlist):
+                        cmd.extend(['-P', actual_wordlist])
+                    else:
+                        cmd.extend(['-e', 'nsr'])
+                    cmd.extend(['-t', '1'])  # Réduire à 1 thread pour SSH problématique
+                    cmd.extend(['-w', '10']) # Augmenter le timeout
+                    cmd.extend(['-f', '-v'])
+                    cmd.extend(['-s', '22'])
+                    cmd.extend(['-o', f'/tmp/hydra_ssh_{task_id}.out'])
+                    cmd.extend([target, 'ssh'])
+                else:
+                    # Fallback standard mais avec moins de threads
+                    cmd.extend(['-t', '1'])  # 1 seul thread pour éviter les conflits
+                    cmd.extend([target, 'ssh'])
+            except:
+                # Fallback en cas d'erreur
+                cmd.extend(['-t', '1'])
+                cmd.extend([target, 'ssh'])
+        elif service == 'ftp':
+            cmd.extend([target, 'ftp'])
+        elif service == 'http-get':
+            cmd.extend(['-m', '/'])
+            cmd.extend([target, 'http-get'])
+        elif service == 'https-get':
+            cmd.extend(['-m', '/'])
+            cmd.extend([target, 'https-get'])
+        elif service == 'mysql':
+            cmd.extend([target, 'mysql'])
+        elif service == 'rdp':
+            cmd.extend([target, 'rdp'])
+        elif service == 'smb':
+            cmd.extend([target, 'smb'])
+        elif service == 'telnet':
+            cmd.extend([target, 'telnet'])
+        elif service == 'http-post-form':
+            # HTTP POST form nécessite des paramètres spéciaux
+            cmd.extend(['-m', '/login.php:username=^USER^&password=^PASS^:F=incorrect'])
+            cmd.extend([target, 'http-post-form'])
+        else:
+            cmd.extend([target, service])
+        
+        # Variables d'environnement pour SSH legacy
+        env = os.environ.copy()
+        if service == 'ssh':
+            # Ajouter des variables d'environnement SSH pour compatibilité
+            env['SSH_OPTIONS'] = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-dss -o HostKeyAlgorithms=+ssh-rsa,ssh-dss -o KexAlgorithms=+diffie-hellman-group1-sha1'
+            
+        logger.info(f"🔨 Commande Hydra ENHANCED: {' '.join(cmd)}")
+        
+        # Exécuter l'attaque avec timeout adaptatif
+        start_time = time.time()
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=600  # 10 minutes max
+            timeout=180,  # 3 minutes max
+            env=env  # Passer les variables d'environnement
         )
+        execution_time = time.time() - start_time
         
-        logger.info(f"🏁 Attaque Hydra terminée avec code: {result.returncode}")
+        logger.info(f"🏁 Attaque Hydra terminée avec code: {result.returncode} (temps: {execution_time:.1f}s)")
+        logger.info(f"📤 Sortie Hydra: {result.stdout[:300]}...")
+        if result.stderr:
+            logger.warning(f"⚠️ Erreurs Hydra: {result.stderr[:300]}...")
         
-        # Parser les résultats
-        results = parse_hydra_output(result.stdout)
+        # Parser les résultats de manière plus intelligente
+        results = parse_hydra_output_enhanced(result.stdout + result.stderr)
+        
+        # Enrichir les résultats avec des informations supplémentaires
+        wordlist_size = 0
+        try:
+            if actual_wordlist and os.path.exists(actual_wordlist):
+                with open(actual_wordlist, 'r') as f:
+                    wordlist_size = sum(1 for _ in f)
+        except Exception as e:
+            logger.warning(f"⚠️ Erreur lecture taille wordlist: {e}")
+            wordlist_size = 0
+        
+        results.update({
+            'execution_time': f"{execution_time:.1f}s",
+            'connectivity_info': connectivity_info,
+            'wordlist_size': wordlist_size,
+            'username_tested': username,
+            'target_info': f"{target}:{connectivity_info.get('port', 22)}"
+        })
+        
+        # Analyser le code de retour de manière plus précise
+        if result.returncode == 0:
+            if results.get('credentials_found'):
+                results["status"] = "success"
+                results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s)"
+            else:
+                results["status"] = "no_credentials_found"
+                results["summary"] = f"Aucune credential trouvée sur {results['attempts']} tentatives"
+        elif result.returncode == 1:
+            results["status"] = "no_credentials_found"
+            results["summary"] = "Aucune credential valide trouvée"
+        elif result.returncode == 2:
+            results["status"] = "service_error" 
+            results["summary"] = "Erreur de connexion au service cible"
+        else:
+            results["status"] = "command_error"
+            results["summary"] = f"Erreur de commande (code {result.returncode})"
         
         update_task_status(task_id, "completed", {
             "target": target,
             "service": service,
             "username": username,
+            "wordlist_used": actual_wordlist,
             "command": ' '.join(cmd),
             "results": results,
             "raw_output": result.stdout,
-            "tool_version": "hydra_simulation"
+            "stderr": result.stderr,
+            "return_code": result.returncode,
+            "execution_time": f"{execution_time:.1f}s",
+            "tool_version": "hydra_enhanced_v2"
         })
         
-        logger.info(f"✅ Attaque Hydra terminée: {results['summary']}")
+        logger.info(f"✅ Attaque Hydra ENHANCED terminée: {results['summary']}")
             
     except subprocess.TimeoutExpired:
         logger.error(f"⏰ Timeout de l'attaque Hydra {task_id}")
-        update_task_status(task_id, "failed", {"error": "Timeout de l'attaque (10 minutes)"})
+        update_task_status(task_id, "failed", {"error": "Timeout de l'attaque (3 minutes)"})
     except Exception as e:
         logger.error(f"❌ EXCEPTION attaque Hydra {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
@@ -633,6 +928,78 @@ def run_tcpdump_capture(interface, duration, filter_expr, task_id):
         update_task_status(task_id, "failed", {"error": str(e)})
 
 # ============================================================
+# FONCTIONS UTILITAIRES POUR HYDRA MULTI-MODE
+# ============================================================
+
+def generate_username_patterns(username):
+    """Génère des variations intelligentes du username"""
+    if not username:
+        return ['password', 'admin', '123456', 'root']
+    
+    patterns = [
+        username,                           # kali
+        username.lower(),                   # kali  
+        username.upper(),                   # KALI
+        username.capitalize(),              # Kali
+        f"{username}{username}",           # kalikali
+        f"{username}123",                  # kali123
+        f"{username}1",                    # kali1
+        f"{username}12",                   # kali12
+        f"{username}2024",                 # kali2024
+        f"{username}@123",                 # kali@123
+        f"{username}_123",                 # kali_123
+        f"{username}-123",                 # kali-123
+        f"123{username}",                  # 123kali
+        f"password{username}",             # passwordkali
+        f"{username}password",             # kalipassword
+        f"{username}admin",                # kaliadmin
+        f"admin{username}",                # adminkali
+    ]
+    
+    # Ajouter des patterns basés sur des mots de passe courants
+    common_passwords = ['password', 'admin', '123456', 'root', 'toor', 'pass', 'test', 'guest', 'login']
+    patterns.extend(common_passwords)
+    
+    # Supprimer les doublons et maintenir l'ordre
+    seen = set()
+    unique_patterns = []
+    for pattern in patterns:
+        if pattern not in seen:
+            seen.add(pattern)
+            unique_patterns.append(pattern)
+    
+    return unique_patterns
+
+def finalize_hydra_results(task_id, target, service, username, cmd, result, results, attack_mode):
+    """Finalise les résultats d'une attaque Hydra"""
+    
+    # Déterminer le statut selon le code de retour
+    if result.returncode == 0 and results.get('credentials_found'):
+        results["status"] = "success"
+        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via {attack_mode}"
+    elif result.returncode == 0:
+        results["status"] = "no_credentials_found"
+        results["summary"] = f"Aucune credential trouvée avec {attack_mode}"
+    else:
+        results["status"] = "failed"
+        results["summary"] = f"Erreur {attack_mode} (code {result.returncode})"
+    
+    update_task_status(task_id, "completed", {
+        "target": target,
+        "service": service,
+        "username": username,
+        "attack_mode": attack_mode,
+        "command": ' '.join(cmd),
+        "results": results,
+        "raw_output": result.stdout,
+        "stderr": result.stderr,
+        "return_code": result.returncode,
+        "tool_version": f"hydra_multimode_v1_{attack_mode}"
+    })
+    
+    logger.info(f"✅ Attaque {attack_mode} terminée: {results['summary']}")
+
+# ============================================================
 # FONCTION FLASK APP
 # ============================================================
 
@@ -701,7 +1068,6 @@ def create_app():
             
             return f(current_user, *args, **kwargs)
         return decorated
-    
     
     # ============================================================
     # ROUTES PRINCIPALES
@@ -1168,7 +1534,7 @@ def create_app():
             return jsonify({
                 'scans': history,
                 'total': len(history),
-                'tools_status': global_tools_status
+                'tools_status': check_security_tools()
             })
             
         except Exception as e:
@@ -1218,6 +1584,7 @@ def create_app():
         
         return response
     
+    # RETOURNER l'objet app ici - c'était le problème principal !
     return app
 
 # ============================================================

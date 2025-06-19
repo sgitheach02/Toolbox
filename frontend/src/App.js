@@ -1027,6 +1027,595 @@ const NmapTab = () => {
 };
 
 // ================================
+// MODULE HYDRA
+// ================================
+
+const HydraTab = () => {
+  const [target, setTarget] = useState('');
+  const [service, setService] = useState('');
+  const [username, setUsername] = useState('');
+  const [wordlist, setWordlist] = useState('');
+  const [attackMode, setAttackMode] = useState('patterns'); // 'wordlist', 'patterns', 'autoguess', 'combo'
+  const [bruteforceMode, setBruteforceMode] = useState('single'); // 'single' ou 'userlist'
+  const [currentTaskId, setCurrentTaskId] = useState(null);
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState('');
+
+  // 📂 CHARGEMENT INITIAL
+  useEffect(() => {
+    const savedResults = persistenceService.load('hydra_results', []);
+    const savedForm = persistenceService.load('hydra_form', {});
+    
+    setResults(savedResults);
+    if (savedForm.target) setTarget(savedForm.target);
+    if (savedForm.service) setService(savedForm.service);
+    if (savedForm.username) setUsername(savedForm.username);
+    if (savedForm.wordlist) setWordlist(savedForm.wordlist);
+    if (savedForm.attackMode) setAttackMode(savedForm.attackMode);
+    if (savedForm.bruteforceMode) setBruteforceMode(savedForm.bruteforceMode);
+    
+    console.log('📂 Hydra: Données restaurées');
+  }, []);
+
+  // 💾 SAUVEGARDE AUTO
+  useEffect(() => {
+    if (target || service || username || wordlist || attackMode !== 'patterns' || bruteforceMode !== 'single') {
+      persistenceService.save('hydra_form', { target, service, username, wordlist, attackMode, bruteforceMode });
+    }
+  }, [target, service, username, wordlist, attackMode, bruteforceMode]);
+
+  useEffect(() => {
+    if (results.length > 0) {
+      persistenceService.save('hydra_results', results.slice(0, 20));
+    }
+  }, [results]);
+
+  const services = [
+    { value: 'ssh', label: 'SSH (22)' },
+    { value: 'ftp', label: 'FTP (21)' },
+    { value: 'http-get', label: 'HTTP Basic Auth (80)' },
+    { value: 'https-get', label: 'HTTPS Basic Auth (443)' },
+    { value: 'http-post-form', label: 'HTTP POST Form (80)' },
+    { value: 'mysql', label: 'MySQL (3306)' },
+    { value: 'rdp', label: 'RDP (3389)' },
+    { value: 'smb', label: 'SMB (445)' },
+    { value: 'telnet', label: 'Telnet (23)' }
+  ];
+
+  const wordlists = [
+    { value: 'rockyou', label: 'RockYou (Common Passwords)' },
+    { value: 'common', label: 'Common Passwords' },
+    { value: 'fasttrack', label: 'FastTrack' },
+    { value: 'darkweb2017', label: 'DarkWeb 2017 Top 1000' }
+  ];
+
+  const taskStatus = useTaskPolling(currentTaskId, useCallback((status) => {
+    if (status.status === 'completed') {
+      const newResult = {
+        id: currentTaskId,
+        target: target,
+        service: service,
+        username: username,
+        wordlist: wordlist,
+        timestamp: new Date().toLocaleString(),
+        status: 'completed',
+        results: status.data.results || {},
+        raw_output: status.data.raw_output,
+        command: status.data.command,
+        credentials: status.data.results?.credentials_found || []
+      };
+      
+      setResults(prev => [newResult, ...prev]);
+      setError('');
+    } else if (status.status === 'failed') {
+      setError(status.data.error || 'Erreur inconnue');
+    }
+    setCurrentTaskId(null);
+  }, [currentTaskId, target, service, username, wordlist]));
+
+  const startAttack = async () => {
+    if (!target || !service) {
+      setError('Veuillez renseigner la cible et le service');
+      return;
+    }
+
+    if (bruteforceMode === 'single' && !username) {
+      setError('Veuillez renseigner un nom d\'utilisateur ou choisir le mode "Liste usernames"');
+      return;
+    }
+
+    if ((attackMode === 'wordlist' || attackMode === 'combo') && !wordlist) {
+      setError('Veuillez choisir une wordlist pour ce mode d\'attaque');
+      return;
+    }
+
+    setError('');
+    try {
+      const response = await apiService.request('/scan/hydra', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          target, 
+          service, 
+          username: bruteforceMode === 'single' ? username : null,
+          bruteforce_usernames: bruteforceMode === 'userlist',
+          attack_mode: attackMode,
+          wordlist: (attackMode === 'wordlist' || attackMode === 'combo') ? `/usr/share/wordlists/${wordlist}.txt` : null
+        })
+      });
+      setCurrentTaskId(response.task_id);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const clearResults = () => {
+    setResults([]);
+    persistenceService.remove('hydra_results');
+  };
+
+  const isAttacking = currentTaskId && taskStatus?.status === 'running';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Key size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Hydra - Password Brute Force Attack
+            </h2>
+          </div>
+          {results.length > 0 && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+              <Badge variant="success">{results.length} sauvés</Badge>
+              <Button variant="danger" size="sm" onClick={clearResults}>🧹 Clear</Button>
+            </div>
+          )}
+        </div>
+
+        {/* Avertissement de sécurité */}
+        <div style={{
+          padding: theme.spacing.md,
+          backgroundColor: 'rgba(220, 38, 38, 0.1)',
+          border: `1px solid ${theme.colors.status.error}`,
+          borderRadius: theme.borderRadius.md,
+          marginBottom: theme.spacing.lg
+        }}>
+          <div style={{ color: theme.colors.status.error, fontWeight: '600', marginBottom: theme.spacing.sm }}>
+            ⚠️ AVERTISSEMENT LÉGAL
+          </div>
+          <div style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
+            Les attaques par force brute ne doivent être utilisées que sur vos propres systèmes ou avec autorisation explicite.
+            L'utilisation non autorisée est illégale et peut entraîner des poursuites judiciaires.
+          </div>
+        </div>
+
+        {isAttacking ? (
+          <div style={{
+            padding: theme.spacing.xl,
+            textAlign: 'center',
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <Loader size={32} color={theme.colors.accent.primary} />
+            <div style={{ color: theme.colors.text.primary, fontSize: '16px', fontWeight: '600', marginTop: theme.spacing.md }}>
+              🔨 Attaque Hydra en cours...
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '14px', marginTop: theme.spacing.sm }}>
+              Brute force {service} sur {target} avec utilisateur {username}
+            </div>
+            <div style={{
+              marginTop: theme.spacing.md,
+              padding: theme.spacing.sm,
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              💾 Résultats sauvegardés automatiquement
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🎯 Target {target && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Input
+                  placeholder="192.168.1.100 ou example.com"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                  💡 <strong>Cibles de test :</strong> scanme.nmap.org, 127.0.0.1, ou votre réseau local
+                </div>
+                
+                {/* Boutons de test rapide */}
+                <div style={{ display: 'flex', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+                  <button
+                    onClick={() => setTarget('scanme.nmap.org')}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                      border: `1px solid ${theme.colors.accent.primary}`,
+                      borderRadius: '4px',
+                      color: theme.colors.accent.primary,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎯 Test Safe
+                  </button>
+                  <button
+                    onClick={() => setTarget('127.0.0.1')}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      border: `1px solid ${theme.colors.status.info}`,
+                      borderRadius: '4px',
+                      color: theme.colors.status.info,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🏠 Local
+                  </button>
+                  <button
+                    onClick={() => setTarget('192.168.6.130')}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                      border: `1px solid ${theme.colors.status.warning}`,
+                      borderRadius: '4px',
+                      color: theme.colors.status.warning,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎯 Votre LAN
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🔧 Service {service && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={services}
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  placeholder="Type de service"
+                />
+              </div>
+
+              {/* NOUVEAU: Mode d'attaque */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  ⚔️ Stratégie d'attaque {attackMode && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={[
+                    { value: 'patterns', label: '🎯 Patterns (username variations)' },
+                    { value: 'wordlist', label: '📝 Wordlist classique' },
+                    { value: 'autoguess', label: '🤖 Auto-guess (Hydra AI)' },
+                    { value: 'combo', label: '🚀 Combo (Patterns + Wordlist)' }
+                  ]}
+                  value={attackMode}
+                  onChange={(e) => setAttackMode(e.target.value)}
+                  placeholder="Choisir stratégie"
+                />
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                  {attackMode === 'patterns' && '🎯 Génère kali→kali, kali123, kalikali...'}
+                  {attackMode === 'wordlist' && '📝 Utilise une liste de mots de passe'}
+                  {attackMode === 'autoguess' && '🤖 Hydra devine automatiquement'}
+                  {attackMode === 'combo' && '🚀 Patterns + Wordlist combinés'}
+                </div>
+              </div>
+
+              {/* Mode de bruteforce */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🎲 Mode Bruteforce {bruteforceMode && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={[
+                    { value: 'single', label: '👤 Username unique' },
+                    { value: 'userlist', label: '📝 Liste usernames (auto)' }
+                  ]}
+                  value={bruteforceMode}
+                  onChange={(e) => setBruteforceMode(e.target.value)}
+                  placeholder="Mode d'attaque"
+                />
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                  {bruteforceMode === 'userlist' ? 
+                    '🚀 Bruteforce usernames automatique' : 
+                    '🎯 Test un username spécifique'
+                  }
+                </div>
+              </div>
+
+              {/* Username field - conditionnel selon le mode */}
+              {bruteforceMode === 'single' && (
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500'
+                  }}>
+                    👤 Username {username && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                  </label>
+                  <Input
+                    placeholder="admin, root, administrator, kali..."
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                  <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                    💡 <strong>Patterns auto :</strong> {username}:{username}, {username}123, etc.
+                  </div>
+                  
+                  {/* Boutons username rapides */}
+                  <div style={{ display: 'flex', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+                    <button
+                      onClick={() => setUsername('kali')}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '10px',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        border: `1px solid ${theme.colors.accent.primary}`,
+                        borderRadius: '4px',
+                        color: theme.colors.accent.primary,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🐉 kali
+                    </button>
+                    <button
+                      onClick={() => setUsername('admin')}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '10px',
+                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                        border: `1px solid ${theme.colors.status.warning}`,
+                        borderRadius: '4px',
+                        color: theme.colors.status.warning,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      👑 admin
+                    </button>
+                    <button
+                      onClick={() => setUsername('root')}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '10px',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        border: `1px solid ${theme.colors.status.error}`,
+                        borderRadius: '4px',
+                        color: theme.colors.status.error,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🔴 root
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Wordlist - affiché seulement si nécessaire */}
+              {(attackMode === 'wordlist' || attackMode === 'combo') && (
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500'
+                  }}>
+                    📝 Wordlist {wordlist && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                  </label>
+                  <Select
+                    options={wordlists}
+                    value={wordlist}
+                    onChange={(e) => setWordlist(e.target.value)}
+                    placeholder="Liste de mots de passe"
+                  />
+                  <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                    {attackMode === 'combo' ? 
+                      '🚀 Sera combiné avec les patterns username' : 
+                      '📝 Liste de mots de passe uniquement'
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div style={{
+                marginTop: theme.spacing.md,
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(220, 38, 38, 0.2)',
+                border: `1px solid ${theme.colors.status.error}`,
+                color: '#ff6b6b'
+              }}>
+                ❌ {error}
+              </div>
+            )}
+
+            <Button
+              onClick={startAttack}
+              disabled={
+                !target || !service || 
+                (bruteforceMode === 'single' && !username) ||
+                ((attackMode === 'wordlist' || attackMode === 'combo') && !wordlist)
+              }
+              variant="primary"
+              icon={Play}
+              fullWidth
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              🔨 Start Hydra Attack 
+              {attackMode === 'patterns' && ' (Patterns)'}
+              {attackMode === 'wordlist' && ' (Wordlist)'}
+              {attackMode === 'autoguess' && ' (Auto-guess)'}
+              {attackMode === 'combo' && ' (Combo)'}
+              {bruteforceMode === 'userlist' && ' + Username Bruteforce'}
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            🔨 Hydra Results ({results.length}) - Auto-sauvegardés
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="success">SAVED</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <Badge variant="info">{result.service}</Badge>
+                <Badge variant="default">{result.username}</Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: result.credentials?.length > 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${result.credentials?.length > 0 ? theme.colors.status.success : theme.colors.status.error}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🔑 Credentials
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.credentials?.length || 0} trouvé(s)
+                  </div>
+                </div>
+                
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.info}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🎯 Attempts
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.results?.attempts || 0}
+                  </div>
+                </div>
+
+                {result.command && (
+                  <div style={{
+                    padding: theme.spacing.sm,
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    borderRadius: theme.borderRadius.sm,
+                    border: `1px solid ${theme.colors.status.warning}`
+                  }}>
+                    <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                      ⚡ Command
+                    </div>
+                    <div style={{ 
+                      color: theme.colors.text.secondary, 
+                      fontSize: '10px',
+                      fontFamily: 'monospace'
+                    }}>
+                      hydra -l {result.username} -P {result.wordlist}...
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Credentials trouvés */}
+              {result.credentials && result.credentials.length > 0 ? (
+                <div>
+                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
+                    🔑 Credentials Found ({result.credentials.length})
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderRadius: theme.borderRadius.sm,
+                    padding: theme.spacing.sm,
+                    border: `1px solid ${theme.colors.status.success}`
+                  }}>
+                    {result.credentials.map((cred, index) => (
+                      <div key={index} style={{
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                        color: theme.colors.status.success,
+                        marginBottom: '4px',
+                        fontWeight: '600'
+                      }}>
+                        ✅ {cred}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  padding: theme.spacing.md,
+                  backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.error}`,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ color: theme.colors.status.error, fontWeight: '600', fontSize: '14px' }}>
+                    ❌ No Valid Credentials Found
+                  </div>
+                  <div style={{ color: theme.colors.text.muted, fontSize: '11px' }}>
+                    Target may be secure or wordlist insufficient
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
+
+// ================================
 // MODULE NIKTO
 // ================================
 
@@ -1609,6 +2198,8 @@ const PachaPentestSuite = () => {
             </div>
           </Card>
         );
+      case 'hydra':
+        return <HydraTab />;
       default:
         return (
           <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>

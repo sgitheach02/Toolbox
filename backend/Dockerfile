@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
     wget \
     git \
     unzip \
+    hydra \
+    medusa \
+    sshpass \
     perl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
