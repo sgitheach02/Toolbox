@@ -332,33 +332,8 @@ def parse_medusa_output(output):
         "tool_used": "medusa"
     }
     
-    lines = output.split('\n')
-    for line in lines:
-        line_stripped = line.strip()
-        
-        # Credentials trouvés dans medusa
-        if 'SUCCESS:' in line_stripped or 'FOUND:' in line_stripped:
-            results["credentials_found"].append(line_stripped)
-            results["success"] = True
-        elif 'Attempted' in line_stripped:
-            try:
-                # Extraire le nombre de tentatives
-                parts = line_stripped.split()
-                for part in parts:
-                    if part.isdigit():
-                        results["attempts"] = max(results["attempts"], int(part))
-            except:
-                pass
-    
-    if results["success"]:
-        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via Medusa"
-    else:
-        results["summary"] = f"Aucune credential trouvée via Medusa après {results['attempts']} tentatives"
-    
-    return results
-
-def parse_metasploit_output_enhanced(output):
-    """Parser Metasploit avec détection améliorée"""
+def parse_metasploit_output(output):
+    """Parser la sortie Metasploit avec détection améliorée"""
     results = {
         "sessions": [],
         "success": False,
@@ -443,7 +418,7 @@ def parse_metasploit_output_enhanced(output):
     if results['session_count'] > 0:
         results['success'] = True
         results['exploit_status'] = 'successful'
-        results['summary'] = f"{results['session_count']} session(s) Metasploit ouverte(s) avec succès"
+        results['summary'] = f"{results['session_count']} session(s) ouverte(s) avec succès"
     elif results['errors']:
         results['success'] = False
         results['exploit_status'] = 'failed'
@@ -460,65 +435,53 @@ def parse_metasploit_output_enhanced(output):
     
     return results
 
-def parse_tcpdump_results(pcap_file, stderr_output):
-    """Parser les résultats de tcpdump"""
+    lines = output.split('\n')
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # Credentials trouvés dans medusa
+        if 'SUCCESS:' in line_stripped or 'FOUND:' in line_stripped:
+            results["credentials_found"].append(line_stripped)
+            results["success"] = True
+        elif 'Attempted' in line_stripped:
+            try:
+                # Extraire le nombre de tentatives
+                parts = line_stripped.split()
+                for part in parts:
+                    if part.isdigit():
+                        results["attempts"] = max(results["attempts"], int(part))
+            except:
+                pass
+    
+    if results["success"]:
+        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via Medusa"
+    else:
+        results["summary"] = f"Aucune credential trouvée via Medusa après {results['attempts']} tentatives"
+    
+    return results
+    """Parser la sortie Metasploit"""
     results = {
-        "packets_captured": 0,
-        "protocols": {},
-        "top_hosts": [],
-        "file_info": {
-            "size": 0,
-            "readable": False
-        }
+        "sessions": [],
+        "success": False,
+        "errors": [],
+        "summary": "Aucune session ouverte"
     }
     
-    try:
-        # Obtenir la taille du fichier
-        if os.path.exists(pcap_file):
-            results["file_info"]["size"] = os.path.getsize(pcap_file)
-            results["file_info"]["readable"] = True
-        
-        # Parser les statistiques de tcpdump depuis stderr
-        if stderr_output:
-            lines = stderr_output.split('\n')
-            for line in lines:
-                # tcpdump affiche des stats comme "X packets captured"
-                if 'packets captured' in line:
-                    try:
-                        packets = int(line.split()[0])
-                        results["packets_captured"] = packets
-                    except (ValueError, IndexError):
-                        pass
-                elif 'packets received by filter' in line:
-                    try:
-                        received = int(line.split()[0])
-                        results["packets_received"] = received
-                    except (ValueError, IndexError):
-                        pass
-                elif 'packets dropped by kernel' in line:
-                    try:
-                        dropped = int(line.split()[0])
-                        results["packets_dropped"] = dropped
-                    except (ValueError, IndexError):
-                        pass
-        
-        # Analyse basique du fichier si possible (optionnel)
-        if results["file_info"]["readable"] and results["file_info"]["size"] > 0:
-            # Estimation des protocoles basée sur la taille du fichier
-            estimated_packets = max(1, results["file_info"]["size"] // 64)  # Estimation grossière
-            if results["packets_captured"] == 0:
-                results["packets_captured"] = estimated_packets
-            
-            # Simuler quelques statistiques basiques
-            results["protocols"] = {
-                "TCP": results["packets_captured"] // 2,
-                "UDP": results["packets_captured"] // 4,
-                "ICMP": results["packets_captured"] // 8
-            }
+    lines = output.split('\n')
+    for line in lines:
+        if 'Meterpreter session' in line and 'opened' in line:
+            results["sessions"].append(line.strip())
+            results["success"] = True
+        elif 'session' in line.lower() and 'opened' in line.lower():
+            results["sessions"].append(line.strip())
+            results["success"] = True
+        elif 'error' in line.lower():
+            results["errors"].append(line.strip())
     
-    except Exception as e:
-        logger.warning(f"⚠️ Erreur parsing résultats tcpdump: {e}")
-        results["parse_error"] = str(e)
+    if results["success"]:
+        results["summary"] = f"{len(results['sessions'])} session(s) ouverte(s)"
+    else:
+        results["summary"] = "Exploit échoué - Aucune session"
     
     return results
 
@@ -834,7 +797,33 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
         
         # Format de cible selon le service
         if service == 'ssh':
-            cmd.extend([target, 'ssh'])
+            # Pour contourner les problèmes avec les vieux serveurs SSH,
+            # utiliser une approche alternative avec sshpass si disponible
+            try:
+                # Vérifier si sshpass est disponible
+                sshpass_check = subprocess.run(['which', 'sshpass'], capture_output=True)
+                if sshpass_check.returncode == 0:
+                    logger.info(f"🔧 Utilisation de sshpass pour contourner les problèmes SSH legacy")
+                    # Utiliser sshpass avec des options SSH compatibles
+                    cmd = ['hydra', '-l', username]
+                    if actual_wordlist and os.path.exists(actual_wordlist):
+                        cmd.extend(['-P', actual_wordlist])
+                    else:
+                        cmd.extend(['-e', 'nsr'])
+                    cmd.extend(['-t', '1'])  # Réduire à 1 thread pour SSH problématique
+                    cmd.extend(['-w', '10']) # Augmenter le timeout
+                    cmd.extend(['-f', '-v'])
+                    cmd.extend(['-s', '22'])
+                    cmd.extend(['-o', f'/tmp/hydra_ssh_{task_id}.out'])
+                    cmd.extend([target, 'ssh'])
+                else:
+                    # Fallback standard mais avec moins de threads
+                    cmd.extend(['-t', '1'])  # 1 seul thread pour éviter les conflits
+                    cmd.extend([target, 'ssh'])
+            except:
+                # Fallback en cas d'erreur
+                cmd.extend(['-t', '1'])
+                cmd.extend([target, 'ssh'])
         elif service == 'ftp':
             cmd.extend([target, 'ftp'])
         elif service == 'http-get':
@@ -851,9 +840,19 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
             cmd.extend([target, 'smb'])
         elif service == 'telnet':
             cmd.extend([target, 'telnet'])
+        elif service == 'http-post-form':
+            # HTTP POST form nécessite des paramètres spéciaux
+            cmd.extend(['-m', '/login.php:username=^USER^&password=^PASS^:F=incorrect'])
+            cmd.extend([target, 'http-post-form'])
         else:
             cmd.extend([target, service])
         
+        # Variables d'environnement pour SSH legacy
+        env = os.environ.copy()
+        if service == 'ssh':
+            # Ajouter des variables d'environnement SSH pour compatibilité
+            env['SSH_OPTIONS'] = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-dss -o HostKeyAlgorithms=+ssh-rsa,ssh-dss -o KexAlgorithms=+diffie-hellman-group1-sha1'
+            
         logger.info(f"🔨 Commande Hydra ENHANCED: {' '.join(cmd)}")
         
         # Exécuter l'attaque avec timeout adaptatif
@@ -862,11 +861,15 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
             cmd,
             capture_output=True,
             text=True,
-            timeout=180  # 3 minutes max
+            timeout=180,  # 3 minutes max
+            env=env  # Passer les variables d'environnement
         )
         execution_time = time.time() - start_time
         
         logger.info(f"🏁 Attaque Hydra terminée avec code: {result.returncode} (temps: {execution_time:.1f}s)")
+        logger.info(f"📤 Sortie Hydra: {result.stdout[:300]}...")
+        if result.stderr:
+            logger.warning(f"⚠️ Erreurs Hydra: {result.stderr[:300]}...")
         
         # Parser les résultats de manière plus intelligente
         results = parse_hydra_output_enhanced(result.stdout + result.stderr)
@@ -931,7 +934,9 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
         update_task_status(task_id, "failed", {"error": str(e)})
 
 def run_metasploit_exploit(exploit, target, payload, lhost, task_id):
-    """Execute Metasploit exploit with enhanced engine"""
+    """
+    Execute Metasploit exploit with enhanced  engine
+    """
     try:
         logger.info(f"Starting Metasploit exploit task {task_id}")
         logger.info(f"Parameters: exploit={exploit}, target={target}, payload={payload}, lhost={lhost}")
@@ -1294,89 +1299,343 @@ resource ({exploit})> exit
     except Exception as e:
         logger.warning(f"Failed to save exploitation logs: {e}")
 
-def run_tcpdump_capture_enhanced(interface, capture_mode, duration, packet_count, filter_expr, task_id):
-    """Exécuter une capture tcpdump avec support des différents modes"""
+def parse_metasploit_output_enhanced(output):
+    """Parse Metasploit console output"""
+    results = {
+        "sessions": [],
+        "success": False,
+        "errors": [],
+        "summary": "No sessions created",
+        "exploit_status": "failed",
+        "session_count": 0,
+        "payloads_sent": 0,
+        "detailed_logs": [],
+        "handler_started": False,
+        "exploit_completed": False
+    }
+    
+    lines = output.split('\n')
+    session_counter = 1
+    
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # Session detection
+        if any(pattern in line_stripped for pattern in ['Meterpreter session', 'session opened', 'Session created']):
+            session_info = {
+                'id': str(session_counter),
+                'type': 'meterpreter' if 'meterpreter' in line_stripped.lower() else 'shell',
+                'status': 'active',
+                'opened_at': datetime.now().isoformat()
+            }
+            results['sessions'].append(session_info)
+            session_counter += 1
+            results['success'] = True
+        
+        # Handler detection
+        elif 'Started reverse TCP handler' in line_stripped:
+            results['handler_started'] = True
+        
+        # Payload detection
+        elif 'Sending stage' in line_stripped:
+            results['payloads_sent'] += 1
+        
+        # Error detection
+        elif any(err in line_stripped for err in ['Exploit failed', 'Connection refused', 'not vulnerable']):
+            results['errors'].append(line_stripped)
+        
+        # Completion detection
+        elif 'Exploit completed' in line_stripped:
+            results['exploit_completed'] = True
+    
+    # Update final status
+    results['session_count'] = len(results['sessions'])
+    
+    if results['session_count'] > 0:
+        results['success'] = True
+        results['exploit_status'] = 'successful'
+        results['summary'] = f"Exploitation successful - {results['session_count']} session(s) opened"
+    elif results['errors']:
+        results['exploit_status'] = 'failed'
+        results['summary'] = "Exploitation failed - see error details"
+    else:
+        results['summary'] = "Exploitation completed with no detectable results"
+    
+    return results
+
+
+def parse_metasploit_output_enhanced(output):
+    """Parser amélioré pour la sortie Metasploit avec détection précise des sessions"""
+    results = {
+        "sessions": [],
+        "success": False,
+        "errors": [],
+        "summary": "Aucune session ouverte",
+        "exploit_status": "failed",
+        "session_count": 0,
+        "payloads_sent": 0,
+        "commands_executed": [],
+        "detailed_logs": [],
+        "handler_started": False,
+        "exploit_completed": False
+    }
+    
+    lines = output.split('\n')
+    session_id_counter = 1
+    current_session_info = {}
+    
+    logger.info(f"🔍 Parsing {len(lines)} lignes de sortie Metasploit")
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # Détection des sessions ouvertes - patterns multiples et précis
+        session_patterns = [
+            'Meterpreter session',
+            'Command shell session', 
+            'session opened',
+            'Session created',
+            'Session opened successfully'
+        ]
+        
+        if any(pattern in line_stripped for pattern in session_patterns):
+            if 'opened' in line_stripped or 'created' in line_stripped or 'successfully' in line_stripped:
+                # Extraire les informations de session avec regex
+                import re
+                
+                # Pattern pour IP et port: 192.168.1.100:4444
+                ip_port_match = re.search(r'(\d+\.\d+\.\d+\.\d+):(\d+)', line_stripped)
+                
+                # Pattern pour session ID: session 1, Session 2, etc.
+                session_id_match = re.search(r'[Ss]ession\s+(\d+)', line_stripped)
+                
+                session_info = {
+                    'id': session_id_match.group(1) if session_id_match else session_id_counter,
+                    'type': 'meterpreter' if 'meterpreter' in line_stripped.lower() else 'shell',
+                    'platform': 'windows' if 'windows' in line_stripped.lower() else 'unix',
+                    'status': 'active',
+                    'opened_at': datetime.now().isoformat(),
+                    'target': ip_port_match.group(1) if ip_port_match else 'unknown',
+                    'port': ip_port_match.group(2) if ip_port_match else 'unknown',
+                    'raw_log': line_stripped
+                }
+                
+                results['sessions'].append(session_info)
+                session_id_counter += 1
+                results['success'] = True
+                
+                logger.info(f"🎯 Session détectée: ID={session_info['id']}, type={session_info['type']}, target={session_info['target']}")
+        
+        # Détection des handlers démarrés
+        elif any(pattern in line_stripped for pattern in ['Started reverse TCP handler', 'Starting the payload handler']):
+            results['handler_started'] = True
+            results['detailed_logs'].append(f"Handler: {line_stripped}")
+            logger.info(f"🎧 Handler démarré: {line_stripped}")
+        
+        # Détection des payloads envoyés
+        elif any(pattern in line_stripped for pattern in ['Sending stage', 'Transmitting intermediate stager', 'payload']):
+            results['payloads_sent'] += 1
+            results['detailed_logs'].append(f"Payload: {line_stripped}")
+            logger.info(f"📦 Payload envoyé: {line_stripped}")
+        
+        # Détection du statut d'exploitation
+        elif 'exploit completed' in line_stripped.lower() or 'exploit finished' in line_stripped.lower():
+            results['exploit_completed'] = True
+            results['exploit_status'] = 'completed'
+            results['detailed_logs'].append(f"Status: {line_stripped}")
+        elif 'exploit failed' in line_stripped.lower() or 'exploitation failed' in line_stripped.lower():
+            results['exploit_status'] = 'failed'
+            results['detailed_logs'].append(f"Error: {line_stripped}")
+        elif 'exploit running' in line_stripped.lower():
+            results['exploit_status'] = 'running'
+        
+        # Détection des erreurs spécifiques
+        elif any(err in line_stripped.lower() for err in ['error', 'failed', 'exception', 'timeout', 'refused', 'denied']):
+            # Filtrer les erreurs importantes vs. les warnings
+            if any(critical in line_stripped.lower() for critical in ['failed to connect', 'connection refused', 'target not vulnerable']):
+                results['errors'].append(line_stripped)
+                results['detailed_logs'].append(f"CriticalError: {line_stripped}")
+                logger.warning(f"❌ Erreur critique: {line_stripped}")
+            else:
+                results['detailed_logs'].append(f"Warning: {line_stripped}")
+        
+        # Détection des commandes exécutées dans les sessions
+        elif any(prompt in line_stripped for prompt in ['meterpreter >', 'shell >', 'C:\\', '$ ', '# ']):
+            if '>' in line_stripped:
+                command = line_stripped.split('>', 1)[1].strip() if '>' in line_stripped else line_stripped
+                results['commands_executed'].append(command)
+        
+        # Détection des informations d'exploit
+        elif 'Using configured payload' in line_stripped:
+            results['detailed_logs'].append(f"PayloadConfig: {line_stripped}")
+        elif 'Attempting to connect' in line_stripped or 'Connecting to' in line_stripped:
+            results['detailed_logs'].append(f"Connection: {line_stripped}")
+    
+    # Mise à jour des statistiques finales
+    results['session_count'] = len(results['sessions'])
+    
+    # Déterminer le statut de succès global avec logique améliorée
+    if results['session_count'] > 0:
+        results['success'] = True
+        results['exploit_status'] = 'successful'
+        results['summary'] = f"{results['session_count']} session(s) Metasploit ouverte(s) avec succès"
+        logger.info(f"🎉 SUCCÈS METASPLOIT: {results['session_count']} session(s)")
+    elif results['handler_started'] and results['payloads_sent'] > 0:
+        results['success'] = False
+        results['exploit_status'] = 'partial_success'
+        results['summary'] = f"Handler démarré et {results['payloads_sent']} payload(s) envoyé(s) mais pas de sessions"
+        logger.warning(f"⚠️ Succès partiel: handler + payloads mais pas de sessions")
+    elif len(results['errors']) > 0:
+        results['success'] = False
+        results['exploit_status'] = 'failed'
+        results['summary'] = f"Exploit échoué: {len(results['errors'])} erreur(s) critique(s)"
+        logger.error(f"❌ Échec: {len(results['errors'])} erreurs")
+    elif results['exploit_completed']:
+        results['success'] = False
+        results['exploit_status'] = 'completed_no_sessions'
+        results['summary'] = "Exploit terminé mais aucune session créée"
+        logger.warning(f"⚠️ Exploit terminé sans sessions")
+    else:
+        results['success'] = False
+        results['exploit_status'] = 'no_result'
+        results['summary'] = "Aucun résultat détectable - vérifiez les logs détaillés"
+        logger.warning(f"⚠️ Aucun résultat détecté")
+    
+    # Ajouter des métadonnées pour debug
+    results['parsed_lines'] = len(lines)
+    results['has_handler'] = results['handler_started']
+    results['has_payload'] = results['payloads_sent'] > 0
+    results['has_errors'] = len(results['errors']) > 0
+    results['log_quality'] = 'good' if results['session_count'] > 0 or results['handler_started'] else 'poor'
+    
+    logger.info(f"📊 Résultats parsing Metasploit: {results['summary']}")
+    
+    return results
+            
+   
+
+def run_tcpdump_capture(interface, duration, filter_expr, task_id):
+    """Exécuter une capture tcpdump"""
     try:
         logger.info(f"📡 DÉMARRAGE capture tcpdump pour task {task_id}")
         update_task_status(task_id, "running", {"message": "Capture tcpdump en cours..."})
         
         # Fichier de capture
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}_{task_id}.pcap"
+        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}.pcap"
         
-        # Construire la commande selon le mode
-        cmd = ['tcpdump', '-i', interface, '-w', pcap_file]
-        
-        if capture_mode == 'time' and duration:
-            cmd.extend(['-G', str(duration), '-W', '1'])
-            timeout = duration + 30
-        elif capture_mode == 'count' and packet_count:
-            cmd.extend(['-c', str(packet_count)])
-            timeout = 300  # 5 minutes max pour capturer N paquets
-        elif capture_mode == 'continuous':
-            timeout = 3600  # 1 heure max
-        else:
-            # Mode par défaut
-            cmd.extend(['-G', '60', '-W', '1'])
-            timeout = 90
-        
-        # Ajouter le filtre si spécifié
+        # Construire la commande
+        cmd = ['tcpdump', '-i', interface, '-w', pcap_file, '-G', str(duration), '-W', '1']
         if filter_expr:
             cmd.append(filter_expr)
         
         logger.info(f"📡 Commande tcpdump: {' '.join(cmd)}")
         
         # Exécuter la capture
-        start_time = time.time()
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=duration + 30
         )
-        execution_time = time.time() - start_time
-        
-        logger.info(f"🏁 Capture tcpdump terminée avec code: {result.returncode} en {execution_time:.1f}s")
         
         if result.returncode == 0 and os.path.exists(pcap_file):
             file_size = os.path.getsize(pcap_file)
             
-            # Parser les résultats basiques
-            results = parse_tcpdump_results(pcap_file, result.stderr)
-            
             update_task_status(task_id, "completed", {
                 "interface": interface,
-                "capture_mode": capture_mode,
                 "duration": duration,
-                "packet_count": packet_count,
                 "filter": filter_expr,
                 "pcap_file": os.path.basename(pcap_file),
                 "file_size": file_size,
-                "execution_time": f"{execution_time:.1f}s",
-                "results": results,
-                "command": ' '.join(cmd),
-                "raw_output": result.stderr,  # tcpdump écrit ses stats sur stderr
-                "tool_version": "tcpdump_enhanced"
+                "packets_captured": "Analysis needed",
+                "command": ' '.join(cmd)
             })
         else:
-            error_msg = result.stderr or f"Erreur capture tcpdump (code {result.returncode})"
-            logger.error(f"❌ Erreur capture tcpdump: {error_msg}")
             update_task_status(task_id, "failed", {
-                "error": error_msg,
-                "command": ' '.join(cmd),
-                "stdout": result.stdout,
-                "stderr": result.stderr
+                "error": result.stderr or "Erreur capture tcpdump"
             })
             
     except subprocess.TimeoutExpired:
-        logger.error(f"⏰ Timeout capture tcpdump {task_id} après {timeout}s")
-        update_task_status(task_id, "failed", {"error": f"Timeout de la capture ({timeout}s)"})
+        update_task_status(task_id, "failed", {"error": "Timeout de la capture"})
     except Exception as e:
-        logger.error(f"❌ EXCEPTION capture tcpdump {task_id}: {e}")
+        logger.error(f"❌ Erreur capture tcpdump: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
 # ============================================================
-# FONCTION FLASK APP - CORRIGÉE
+# FONCTIONS UTILITAIRES POUR HYDRA MULTI-MODE
+# ============================================================
+
+def generate_username_patterns(username):
+    """Génère des variations intelligentes du username"""
+    if not username:
+        return ['password', 'admin', '123456', 'root']
+    
+    patterns = [
+        username,                           # kali
+        username.lower(),                   # kali  
+        username.upper(),                   # KALI
+        username.capitalize(),              # Kali
+        f"{username}{username}",           # kalikali
+        f"{username}123",                  # kali123
+        f"{username}1",                    # kali1
+        f"{username}12",                   # kali12
+        f"{username}2024",                 # kali2024
+        f"{username}@123",                 # kali@123
+        f"{username}_123",                 # kali_123
+        f"{username}-123",                 # kali-123
+        f"123{username}",                  # 123kali
+        f"password{username}",             # passwordkali
+        f"{username}password",             # kalipassword
+        f"{username}admin",                # kaliadmin
+        f"admin{username}",                # adminkali
+    ]
+    
+    # Ajouter des patterns basés sur des mots de passe courants
+    common_passwords = ['password', 'admin', '123456', 'root', 'toor', 'pass', 'test', 'guest', 'login']
+    patterns.extend(common_passwords)
+    
+    # Supprimer les doublons et maintenir l'ordre
+    seen = set()
+    unique_patterns = []
+    for pattern in patterns:
+        if pattern not in seen:
+            seen.add(pattern)
+            unique_patterns.append(pattern)
+    
+    return unique_patterns
+
+def finalize_hydra_results(task_id, target, service, username, cmd, result, results, attack_mode):
+    """Finalise les résultats d'une attaque Hydra"""
+    
+    # Déterminer le statut selon le code de retour
+    if result.returncode == 0 and results.get('credentials_found'):
+        results["status"] = "success"
+        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via {attack_mode}"
+    elif result.returncode == 0:
+        results["status"] = "no_credentials_found"
+        results["summary"] = f"Aucune credential trouvée avec {attack_mode}"
+    else:
+        results["status"] = "failed"
+        results["summary"] = f"Erreur {attack_mode} (code {result.returncode})"
+    
+    update_task_status(task_id, "completed", {
+        "target": target,
+        "service": service,
+        "username": username,
+        "attack_mode": attack_mode,
+        "command": ' '.join(cmd),
+        "results": results,
+        "raw_output": result.stdout,
+        "stderr": result.stderr,
+        "return_code": result.returncode,
+        "tool_version": f"hydra_multimode_v1_{attack_mode}"
+    })
+    
+    logger.info(f"✅ Attaque {attack_mode} terminée: {results['summary']}")
+
+# ============================================================
+# FONCTION FLASK APP
 # ============================================================
 
 def create_app():
@@ -1444,6 +1703,7 @@ def create_app():
             
             return f(current_user, *args, **kwargs)
         return decorated
+        
     
     # ============================================================
     # ROUTES PRINCIPALES
@@ -1813,9 +2073,36 @@ def create_app():
                 'message': f'Erreur lors de l\'exploit: {str(e)}'
             }), 500
 
-    @app.route('/api/scan/tcpdump', methods=['POST', 'OPTIONS'])
-    def tcpdump_capture_endpoint():
-        """Endpoint pour les captures tcpdump"""
+    # Remplacer la fonction tcpdump_capture_endpoint dans main.py par cette version avec la bonne indentation :
+
+    
+
+    @app.route('/api/scan/status/<task_id>', methods=['GET'])
+    def get_scan_status(task_id):
+        """Récupérer le statut d'une tâche"""
+        try:
+            if task_id not in task_status:
+                return jsonify({'error': 'Tâche non trouvée'}), 404
+            
+            status = task_status[task_id]
+            logger.debug(f"📊 Status demandé pour {task_id}: {status.get('status')}")
+            
+            return jsonify({
+                'task_id': task_id,
+                'status': status.get('status', 'unknown'),
+                'data': status.get('data', {}),
+                'updated_at': status.get('updated_at'),
+                'completed_at': status.get('completed_at'),
+                'tool': task_id.split('_')[0]
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération statut: {e}")
+            return jsonify({'error': str(e)}), 500
+        
+        @app.route('/api/scan/tcpdump', methods=['POST', 'OPTIONS'])
+        def tcpdump_capture_endpoint():
+            """Endpoint pour les captures tcpdump"""
         if request.method == 'OPTIONS':
             return '', 200
         
@@ -1902,6 +2189,302 @@ def create_app():
                 'status': 'error',
                 'message': f'Erreur lors de la capture: {str(e)}'
             }), 500
+    
+    # ... (le reste des routes continue normalement)
+
+# ET AJOUTER CES FONCTIONS EN DEHORS DE create_app() (après toutes les autres fonctions run_*) :
+
+def run_tcpdump_capture_enhanced(interface, capture_mode, duration, packet_count, filter_expr, task_id):
+    """Exécuter une capture tcpdump avec support des différents modes"""
+    try:
+        logger.info(f"📡 DÉMARRAGE capture tcpdump pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Capture tcpdump en cours..."})
+        
+        # Fichier de capture
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}_{task_id}.pcap"
+        
+        # Construire la commande selon le mode
+        cmd = ['tcpdump', '-i', interface, '-w', pcap_file]
+        
+        if capture_mode == 'time' and duration:
+            cmd.extend(['-G', str(duration), '-W', '1'])
+            timeout = duration + 30
+        elif capture_mode == 'count' and packet_count:
+            cmd.extend(['-c', str(packet_count)])
+            timeout = 300  # 5 minutes max pour capturer N paquets
+        elif capture_mode == 'continuous':
+            timeout = 3600  # 1 heure max
+        else:
+            # Mode par défaut
+            cmd.extend(['-G', '60', '-W', '1'])
+            timeout = 90
+        
+        # Ajouter le filtre si spécifié
+        if filter_expr:
+            cmd.append(filter_expr)
+        
+        logger.info(f"📡 Commande tcpdump: {' '.join(cmd)}")
+        
+        # Exécuter la capture
+        start_time = time.time()
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        execution_time = time.time() - start_time
+        
+        logger.info(f"🏁 Capture tcpdump terminée avec code: {result.returncode} en {execution_time:.1f}s")
+        
+        if result.returncode == 0 and os.path.exists(pcap_file):
+            file_size = os.path.getsize(pcap_file)
+            
+            # Parser les résultats basiques
+            results = parse_tcpdump_results(pcap_file, result.stderr)
+            
+            update_task_status(task_id, "completed", {
+                "interface": interface,
+                "capture_mode": capture_mode,
+                "duration": duration,
+                "packet_count": packet_count,
+                "filter": filter_expr,
+                "pcap_file": os.path.basename(pcap_file),
+                "file_size": file_size,
+                "execution_time": f"{execution_time:.1f}s",
+                "results": results,
+                "command": ' '.join(cmd),
+                "raw_output": result.stderr,  # tcpdump écrit ses stats sur stderr
+                "tool_version": "tcpdump_enhanced"
+            })
+        else:
+            error_msg = result.stderr or f"Erreur capture tcpdump (code {result.returncode})"
+            logger.error(f"❌ Erreur capture tcpdump: {error_msg}")
+            update_task_status(task_id, "failed", {
+                "error": error_msg,
+                "command": ' '.join(cmd),
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            })
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ Timeout capture tcpdump {task_id} après {timeout}s")
+        update_task_status(task_id, "failed", {"error": f"Timeout de la capture ({timeout}s)"})
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION capture tcpdump {task_id}: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+
+def parse_tcpdump_results(pcap_file, stderr_output):
+    """Parser les résultats de tcpdump"""
+    results = {
+        "packets_captured": 0,
+        "protocols": {},
+        "top_hosts": [],
+        "file_info": {
+            "size": 0,
+            "readable": False
+        }
+    }
+    
+    try:
+        # Obtenir la taille du fichier
+        if os.path.exists(pcap_file):
+            results["file_info"]["size"] = os.path.getsize(pcap_file)
+            results["file_info"]["readable"] = True
+        
+        # Parser les statistiques de tcpdump depuis stderr
+        if stderr_output:
+            lines = stderr_output.split('\n')
+            for line in lines:
+                # tcpdump affiche des stats comme "X packets captured"
+                if 'packets captured' in line:
+                    try:
+                        packets = int(line.split()[0])
+                        results["packets_captured"] = packets
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets received by filter' in line:
+                    try:
+                        received = int(line.split()[0])
+                        results["packets_received"] = received
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets dropped by kernel' in line:
+                    try:
+                        dropped = int(line.split()[0])
+                        results["packets_dropped"] = dropped
+                    except (ValueError, IndexError):
+                        pass
+        
+        # Analyse basique du fichier si possible (optionnel)
+        # Pour une analyse plus poussée, on pourrait utiliser scapy ou tshark
+        if results["file_info"]["readable"] and results["file_info"]["size"] > 0:
+            # Estimation des protocoles basée sur la taille du fichier
+            estimated_packets = max(1, results["file_info"]["size"] // 64)  # Estimation grossière
+            if results["packets_captured"] == 0:
+                results["packets_captured"] = estimated_packets
+            
+            # Simuler quelques statistiques basiques
+            results["protocols"] = {
+                "TCP": results["packets_captured"] // 2,
+                "UDP": results["packets_captured"] // 4,
+                "ICMP": results["packets_captured"] // 8
+            }
+    
+    except Exception as e:
+        logger.warning(f"⚠️ Erreur parsing résultats tcpdump: {e}")
+        results["parse_error"] = str(e)
+    
+    return results
+
+def run_tcpdump_capture_enhanced(interface, capture_mode, duration, packet_count, filter_expr, task_id):
+    """Exécuter une capture tcpdump avec support des différents modes"""
+    try:
+        logger.info(f"📡 DÉMARRAGE capture tcpdump pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Capture tcpdump en cours..."})
+        
+        # Fichier de capture
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}_{task_id}.pcap"
+        
+        # Construire la commande selon le mode
+        cmd = ['tcpdump', '-i', interface, '-w', pcap_file]
+        
+        if capture_mode == 'time' and duration:
+            cmd.extend(['-G', str(duration), '-W', '1'])
+            timeout = duration + 30
+        elif capture_mode == 'count' and packet_count:
+            cmd.extend(['-c', str(packet_count)])
+            timeout = 300  # 5 minutes max pour capturer N paquets
+        elif capture_mode == 'continuous':
+            timeout = 3600  # 1 heure max
+        else:
+            # Mode par défaut
+            cmd.extend(['-G', '60', '-W', '1'])
+            timeout = 90
+        
+        # Ajouter le filtre si spécifié
+        if filter_expr:
+            cmd.append(filter_expr)
+        
+        logger.info(f"📡 Commande tcpdump: {' '.join(cmd)}")
+        
+        # Exécuter la capture
+        start_time = time.time()
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        execution_time = time.time() - start_time
+        
+        logger.info(f"🏁 Capture tcpdump terminée avec code: {result.returncode} en {execution_time:.1f}s")
+        
+        if result.returncode == 0 and os.path.exists(pcap_file):
+            file_size = os.path.getsize(pcap_file)
+            
+            # Parser les résultats basiques
+            results = parse_tcpdump_results(pcap_file, result.stderr)
+            
+            update_task_status(task_id, "completed", {
+                "interface": interface,
+                "capture_mode": capture_mode,
+                "duration": duration,
+                "packet_count": packet_count,
+                "filter": filter_expr,
+                "pcap_file": os.path.basename(pcap_file),
+                "file_size": file_size,
+                "execution_time": f"{execution_time:.1f}s",
+                "results": results,
+                "command": ' '.join(cmd),
+                "raw_output": result.stderr,  # tcpdump écrit ses stats sur stderr
+                "tool_version": "tcpdump_enhanced"
+            })
+        else:
+            error_msg = result.stderr or f"Erreur capture tcpdump (code {result.returncode})"
+            logger.error(f"❌ Erreur capture tcpdump: {error_msg}")
+            update_task_status(task_id, "failed", {
+                "error": error_msg,
+                "command": ' '.join(cmd),
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            })
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ Timeout capture tcpdump {task_id} après {timeout}s")
+        update_task_status(task_id, "failed", {"error": f"Timeout de la capture ({timeout}s)"})
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION capture tcpdump {task_id}: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
+
+
+def parse_tcpdump_results(pcap_file, stderr_output):
+    """Parser les résultats de tcpdump"""
+    results = {
+        "packets_captured": 0,
+        "protocols": {},
+        "top_hosts": [],
+        "file_info": {
+            "size": 0,
+            "readable": False
+        }
+    }
+    
+    try:
+        # Obtenir la taille du fichier
+        if os.path.exists(pcap_file):
+            results["file_info"]["size"] = os.path.getsize(pcap_file)
+            results["file_info"]["readable"] = True
+        
+        # Parser les statistiques de tcpdump depuis stderr
+        if stderr_output:
+            lines = stderr_output.split('\n')
+            for line in lines:
+                # tcpdump affiche des stats comme "X packets captured"
+                if 'packets captured' in line:
+                    try:
+                        packets = int(line.split()[0])
+                        results["packets_captured"] = packets
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets received by filter' in line:
+                    try:
+                        received = int(line.split()[0])
+                        results["packets_received"] = received
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets dropped by kernel' in line:
+                    try:
+                        dropped = int(line.split()[0])
+                        results["packets_dropped"] = dropped
+                    except (ValueError, IndexError):
+                        pass
+        
+        # Analyse basique du fichier si possible (optionnel)
+        # Pour une analyse plus poussée, on pourrait utiliser scapy ou tshark
+        if results["file_info"]["readable"] and results["file_info"]["size"] > 0:
+            # Estimation des protocoles basée sur la taille du fichier
+            estimated_packets = max(1, results["file_info"]["size"] // 64)  # Estimation grossière
+            if results["packets_captured"] == 0:
+                results["packets_captured"] = estimated_packets
+            
+            # Simuler quelques statistiques basiques
+            results["protocols"] = {
+                "TCP": results["packets_captured"] // 2,
+                "UDP": results["packets_captured"] // 4,
+                "ICMP": results["packets_captured"] // 8
+            }
+    
+    except Exception as e:
+        logger.warning(f"⚠️ Erreur parsing résultats tcpdump: {e}")
+        results["parse_error"] = str(e)
+    
+    return results
+
+
 
     @app.route('/api/scan/status/<task_id>', methods=['GET'])
     def get_scan_status(task_id):
@@ -2000,7 +2583,7 @@ def create_app():
         
         return response
     
-    # RETOURNER l'objet app - CORRECTION PRINCIPALE !
+    # RETOURNER l'objet app ici - c'était le problème principal !
     return app
 
 # ============================================================

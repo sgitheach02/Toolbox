@@ -2537,6 +2537,536 @@ const HydraTab = () => {
   );
 };
 
+// ================================
+// DOWNLOAD MANAGER - NOUVEAU
+// ================================
+const DownloadManager = ({ taskId, taskData, taskStatus }) => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const API_BASE = getApiBaseUrl();
+
+  const loadFiles = async () => {
+    if (!taskId || taskStatus !== 'completed') return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiService.request(`/scan/files/${taskId}`);
+      setFiles(response.files || []);
+    } catch (err) {
+      setError(`Erreur: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadFile = (downloadUrl, filename) => {
+    try {
+      const link = document.createElement('a');
+      link.href = `${API_BASE}${downloadUrl}`;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      console.log(`📥 Téléchargement de ${filename} démarré`);
+    } catch (err) {
+      console.error(`❌ Erreur téléchargement: ${err.message}`);
+    }
+  };
+
+  const downloadCapture = () => {
+    if (!taskId) return;
+    const url = `${API_BASE}/api/scan/download/${taskId}`;
+    const filename = `capture_${taskId}.pcap`;
+    window.open(url, '_blank');
+  };
+
+  const getFileIcon = (type) => {
+    switch (type) {
+      case 'pcap': return '📦';
+      case 'log': return '📄';
+      default: return '📁';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('fr-FR');
+  };
+
+  useEffect(() => {
+    loadFiles();
+  }, [taskId, taskStatus]);
+
+  if (taskStatus !== 'completed') return null;
+
+  if (taskId && taskId.startsWith('tcpdump_')) {
+    return (
+      <div style={{ 
+        marginTop: '15px', 
+        padding: '15px', 
+        background: 'rgba(0, 255, 136, 0.1)', 
+        borderRadius: '10px',
+        border: '1px solid rgba(0, 255, 136, 0.3)'
+      }}>
+        <h4 style={{ margin: '0 0 10px 0', color: '#00ff88', fontSize: '14px' }}>
+          📥 Téléchargement de la capture
+        </h4>
+        
+        {loading && <p style={{ color: '#ffd700', fontSize: '12px' }}>🔄 Chargement...</p>}
+        {error && <p style={{ color: '#ff6b6b', fontSize: '12px' }}>❌ {error}</p>}
+        
+        {!loading && !error && (
+          <>
+            {files.length > 0 ? (
+              <div>
+                {files.map((file, index) => (
+                  <div key={index} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px',
+                    background: 'rgba(255,255,255,0.05)',
+                    borderRadius: '6px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                        {getFileIcon(file.type)} {file.filename}
+                      </div>
+                      <div style={{ color: '#ccc', fontSize: '10px' }}>
+                        {file.size_human} • {formatDate(file.created_at)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => downloadFile(file.download_url, file.filename)}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '10px'
+                      }}
+                    >
+                      📥 Télécharger
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: '#ffd700', fontSize: '12px' }}>
+                  ⚠️ Essayez le téléchargement direct
+                </p>
+                <button
+                  onClick={downloadCapture}
+                  style={{
+                    padding: '10px 16px',
+                    background: 'linear-gradient(45deg, #00ff88, #00d4ff)',
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  📦 Télécharger PCAP
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={loadFiles}
+              style={{
+                marginTop: '8px',
+                padding: '4px 8px',
+                background: 'rgba(255,255,255,0.1)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '10px'
+              }}
+            >
+              🔄 Actualiser
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+};
+
+
+// ================================
+// HISTORY TAB - NOUVEAU
+// ================================
+const HistoryTab = () => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+
+  const loadHistory = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const data = await apiService.getScanHistory();
+      setHistory(data.scans || []);
+    } catch (err) {
+      setError(`Erreur: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+    const interval = setInterval(loadHistory, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getFilteredHistory = () => {
+    let filtered = history;
+
+    if (filter !== 'all') {
+      filtered = filtered.filter(task => task.tool === filter);
+    }
+
+    switch (sortBy) {
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.completed_at) - new Date(b.completed_at));
+        break;
+      case 'tool':
+        filtered.sort((a, b) => a.tool.localeCompare(b.tool));
+        break;
+      case 'status':
+        filtered.sort((a, b) => a.status.localeCompare(b.status));
+        break;
+    }
+
+    return filtered;
+  };
+
+  const getToolIcon = (tool) => {
+    const icons = {
+      'nmap': '🔍',
+      'nikto': '🕷️', 
+      'hydra': '🔨',
+      'metasploit': '💣',
+      'tcpdump': '📡'
+    };
+    return icons[tool] || '🔧';
+  };
+
+  const getStatusIcon = (status) => {
+    const icons = {
+      'completed': '✅',
+      'failed': '❌',
+      'running': '🔄'
+    };
+    return icons[status] || '❓';
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'completed': '#4ade80',
+      'failed': '#ef4444',
+      'running': '#3b82f6'
+    };
+    return colors[status] || '#6b7280';
+  };
+
+  const renderTaskResults = (tool, results) => {
+    if (!results) return null;
+
+    switch (tool) {
+      case 'tcpdump':
+        return (
+          <div style={{ fontSize: '12px' }}>
+            {results.packets_captured && (
+              <p style={{ color: '#4ade80', margin: '4px 0' }}>
+                📦 {results.packets_captured} paquets capturés
+              </p>
+            )}
+            {results.file_size && (
+              <p style={{ color: '#60a5fa', margin: '4px 0' }}>
+                💾 {Math.round(results.file_size / 1024)} KB
+              </p>
+            )}
+          </div>
+        );
+
+      case 'nmap':
+        return (
+          <div style={{ fontSize: '12px' }}>
+            {results.summary && (
+              <p style={{ color: '#4ade80', margin: '4px 0' }}>{results.summary}</p>
+            )}
+            {results.detailed_ports && (
+              <p style={{ color: '#fbbf24', margin: '4px 0' }}>
+                🔍 {results.detailed_ports.filter(p => p.state === 'open').length} ports ouverts
+              </p>
+            )}
+          </div>
+        );
+
+      case 'nikto':
+        return (
+          <div style={{ fontSize: '12px' }}>
+            {results.summary && (
+              <p style={{ color: '#4ade80', margin: '4px 0' }}>{results.summary}</p>
+            )}
+            {results.vulnerabilities && (
+              <p style={{ color: '#ef4444', margin: '4px 0' }}>
+                🚨 {results.vulnerabilities.length} vulnérabilité(s)
+              </p>
+            )}
+          </div>
+        );
+
+      case 'hydra':
+        return (
+          <div style={{ fontSize: '12px' }}>
+            {results.summary && (
+              <p style={{ color: results.success ? '#4ade80' : '#fbbf24', margin: '4px 0' }}>
+                {results.summary}
+              </p>
+            )}
+            {results.credentials_found && results.credentials_found.length > 0 && (
+              <p style={{ color: '#ef4444', margin: '4px 0' }}>
+                🔓 {results.credentials_found.length} credential(s)
+              </p>
+            )}
+          </div>
+        );
+
+      case 'metasploit':
+        return (
+          <div style={{ fontSize: '12px' }}>
+            {results.summary && (
+              <p style={{ color: results.success ? '#4ade80' : '#fbbf24', margin: '4px 0' }}>
+                {results.summary}
+              </p>
+            )}
+            {results.sessions && results.sessions.length > 0 && (
+              <p style={{ color: '#ef4444', margin: '4px 0' }}>
+                🎯 {results.sessions.length} session(s)
+              </p>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const filteredHistory = getFilteredHistory();
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '400px',
+        flexDirection: 'column'
+      }}>
+        <Loader size={32} color={theme.colors.accent.primary} />
+        <p style={{ color: theme.colors.accent.primary, marginTop: '16px' }}>
+          🔄 Chargement de l'historique...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* En-tête avec filtres */}
+      <Card>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <History size={24} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '20px' }}>
+              Historique des Scans & Captures
+            </h2>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Badge variant="success">{filteredHistory.length} résultat(s)</Badge>
+            <Button size="sm" onClick={loadHistory}>🔄 Actualiser</Button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: '6px', display: 'block' }}>
+              🔍 Filtrer par outil:
+            </label>
+            <Select
+              options={[
+                { value: 'all', label: 'Tous les outils' },
+                { value: 'nmap', label: '🔍 Nmap' },
+                { value: 'nikto', label: '🕷️ Nikto' },
+                { value: 'hydra', label: '🔨 Hydra' },
+                { value: 'metasploit', label: '💣 Metasploit' },
+                { value: 'tcpdump', label: '📡 tcpdump' }
+              ]}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label style={{ color: theme.colors.text.secondary, fontSize: '13px', marginBottom: '6px', display: 'block' }}>
+              📅 Trier par:
+            </label>
+            <Select
+              options={[
+                { value: 'newest', label: 'Plus récent' },
+                { value: 'oldest', label: 'Plus ancien' },
+                { value: 'tool', label: 'Outil' },
+                { value: 'status', label: 'Statut' }
+              ]}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${theme.colors.status.error}`,
+            borderRadius: theme.borderRadius.md,
+            color: '#ff6b6b'
+          }}>
+            ❌ {error}
+          </div>
+        )}
+      </Card>
+
+      {/* Liste des tâches */}
+      {filteredHistory.length === 0 ? (
+        <Card style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+          <h3 style={{ color: theme.colors.text.primary, margin: '0 0 8px 0' }}>
+            Aucun historique trouvé
+          </h3>
+          <p style={{ color: theme.colors.text.muted, margin: 0 }}>
+            {filter === 'all' 
+              ? "Lancez des scans pour voir l'historique ici"
+              : `Aucun scan ${filter} trouvé. Essayez un autre filtre.`
+            }
+          </p>
+        </Card>
+      ) : (
+        filteredHistory.map((task, index) => (
+          <Card key={`${task.task_id}-${index}`}>
+            {/* En-tête de la tâche */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '15px'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, color: theme.colors.text.primary, fontSize: '16px' }}>
+                  {getToolIcon(task.tool)} {task.tool.toUpperCase()}
+                </h3>
+                <p style={{ margin: '5px 0', color: theme.colors.text.muted, fontSize: '12px', fontFamily: 'monospace' }}>
+                  {task.task_id}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <Badge 
+                  variant={task.status === 'completed' ? 'success' : task.status === 'failed' ? 'error' : 'warning'}
+                >
+                  {getStatusIcon(task.status)} {task.status.toUpperCase()}
+                </Badge>
+                {task.completed_at && (
+                  <p style={{ margin: '5px 0', color: theme.colors.text.muted, fontSize: '10px' }}>
+                    {new Date(task.completed_at).toLocaleString('fr-FR')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Cible */}
+            {task.data?.target && (
+              <div style={{ marginBottom: '10px' }}>
+                <span style={{ color: theme.colors.text.secondary, fontSize: '12px' }}>
+                  🎯 Cible: <strong style={{ color: theme.colors.text.primary }}>{task.data.target}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Résultats */}
+            {task.data?.results && (
+              <div style={{ marginBottom: '15px' }}>
+                {renderTaskResults(task.tool, task.data.results)}
+              </div>
+            )}
+
+            {/* Détails techniques */}
+            {task.data && (
+              <div style={{ 
+                background: 'rgba(0,0,0,0.2)', 
+                borderRadius: theme.borderRadius.md, 
+                padding: '10px',
+                marginBottom: '15px'
+              }}>
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted }}>
+                  {task.data.execution_time && <span>⏱️ {task.data.execution_time} </span>}
+                  {task.data.tool_version && <span>🔧 {task.data.tool_version}</span>}
+                </div>
+                {task.data.command && (
+                  <div style={{ 
+                    fontFamily: 'monospace', 
+                    fontSize: '10px', 
+                    color: theme.colors.text.secondary,
+                    marginTop: '4px',
+                    wordBreak: 'break-all'
+                  }}>
+                    ⚡ {task.data.command}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Gestionnaire de téléchargement */}
+            <DownloadManager 
+              taskId={task.task_id} 
+              taskData={task.data} 
+              taskStatus={task.status} 
+            />
+          </Card>
+        ))
+      )}
+    </div>
+  );
+};
 
 // ================================
 // MODULE TCPDUMP
@@ -3651,17 +4181,7 @@ const PachaPentestSuite = () => {
       case 'nikto':
         return <NiktoTab />;
       case 'history':
-        return (
-          <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
-            <div style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>📊</div>
-            <div style={{ color: theme.colors.text.primary, fontSize: '18px', marginBottom: theme.spacing.sm }}>
-              Historique des Scans
-            </div>
-            <div style={{ color: theme.colors.text.muted }}>
-              Vos scans sont sauvegardés automatiquement
-            </div>
-          </Card>
-        );
+        return <HistoryTab />;
       case 'hydra':
         return <HydraTab />;
       case 'metasploit':
