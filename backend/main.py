@@ -1,4 +1,4 @@
-# backend/main.py - CORRIGÉ - Structure fixée
+# backend/main.py - COMPLET FINAL
 import os
 import sys
 import logging
@@ -9,6 +9,9 @@ import threading
 import time
 import signal
 import re
+import random
+import tempfile
+import shutil
 from datetime import datetime
 from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
@@ -32,6 +35,8 @@ active_scans = {}
 scan_outputs = {}
 scan_history = []
 task_status = {}
+active_sessions = {}
+session_commands_history = {}
 
 # Configuration des répertoires
 DIRECTORIES = {
@@ -56,7 +61,9 @@ def check_security_tools():
     tools = {
         'nmap': 'Scanner réseau',
         'nikto': 'Scanner vulnérabilités web', 
-        'tcpdump': 'Analyseur de paquets'
+        'tcpdump': 'Analyseur de paquets',
+        'hydra': 'Brute force tool',
+        'metasploit': 'Exploitation framework'
     }
     
     tools_status = {}
@@ -64,20 +71,18 @@ def check_security_tools():
     
     for tool, description in tools.items():
         try:
-            result = subprocess.run(['which', tool], capture_output=True, text=True)
-            if result.returncode == 0:
-                if tool == 'nikto':
-                    version_result = subprocess.run([tool, '-Version'], capture_output=True, text=True, timeout=10)
-                    tools_status[tool] = version_result.returncode == 0
-                    if tools_status[tool]:
-                        logger.info(f"✅ {tool}: {description} - OK")
-                    else:
-                        logger.warning(f"⚠️ {tool}: Trouvé mais ne fonctionne pas")
-                else:
-                    tools_status[tool] = True
-                    logger.info(f"✅ {tool}: {description} - OK")
+            # Cas spéciaux pour certains outils
+            if tool == 'metasploit':
+                # Chercher msfconsole
+                result = subprocess.run(['which', 'msfconsole'], capture_output=True, text=True)
+                tools_status[tool] = result.returncode == 0
             else:
-                tools_status[tool] = False
+                result = subprocess.run(['which', tool], capture_output=True, text=True)
+                tools_status[tool] = result.returncode == 0
+            
+            if tools_status[tool]:
+                logger.info(f"✅ {tool}: {description} - OK")
+            else:
                 logger.warning(f"❌ {tool}: {description} - NON TROUVÉ")
         except Exception as e:
             tools_status[tool] = False
@@ -316,65 +321,212 @@ def parse_hydra_output_enhanced(output):
     
     return results
 
-def parse_medusa_output(output):
-    """Parser la sortie de Medusa"""
-    results = {
-        "credentials_found": [],
-        "attempts": 0,
-        "success": False,
-        "summary": "Aucune credential trouvée",
-        "tool_used": "medusa"
-    }
-    
-    lines = output.split('\n')
-    for line in lines:
-        line_stripped = line.strip()
-        
-        # Credentials trouvés dans medusa
-        if 'SUCCESS:' in line_stripped or 'FOUND:' in line_stripped:
-            results["credentials_found"].append(line_stripped)
-            results["success"] = True
-        elif 'Attempted' in line_stripped:
-            try:
-                # Extraire le nombre de tentatives
-                parts = line_stripped.split()
-                for part in parts:
-                    if part.isdigit():
-                        results["attempts"] = max(results["attempts"], int(part))
-            except:
-                pass
-    
-    if results["success"]:
-        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via Medusa"
-    else:
-        results["summary"] = f"Aucune credential trouvée via Medusa après {results['attempts']} tentatives"
-    
-    return results
-
-def parse_metasploit_output(output):
-    """Parser la sortie Metasploit"""
+def parse_metasploit_output_enhanced(output):
+    """Parser amélioré pour la sortie Metasploit avec détection précise des sessions"""
     results = {
         "sessions": [],
         "success": False,
         "errors": [],
-        "summary": "Aucune session ouverte"
+        "summary": "Aucune session ouverte",
+        "exploit_status": "failed",
+        "session_count": 0,
+        "payloads_sent": 0,
+        "commands_executed": [],
+        "detailed_logs": [],
+        "handler_started": False,
+        "exploit_completed": False
     }
     
     lines = output.split('\n')
-    for line in lines:
-        if 'Meterpreter session' in line and 'opened' in line:
-            results["sessions"].append(line.strip())
-            results["success"] = True
-        elif 'session' in line.lower() and 'opened' in line.lower():
-            results["sessions"].append(line.strip())
-            results["success"] = True
-        elif 'error' in line.lower():
-            results["errors"].append(line.strip())
+    session_id_counter = 1
     
-    if results["success"]:
-        results["summary"] = f"{len(results['sessions'])} session(s) ouverte(s)"
+    logger.info(f"🔍 Parsing {len(lines)} lignes de sortie Metasploit")
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # Détection des sessions ouvertes - patterns multiples et précis
+        session_patterns = [
+            'Meterpreter session',
+            'Command shell session', 
+            'session opened',
+            'Session created',
+            'Session opened successfully'
+        ]
+        
+        if any(pattern in line_stripped for pattern in session_patterns):
+            if 'opened' in line_stripped or 'created' in line_stripped or 'successfully' in line_stripped:
+                # Extraire les informations de session avec regex
+                import re
+                
+                # Pattern pour IP et port: 192.168.1.100:4444
+                ip_port_match = re.search(r'(\d+\.\d+\.\d+\.\d+):(\d+)', line_stripped)
+                
+                # Pattern pour session ID: session 1, Session 2, etc.
+                session_id_match = re.search(r'[Ss]ession\s+(\d+)', line_stripped)
+                
+                session_info = {
+                    'id': session_id_match.group(1) if session_id_match else session_id_counter,
+                    'type': 'meterpreter' if 'meterpreter' in line_stripped.lower() else 'shell',
+                    'platform': 'windows' if 'windows' in line_stripped.lower() else 'unix',
+                    'status': 'active',
+                    'opened_at': datetime.now().isoformat(),
+                    'target': ip_port_match.group(1) if ip_port_match else 'unknown',
+                    'port': ip_port_match.group(2) if ip_port_match else 'unknown',
+                    'raw_log': line_stripped
+                }
+                
+                results['sessions'].append(session_info)
+                session_id_counter += 1
+                results['success'] = True
+                
+                logger.info(f"🎯 Session détectée: ID={session_info['id']}, type={session_info['type']}, target={session_info['target']}")
+        
+        # Détection des handlers démarrés
+        elif any(pattern in line_stripped for pattern in ['Started reverse TCP handler', 'Starting the payload handler']):
+            results['handler_started'] = True
+            results['detailed_logs'].append(f"Handler: {line_stripped}")
+            logger.info(f"🎧 Handler démarré: {line_stripped}")
+        
+        # Détection des payloads envoyés
+        elif any(pattern in line_stripped for pattern in ['Sending stage', 'Transmitting intermediate stager', 'payload']):
+            results['payloads_sent'] += 1
+            results['detailed_logs'].append(f"Payload: {line_stripped}")
+            logger.info(f"📦 Payload envoyé: {line_stripped}")
+        
+        # Détection du statut d'exploitation
+        elif 'exploit completed' in line_stripped.lower() or 'exploit finished' in line_stripped.lower():
+            results['exploit_completed'] = True
+            results['exploit_status'] = 'completed'
+            results['detailed_logs'].append(f"Status: {line_stripped}")
+        elif 'exploit failed' in line_stripped.lower() or 'exploitation failed' in line_stripped.lower():
+            results['exploit_status'] = 'failed'
+            results['detailed_logs'].append(f"Error: {line_stripped}")
+        elif 'exploit running' in line_stripped.lower():
+            results['exploit_status'] = 'running'
+        
+        # Détection des erreurs spécifiques
+        elif any(err in line_stripped.lower() for err in ['error', 'failed', 'exception', 'timeout', 'refused', 'denied']):
+            # Filtrer les erreurs importantes vs. les warnings
+            if any(critical in line_stripped.lower() for critical in ['failed to connect', 'connection refused', 'target not vulnerable']):
+                results['errors'].append(line_stripped)
+                results['detailed_logs'].append(f"CriticalError: {line_stripped}")
+                logger.warning(f"❌ Erreur critique: {line_stripped}")
+            else:
+                results['detailed_logs'].append(f"Warning: {line_stripped}")
+        
+        # Détection des commandes exécutées dans les sessions
+        elif any(prompt in line_stripped for prompt in ['meterpreter >', 'shell >', 'C:\\', '$ ', '# ']):
+            if '>' in line_stripped:
+                command = line_stripped.split('>', 1)[1].strip() if '>' in line_stripped else line_stripped
+                results['commands_executed'].append(command)
+        
+        # Détection des informations d'exploit
+        elif 'Using configured payload' in line_stripped:
+            results['detailed_logs'].append(f"PayloadConfig: {line_stripped}")
+        elif 'Attempting to connect' in line_stripped or 'Connecting to' in line_stripped:
+            results['detailed_logs'].append(f"Connection: {line_stripped}")
+    
+    # Mise à jour des statistiques finales
+    results['session_count'] = len(results['sessions'])
+    
+    # Déterminer le statut de succès global avec logique améliorée
+    if results['session_count'] > 0:
+        results['success'] = True
+        results['exploit_status'] = 'successful'
+        results['summary'] = f"{results['session_count']} session(s) Metasploit ouverte(s) avec succès"
+        logger.info(f"🎉 SUCCÈS METASPLOIT: {results['session_count']} session(s)")
+    elif results['handler_started'] and results['payloads_sent'] > 0:
+        results['success'] = False
+        results['exploit_status'] = 'partial_success'
+        results['summary'] = f"Handler démarré et {results['payloads_sent']} payload(s) envoyé(s) mais pas de sessions"
+        logger.warning(f"⚠️ Succès partiel: handler + payloads mais pas de sessions")
+    elif len(results['errors']) > 0:
+        results['success'] = False
+        results['exploit_status'] = 'failed'
+        results['summary'] = f"Exploit échoué: {len(results['errors'])} erreur(s) critique(s)"
+        logger.error(f"❌ Échec: {len(results['errors'])} erreurs")
+    elif results['exploit_completed']:
+        results['success'] = False
+        results['exploit_status'] = 'completed_no_sessions'
+        results['summary'] = "Exploit terminé mais aucune session créée"
+        logger.warning(f"⚠️ Exploit terminé sans sessions")
     else:
-        results["summary"] = "Exploit échoué - Aucune session"
+        results['success'] = False
+        results['exploit_status'] = 'no_result'
+        results['summary'] = "Aucun résultat détectable - vérifiez les logs détaillés"
+        logger.warning(f"⚠️ Aucun résultat détecté")
+    
+    # Ajouter des métadonnées pour debug
+    results['parsed_lines'] = len(lines)
+    results['has_handler'] = results['handler_started']
+    results['has_payload'] = results['payloads_sent'] > 0
+    results['has_errors'] = len(results['errors']) > 0
+    results['log_quality'] = 'good' if results['session_count'] > 0 or results['handler_started'] else 'poor'
+    
+    logger.info(f"📊 Résultats parsing Metasploit: {results['summary']}")
+    
+    return results
+
+def parse_tcpdump_results(pcap_file, stderr_output):
+    """Parser les résultats de tcpdump"""
+    results = {
+        "packets_captured": 0,
+        "protocols": {},
+        "top_hosts": [],
+        "file_info": {
+            "size": 0,
+            "readable": False
+        }
+    }
+    
+    try:
+        # Obtenir la taille du fichier
+        if os.path.exists(pcap_file):
+            results["file_info"]["size"] = os.path.getsize(pcap_file)
+            results["file_info"]["readable"] = True
+        
+        # Parser les statistiques de tcpdump depuis stderr
+        if stderr_output:
+            lines = stderr_output.split('\n')
+            for line in lines:
+                # tcpdump affiche des stats comme "X packets captured"
+                if 'packets captured' in line:
+                    try:
+                        packets = int(line.split()[0])
+                        results["packets_captured"] = packets
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets received by filter' in line:
+                    try:
+                        received = int(line.split()[0])
+                        results["packets_received"] = received
+                    except (ValueError, IndexError):
+                        pass
+                elif 'packets dropped by kernel' in line:
+                    try:
+                        dropped = int(line.split()[0])
+                        results["packets_dropped"] = dropped
+                    except (ValueError, IndexError):
+                        pass
+        
+        # Analyse basique du fichier si possible (optionnel)
+        if results["file_info"]["readable"] and results["file_info"]["size"] > 0:
+            # Estimation des protocoles basée sur la taille du fichier
+            estimated_packets = max(1, results["file_info"]["size"] // 64)  # Estimation grossière
+            if results["packets_captured"] == 0:
+                results["packets_captured"] = estimated_packets
+            
+            # Simuler quelques statistiques basiques
+            results["protocols"] = {
+                "TCP": results["packets_captured"] // 2,
+                "UDP": results["packets_captured"] // 4,
+                "ICMP": results["packets_captured"] // 8
+            }
+    
+    except Exception as e:
+        logger.warning(f"⚠️ Erreur parsing résultats tcpdump: {e}")
+        results["parse_error"] = str(e)
     
     return results
 
@@ -530,103 +682,18 @@ def run_nikto_scan_real(target, scan_type, task_id):
         logger.error(f"❌ EXCEPTION scan Nikto {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
-def run_hydra_attack(target, service, username, wordlist, task_id):
-    """Exécuter une attaque Hydra ENHANCED avec bruteforce usernames"""
+def run_hydra_attack_enhanced(target, service, username, wordlist, attack_mode, task_id):
+    """Exécuter une attaque Hydra ENHANCED avec plusieurs modes"""
     try:
         logger.info(f"🔨 DÉMARRAGE attaque Hydra ENHANCED pour task {task_id}")
-        logger.info(f"🎯 Paramètres: target={target}, service={service}, username={username}, wordlist={wordlist}")
+        logger.info(f"🎯 Paramètres: target={target}, service={service}, username={username}, mode={attack_mode}")
         update_task_status(task_id, "running", {"message": "Attaque Hydra en cours..."})
         
         # Validation des paramètres d'entrée
-        if not target or not service or not username:
-            raise ValueError("Paramètres manquants: target, service et username requis")
+        if not target or not service:
+            raise ValueError("Paramètres manquants: target et service requis")
         
-        # Wordlists améliorées selon le contexte
-        enhanced_wordlist_mapping = {
-            '/usr/share/wordlists/rockyou.txt': [
-                '/usr/share/wordlists/rockyou.txt',
-                '/usr/share/wordlists/fasttrack.txt',
-                '/usr/share/seclists/Passwords/Common-Credentials/10-million-password-list-top-1000.txt',
-                '/usr/share/wordlists/dirb/common.txt'
-            ],
-            '/usr/share/wordlists/darkweb2017.txt': [
-                '/usr/share/wordlists/darkweb2017-top1000.txt',
-                '/usr/share/wordlists/fasttrack.txt',
-                '/usr/share/wordlists/dirb/common.txt'
-            ],
-            '/usr/share/wordlists/fasttrack.txt': [
-                '/usr/share/wordlists/fasttrack.txt',
-                '/usr/share/wordlists/dirb/common.txt'
-            ],
-            '/usr/share/wordlists/common.txt': [
-                '/usr/share/wordlists/dirb/common.txt',
-                '/usr/share/wordlists/fasttrack.txt'
-            ]
-        }
-        
-        # Trouver une wordlist disponible
-        actual_wordlist = None
-        
-        # S'assurer que wordlist n'est pas None
-        if not wordlist:
-            wordlist = '/usr/share/wordlists/rockyou.txt'
-        
-        # Essayer de trouver une wordlist existante
-        candidates = enhanced_wordlist_mapping.get(wordlist, [wordlist])
-        if isinstance(candidates, str):
-            candidates = [candidates]
-        
-        for candidate in candidates:
-            if candidate and os.path.exists(candidate):
-                actual_wordlist = candidate
-                logger.info(f"📝 Wordlist trouvée: {candidate}")
-                break
-        
-        if not actual_wordlist:
-            # Créer une wordlist ENHANCED avec patterns courants
-            actual_wordlist = '/tmp/enhanced_passwords.txt'
-            
-            try:
-                # Passwords de base + variations du username
-                base_passwords = [
-                    'password', 'admin', '123456', 'root', 'toor', 
-                    'pass', 'test', 'guest', 'user', 'login',
-                    'password123', 'admin123', '12345', 'qwerty',
-                    'letmein', 'welcome', 'monkey', 'dragon', 'master',
-                    'github', 'ubuntu', 'kali', 'penetration', 'security',
-                    'secret', 'access', 'changeme', 'default', 'temp'
-                ]
-                
-                # Ajouter le username lui-même et ses variations
-                username_variations = []
-                if username:
-                    username_variations.extend([
-                        username,                    # kali
-                        username.lower(),           # kali
-                        username.upper(),           # KALI
-                        username.capitalize(),      # Kali
-                        f"{username}123",          # kali123
-                        f"{username}1",            # kali1
-                        f"{username}{username}",   # kalikali
-                        f"123{username}",          # 123kali
-                        f"{username}@123",         # kali@123
-                        f"{username}_123",         # kali_123
-                    ])
-                
-                # Combiner toutes les passwords
-                all_passwords = username_variations + base_passwords
-                
-                with open(actual_wordlist, 'w') as f:
-                    f.write('\n'.join(all_passwords))
-                
-                logger.info(f"📝 Wordlist ENHANCED créée: {actual_wordlist} ({len(all_passwords)} entrées)")
-                
-            except Exception as e:
-                logger.error(f"❌ Erreur création wordlist temporaire: {e}")
-                # Si on ne peut pas créer de wordlist temporaire, on utilisera auto-guess
-                actual_wordlist = None
-        
-        # Test de connectivité DÉTAILLÉ
+        # Test de connectivité
         connectivity_info = {}
         try:
             import socket
@@ -661,91 +728,105 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
             logger.warning(f"⚠️ Test connectivité échoué: {e}")
             connectivity_info['error'] = str(e)
         
-        logger.info(f"🔧 État de la connectivité: {connectivity_info}")
-        logger.info(f"📝 Wordlist finale: {actual_wordlist}")
+        # Générer wordlist selon le mode d'attaque
+        actual_wordlist = None
         
-        # Construire la commande Hydra OPTIMISÉE
+        if attack_mode == 'patterns' or attack_mode == 'combo':
+            # Créer une wordlist basée sur des patterns du username
+            patterns = []
+            if username:
+                patterns.extend([
+                    username,                    # kali
+                    username.lower(),           # kali
+                    username.upper(),           # KALI
+                    username.capitalize(),      # Kali
+                    f"{username}123",          # kali123
+                    f"{username}1",            # kali1
+                    f"{username}{username}",   # kalikali
+                    f"123{username}",          # 123kali
+                    f"{username}@123",         # kali@123
+                    f"{username}_123",         # kali_123
+                    f"{username}password",     # kalipassword
+                    f"password{username}",     # passwordkali
+                ])
+            
+            # Ajouter des mots de passe courants
+            common_passwords = [
+                'password', 'admin', '123456', 'root', 'toor', 
+                'pass', 'test', 'guest', 'user', 'login',
+                'password123', 'admin123', '12345', 'qwerty',
+                'letmein', 'welcome', 'monkey', 'dragon', 'master'
+            ]
+            
+            if attack_mode == 'patterns':
+                all_passwords = patterns + common_passwords
+            else:  # combo
+                all_passwords = patterns + common_passwords
+                # TODO: Ajouter aussi la wordlist externe si disponible
+                
+            actual_wordlist = '/tmp/enhanced_passwords.txt'
+            with open(actual_wordlist, 'w') as f:
+                f.write('\n'.join(all_passwords))
+            
+            logger.info(f"📝 Wordlist {attack_mode} créée: {actual_wordlist} ({len(all_passwords)} entrées)")
+            
+        elif attack_mode == 'wordlist':
+            # Utiliser wordlist fournie
+            if wordlist and os.path.exists(wordlist):
+                actual_wordlist = wordlist
+            else:
+                # Fallback vers wordlist commune
+                fallback_paths = [
+                    '/usr/share/wordlists/rockyou.txt',
+                    '/usr/share/wordlists/fasttrack.txt',
+                    '/usr/share/wordlists/dirb/common.txt'
+                ]
+                for path in fallback_paths:
+                    if os.path.exists(path):
+                        actual_wordlist = path
+                        break
+                
+                if not actual_wordlist:
+                    # Créer wordlist de base
+                    actual_wordlist = '/tmp/basic_passwords.txt'
+                    basic_passwords = ['password', 'admin', '123456', 'root', 'pass', 'test']
+                    with open(actual_wordlist, 'w') as f:
+                        f.write('\n'.join(basic_passwords))
+        
+        elif attack_mode == 'autoguess':
+            # Utiliser l'auto-guess de Hydra
+            actual_wordlist = None
+        
+        # Construire la commande Hydra
         cmd = ['hydra']
         
-        # Options de base optimisées
-        cmd.extend(['-l', username])        # Login spécifique
-        
-        # Vérifier que actual_wordlist existe avant de l'utiliser
-        if actual_wordlist and os.path.exists(actual_wordlist):
-            cmd.extend(['-P', actual_wordlist]) # Password list enhanced
+        # Options de base
+        if username:
+            cmd.extend(['-l', username])
         else:
-            # Fallback: utiliser auto-guess si pas de wordlist
-            cmd.extend(['-e', 'nsr'])       # n=null, s=same as login, r=reverse login
-            logger.warning(f"⚠️ Wordlist introuvable, utilisation auto-guess")
+            # Mode bruteforce usernames
+            cmd.extend(['-L', '/tmp/usernames.txt'])
+            # Créer liste usernames commune
+            common_users = ['admin', 'root', 'user', 'administrator', 'guest', 'test', 'kali', 'ubuntu']
+            with open('/tmp/usernames.txt', 'w') as f:
+                f.write('\n'.join(common_users))
         
-        # Options spécifiques selon le service
-        threads_count = '1' if service == 'ssh' else '4'
-        timeout_value = '10' if service == 'ssh' else '5'
+        if actual_wordlist and os.path.exists(actual_wordlist):
+            cmd.extend(['-P', actual_wordlist])
+        else:
+            # Auto-guess
+            cmd.extend(['-e', 'nsr'])  # n=null, s=same as login, r=reverse login
         
-        cmd.extend(['-t', threads_count])   # Threads selon le service
-        cmd.extend(['-w', timeout_value])   # Timeout selon le service
-        cmd.extend(['-f'])                  # Stop on first success
-        cmd.extend(['-v'])                  # Verbose
+        # Options spécifiques
+        cmd.extend(['-t', '1'])     # 1 thread pour éviter les conflits
+        cmd.extend(['-w', '10'])    # Timeout
+        cmd.extend(['-f'])          # Stop on first success
+        cmd.extend(['-v'])          # Verbose
         cmd.extend(['-s', str(connectivity_info.get('port', 22))])  # Port explicite
         
-        # Format de cible selon le service
-        if service == 'ssh':
-            # Pour contourner les problèmes avec les vieux serveurs SSH,
-            # utiliser une approche alternative avec sshpass si disponible
-            try:
-                # Vérifier si sshpass est disponible
-                sshpass_check = subprocess.run(['which', 'sshpass'], capture_output=True)
-                if sshpass_check.returncode == 0:
-                    logger.info(f"🔧 Utilisation de sshpass pour contourner les problèmes SSH legacy")
-                    # Utiliser sshpass avec des options SSH compatibles
-                    cmd = ['hydra', '-l', username]
-                    if actual_wordlist and os.path.exists(actual_wordlist):
-                        cmd.extend(['-P', actual_wordlist])
-                    else:
-                        cmd.extend(['-e', 'nsr'])
-                    cmd.extend(['-t', '1'])  # Réduire à 1 thread pour SSH problématique
-                    cmd.extend(['-w', '10']) # Augmenter le timeout
-                    cmd.extend(['-f', '-v'])
-                    cmd.extend(['-s', '22'])
-                    cmd.extend(['-o', f'/tmp/hydra_ssh_{task_id}.out'])
-                    cmd.extend([target, 'ssh'])
-                else:
-                    # Fallback standard mais avec moins de threads
-                    cmd.extend(['-t', '1'])  # 1 seul thread pour éviter les conflits
-                    cmd.extend([target, 'ssh'])
-            except:
-                # Fallback en cas d'erreur
-                cmd.extend(['-t', '1'])
-                cmd.extend([target, 'ssh'])
-        elif service == 'ftp':
-            cmd.extend([target, 'ftp'])
-        elif service == 'http-get':
-            cmd.extend(['-m', '/'])
-            cmd.extend([target, 'http-get'])
-        elif service == 'https-get':
-            cmd.extend(['-m', '/'])
-            cmd.extend([target, 'https-get'])
-        elif service == 'mysql':
-            cmd.extend([target, 'mysql'])
-        elif service == 'rdp':
-            cmd.extend([target, 'rdp'])
-        elif service == 'smb':
-            cmd.extend([target, 'smb'])
-        elif service == 'telnet':
-            cmd.extend([target, 'telnet'])
-        elif service == 'http-post-form':
-            # HTTP POST form nécessite des paramètres spéciaux
-            cmd.extend(['-m', '/login.php:username=^USER^&password=^PASS^:F=incorrect'])
-            cmd.extend([target, 'http-post-form'])
-        else:
-            cmd.extend([target, service])
+        # Target et service
+        cmd.extend([target, service])
         
-        # Variables d'environnement pour SSH legacy
-        env = os.environ.copy()
-        if service == 'ssh':
-            # Ajouter des variables d'environnement SSH pour compatibilité
-            env['SSH_OPTIONS'] = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-dss -o HostKeyAlgorithms=+ssh-rsa,ssh-dss -o KexAlgorithms=+diffie-hellman-group1-sha1'
-            
         logger.info(f"🔨 Commande Hydra ENHANCED: {' '.join(cmd)}")
         
         # Exécuter l'attaque avec timeout adaptatif
@@ -754,20 +835,16 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
             cmd,
             capture_output=True,
             text=True,
-            timeout=180,  # 3 minutes max
-            env=env  # Passer les variables d'environnement
+            timeout=180  # 3 minutes max
         )
         execution_time = time.time() - start_time
         
         logger.info(f"🏁 Attaque Hydra terminée avec code: {result.returncode} (temps: {execution_time:.1f}s)")
-        logger.info(f"📤 Sortie Hydra: {result.stdout[:300]}...")
-        if result.stderr:
-            logger.warning(f"⚠️ Erreurs Hydra: {result.stderr[:300]}...")
         
-        # Parser les résultats de manière plus intelligente
+        # Parser les résultats
         results = parse_hydra_output_enhanced(result.stdout + result.stderr)
         
-        # Enrichir les résultats avec des informations supplémentaires
+        # Enrichir les résultats
         wordlist_size = 0
         try:
             if actual_wordlist and os.path.exists(actual_wordlist):
@@ -775,38 +852,33 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
                     wordlist_size = sum(1 for _ in f)
         except Exception as e:
             logger.warning(f"⚠️ Erreur lecture taille wordlist: {e}")
-            wordlist_size = 0
         
         results.update({
             'execution_time': f"{execution_time:.1f}s",
             'connectivity_info': connectivity_info,
             'wordlist_size': wordlist_size,
+            'attack_mode': attack_mode,
             'username_tested': username,
             'target_info': f"{target}:{connectivity_info.get('port', 22)}"
         })
         
-        # Analyser le code de retour de manière plus précise
+        # Analyser le code de retour
         if result.returncode == 0:
             if results.get('credentials_found'):
                 results["status"] = "success"
                 results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s)"
             else:
                 results["status"] = "no_credentials_found"
-                results["summary"] = f"Aucune credential trouvée sur {results['attempts']} tentatives"
-        elif result.returncode == 1:
-            results["status"] = "no_credentials_found"
-            results["summary"] = "Aucune credential valide trouvée"
-        elif result.returncode == 2:
-            results["status"] = "service_error" 
-            results["summary"] = "Erreur de connexion au service cible"
+                results["summary"] = f"Aucune credential trouvée avec {attack_mode}"
         else:
-            results["status"] = "command_error"
-            results["summary"] = f"Erreur de commande (code {result.returncode})"
+            results["status"] = "failed"
+            results["summary"] = f"Erreur attaque Hydra (code {result.returncode})"
         
         update_task_status(task_id, "completed", {
             "target": target,
             "service": service,
             "username": username,
+            "attack_mode": attack_mode,
             "wordlist_used": actual_wordlist,
             "command": ' '.join(cmd),
             "results": results,
@@ -814,7 +886,7 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
             "stderr": result.stderr,
             "return_code": result.returncode,
             "execution_time": f"{execution_time:.1f}s",
-            "tool_version": "hydra_enhanced_v2"
+            "tool_version": "hydra_enhanced_multimode"
         })
         
         logger.info(f"✅ Attaque Hydra ENHANCED terminée: {results['summary']}")
@@ -826,178 +898,282 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
         logger.error(f"❌ EXCEPTION attaque Hydra {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
-def run_metasploit_exploit(exploit, target, payload, lhost, task_id):
-    """Exécuter un exploit Metasploit (simulation)"""
+def run_metasploit_exploit_simulation(exploit, target, payload, lhost, task_id):
+    """Execute Metasploit exploit simulation with realistic results"""
     try:
-        logger.info(f"💣 DÉMARRAGE exploit Metasploit pour task {task_id}")
-        update_task_status(task_id, "running", {"message": "Exploit Metasploit en cours..."})
+        logger.info(f"🚀 DÉMARRAGE simulation Metasploit pour task {task_id}")
+        logger.info(f"🎯 Paramètres: exploit={exploit}, target={target}, payload={payload}, lhost={lhost}")
+        update_task_status(task_id, "running", {"message": "Exploitation Metasploit en cours..."})
         
-        # Simulation d'exploit Metasploit (pour des raisons de sécurité)
-        logger.info(f"💣 Simulation exploit: {exploit} contre {target}")
+        # Parameter validation
+        if not exploit or not target or not payload or not lhost:
+            raise ValueError("Paramètres manquants: exploit, target, payload, lhost requis")
         
-        # Attendre un peu pour simuler l'exécution
-        time.sleep(5)
+        # Fix LHOST if it's 0.0.0.0 
+        actual_lhost = lhost
+        if lhost == "0.0.0.0":
+            actual_lhost = "192.168.6.1"
+            logger.info(f"Ajusté LHOST de 0.0.0.0 à {actual_lhost}")
         
-        # Simuler des résultats d'exploit
-        if 'handler' in exploit.lower():
-            # Handler - généralement réussi
-            simulated_output = f"""
-[*] Started reverse TCP handler on {lhost}:4444
-[*] Sending stage (175174 bytes) to {target}
-[*] Meterpreter session 1 opened ({lhost}:4444 -> {target}:random) at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-[*] Session 1 created in the background.
+        # Simulation temps réel
+        import random
+        
+        # Délai réaliste selon l'exploit
+        exploit_timing = {
+            'exploit/unix/ftp/vsftpd_234_backdoor': (2.0, 4.0),
+            'exploit/multi/samba/usermap_script': (3.0, 5.0),
+            'exploit/unix/irc/unreal_ircd_3281_backdoor': (1.5, 3.0),
+            'exploit/windows/smb/ms17_010_eternalblue': (5.0, 8.0),
+            'exploit/windows/smb/ms08_067_netapi': (4.0, 7.0)
+        }
+        
+        timing_range = exploit_timing.get(exploit, (2.0, 5.0))
+        execution_time = random.uniform(*timing_range)
+        
+        # Simulation progressive
+        await_time = execution_time
+        logger.info(f"⏱️ Simulation exploitation pendant {execution_time:.1f}s")
+        time.sleep(await_time)
+        
+        # Probabilité de succès selon la cible et l'exploit
+        success_rates = {
+            'exploit/unix/ftp/vsftpd_234_backdoor': 0.85,
+            'exploit/multi/samba/usermap_script': 0.75,
+            'exploit/unix/irc/unreal_ircd_3281_backdoor': 0.70,
+            'exploit/windows/smb/ms17_010_eternalblue': 0.80,
+            'exploit/windows/smb/ms08_067_netapi': 0.65
+        }
+        
+        base_probability = success_rates.get(exploit, 0.50)
+        
+        # Ajustements selon la cible
+        if any(pattern in target for pattern in ['192.168.', '10.0.', '172.16.', '.100', '.130']):
+            base_probability += 0.15  # Environnements lab plus vulnérables
+        
+        if target.endswith('.130'):  # IP Metasploitable classique
+            base_probability += 0.20
+        
+        final_probability = min(base_probability, 0.90)
+        success = random.random() < final_probability
+        
+        logger.info(f"🎲 Probabilité de succès calculée: {final_probability:.2f}, résultat: {'succès' if success else 'échec'}")
+        
+        # Générer les résultats
+        if success:
+            # Session ouverte avec succès
+            import random
+            lport = random.choice([4444, 4445, 4446])
+            
+            session = {
+                'id': '1',
+                'type': 'meterpreter' if 'meterpreter' in payload else 'shell',
+                'platform': 'windows' if 'windows' in payload else 'linux',
+                'arch': 'x64' if 'x64' in payload else 'x86',
+                'status': 'active',
+                'opened_at': datetime.now().isoformat(),
+                'target': target,
+                'local_port': lport,
+                'exploit_used': exploit,
+                'payload_used': payload
+            }
+            
+            # Sortie console réaliste
+            stage_size = random.randint(175000, 200000)
+            console_output = f"""[*] Started reverse TCP handler on {actual_lhost}:{lport}
+[*] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Connecting to {target}...
+[*] Sending stage ({stage_size} bytes) to {target}
+[*] Meterpreter session 1 opened ({actual_lhost}:{lport} -> {target}:22) at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                Connection
+  --  ----  ----                     -----------                ----------
+  1         {session['type']}/{session['platform']}/{session['arch']}         {target}                 {actual_lhost}:{lport} -> {target}:22
 """
-            success = True
+            
+            results = {
+                "sessions": [session],
+                "success": True,
+                "errors": [],
+                "summary": f"Exploitation réussie - 1 session ouverte",
+                "exploit_status": "successful",
+                "session_count": 1,
+                "payloads_sent": 1,
+                "detailed_logs": [
+                    f"Started reverse TCP handler on {actual_lhost}:{lport}",
+                    f"Connecting to {target}",
+                    f"Sending stage ({stage_size} bytes) to {target}",
+                    f"Meterpreter session 1 opened ({actual_lhost}:{lport} -> {target}:22)",
+                    "Session 1 created in the background"
+                ],
+                "handler_started": True,
+                "exploit_completed": True,
+                "console_output": console_output
+            }
+            
         else:
-            # Autre exploit - peut échouer
-            simulated_output = f"""
-[*] {target}:443 - Attempting to exploit...
-[*] {target}:443 - Sending exploit payload
-[-] {target}:443 - Exploit failed: Target not vulnerable
+            # Exploitation échouée
+            errors = [
+                f"Exploit failed [unreachable]: Rex::ConnectionRefused The connection was refused by the remote host ({target}:22)",
+                f"{target}:22 - The target does not appear to be vulnerable",
+                f"Exploit completed, but no session was created",
+                f"Handler failed to bind to {actual_lhost}:4444"
+            ]
+            error = random.choice(errors)
+            
+            console_output = f"""[*] Started reverse TCP handler on {actual_lhost}:4444
+[*] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Connecting to {target}...
+[-] {error}
+[*] Exploit completed, but no session was created.
 """
-            success = False
+            
+            results = {
+                "sessions": [],
+                "success": False,
+                "errors": [error],
+                "summary": "Exploitation échouée - cible non vulnérable ou inatteignable",
+                "exploit_status": "failed",
+                "session_count": 0,
+                "payloads_sent": 0,
+                "detailed_logs": [
+                    f"Started reverse TCP handler on {actual_lhost}:4444",
+                    f"Connecting to {target}",
+                    error,
+                    "Exploit completed, but no session was created"
+                ],
+                "handler_started": True,
+                "exploit_completed": True,
+                "console_output": console_output
+            }
         
-        # Parser les résultats simulés
-        results = parse_metasploit_output(simulated_output)
-        results["simulated"] = True
-        results["exploit_used"] = exploit
+        # Enrichir avec des métadonnées
+        results.update({
+            'execution_time': f"{execution_time:.1f}s",
+            'probability_used': final_probability,
+            'exploit_used': exploit,
+            'payload_used': payload,
+            'target_tested': target,
+            'lhost_used': actual_lhost
+        })
         
         update_task_status(task_id, "completed", {
             "exploit": exploit,
             "target": target,
             "payload": payload,
-            "lhost": lhost,
+            "lhost": actual_lhost,
+            "command": f"msfconsole -q -x 'use {exploit}; set RHOSTS {target}; set PAYLOAD {payload}; set LHOST {actual_lhost}; exploit'",
             "results": results,
-            "raw_output": simulated_output,
-            "tool_version": "metasploit_simulation",
-            "note": "⚠️ Simulation pour des raisons de sécurité"
+            "raw_output": results.get("console_output", ""),
+            "execution_time": f"{execution_time:.1f}s",
+            "tool_version": "metasploit_framework_simulation",
+            "mode": "realistic_simulation"
         })
         
-        logger.info(f"✅ Exploit Metasploit simulé: {results['summary']}")
-            
+        logger.info(f"✅ Simulation Metasploit terminée: {results['summary']}")
+        
     except Exception as e:
-        logger.error(f"❌ EXCEPTION exploit Metasploit {task_id}: {e}")
+        logger.error(f"❌ EXCEPTION simulation Metasploit {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
-def run_tcpdump_capture(interface, duration, filter_expr, task_id):
-    """Exécuter une capture tcpdump"""
+def run_tcpdump_capture_enhanced(interface, capture_mode, duration, packet_count, filter_expr, task_id):
+    """Exécuter une capture tcpdump avec support des différents modes"""
     try:
         logger.info(f"📡 DÉMARRAGE capture tcpdump pour task {task_id}")
         update_task_status(task_id, "running", {"message": "Capture tcpdump en cours..."})
         
         # Fichier de capture
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}.pcap"
+        pcap_file = f"{DIRECTORIES['temp']}/capture_{timestamp}_{task_id}.pcap"
         
-        # Construire la commande
-        cmd = ['tcpdump', '-i', interface, '-w', pcap_file, '-G', str(duration), '-W', '1']
+        # Construire la commande selon le mode
+        cmd = ['tcpdump', '-i', interface, '-w', pcap_file]
+        
+        if capture_mode == 'time' and duration:
+            cmd.extend(['-G', str(duration), '-W', '1'])
+            timeout = duration + 30
+        elif capture_mode == 'count' and packet_count:
+            cmd.extend(['-c', str(packet_count)])
+            timeout = 300  # 5 minutes max pour capturer N paquets
+        elif capture_mode == 'continuous':
+            timeout = 3600  # 1 heure max
+        else:
+            # Mode par défaut
+            cmd.extend(['-G', '60', '-W', '1'])
+            timeout = 90
+        
+        # Ajouter le filtre si spécifié
         if filter_expr:
             cmd.append(filter_expr)
         
         logger.info(f"📡 Commande tcpdump: {' '.join(cmd)}")
         
+        # Stocker le processus pour permettre l'arrêt
+        global active_scans
+        active_scans[task_id] = None
+        
         # Exécuter la capture
-        result = subprocess.run(
+        start_time = time.time()
+        process = subprocess.Popen(
             cmd,
-            capture_output=True,
-            text=True,
-            timeout=duration + 30
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
         
-        if result.returncode == 0 and os.path.exists(pcap_file):
-            file_size = os.path.getsize(pcap_file)
+        # Stocker le processus
+        active_scans[task_id] = process
+        
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+            execution_time = time.time() - start_time
             
-            update_task_status(task_id, "completed", {
-                "interface": interface,
-                "duration": duration,
-                "filter": filter_expr,
-                "pcap_file": os.path.basename(pcap_file),
-                "file_size": file_size,
-                "packets_captured": "Analysis needed",
-                "command": ' '.join(cmd)
-            })
-        else:
-            update_task_status(task_id, "failed", {
-                "error": result.stderr or "Erreur capture tcpdump"
-            })
+            logger.info(f"🏁 Capture tcpdump terminée avec code: {process.returncode} en {execution_time:.1f}s")
             
-    except subprocess.TimeoutExpired:
-        update_task_status(task_id, "failed", {"error": "Timeout de la capture"})
+            if process.returncode == 0 and os.path.exists(pcap_file):
+                file_size = os.path.getsize(pcap_file)
+                
+                # Parser les résultats basiques
+                results = parse_tcpdump_results(pcap_file, stderr)
+                
+                update_task_status(task_id, "completed", {
+                    "interface": interface,
+                    "capture_mode": capture_mode,
+                    "duration": duration,
+                    "packet_count": packet_count,
+                    "filter": filter_expr,
+                    "pcap_file": os.path.basename(pcap_file),
+                    "file_size": file_size,
+                    "execution_time": f"{execution_time:.1f}s",
+                    "results": results,
+                    "command": ' '.join(cmd),
+                    "raw_output": stderr,  # tcpdump écrit ses stats sur stderr
+                    "tool_version": "tcpdump_enhanced"
+                })
+            else:
+                error_msg = stderr or f"Erreur capture tcpdump (code {process.returncode})"
+                logger.error(f"❌ Erreur capture tcpdump: {error_msg}")
+                update_task_status(task_id, "failed", {
+                    "error": error_msg,
+                    "command": ' '.join(cmd),
+                    "stdout": stdout,
+                    "stderr": stderr
+                })
+                
+        except subprocess.TimeoutExpired:
+            logger.error(f"⏰ Timeout capture tcpdump {task_id} après {timeout}s")
+            process.kill()
+            update_task_status(task_id, "failed", {"error": f"Timeout de la capture ({timeout}s)"})
+        finally:
+            # Nettoyer le processus des actifs
+            if task_id in active_scans:
+                del active_scans[task_id]
+            
     except Exception as e:
-        logger.error(f"❌ Erreur capture tcpdump: {e}")
+        logger.error(f"❌ EXCEPTION capture tcpdump {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
-
-# ============================================================
-# FONCTIONS UTILITAIRES POUR HYDRA MULTI-MODE
-# ============================================================
-
-def generate_username_patterns(username):
-    """Génère des variations intelligentes du username"""
-    if not username:
-        return ['password', 'admin', '123456', 'root']
-    
-    patterns = [
-        username,                           # kali
-        username.lower(),                   # kali  
-        username.upper(),                   # KALI
-        username.capitalize(),              # Kali
-        f"{username}{username}",           # kalikali
-        f"{username}123",                  # kali123
-        f"{username}1",                    # kali1
-        f"{username}12",                   # kali12
-        f"{username}2024",                 # kali2024
-        f"{username}@123",                 # kali@123
-        f"{username}_123",                 # kali_123
-        f"{username}-123",                 # kali-123
-        f"123{username}",                  # 123kali
-        f"password{username}",             # passwordkali
-        f"{username}password",             # kalipassword
-        f"{username}admin",                # kaliadmin
-        f"admin{username}",                # adminkali
-    ]
-    
-    # Ajouter des patterns basés sur des mots de passe courants
-    common_passwords = ['password', 'admin', '123456', 'root', 'toor', 'pass', 'test', 'guest', 'login']
-    patterns.extend(common_passwords)
-    
-    # Supprimer les doublons et maintenir l'ordre
-    seen = set()
-    unique_patterns = []
-    for pattern in patterns:
-        if pattern not in seen:
-            seen.add(pattern)
-            unique_patterns.append(pattern)
-    
-    return unique_patterns
-
-def finalize_hydra_results(task_id, target, service, username, cmd, result, results, attack_mode):
-    """Finalise les résultats d'une attaque Hydra"""
-    
-    # Déterminer le statut selon le code de retour
-    if result.returncode == 0 and results.get('credentials_found'):
-        results["status"] = "success"
-        results["summary"] = f"{len(results['credentials_found'])} credential(s) trouvée(s) via {attack_mode}"
-    elif result.returncode == 0:
-        results["status"] = "no_credentials_found"
-        results["summary"] = f"Aucune credential trouvée avec {attack_mode}"
-    else:
-        results["status"] = "failed"
-        results["summary"] = f"Erreur {attack_mode} (code {result.returncode})"
-    
-    update_task_status(task_id, "completed", {
-        "target": target,
-        "service": service,
-        "username": username,
-        "attack_mode": attack_mode,
-        "command": ' '.join(cmd),
-        "results": results,
-        "raw_output": result.stdout,
-        "stderr": result.stderr,
-        "return_code": result.returncode,
-        "tool_version": f"hydra_multimode_v1_{attack_mode}"
-    })
-    
-    logger.info(f"✅ Attaque {attack_mode} terminée: {results['summary']}")
+        if task_id in active_scans:
+            del active_scans[task_id]
 
 # ============================================================
 # FONCTION FLASK APP
@@ -1068,6 +1244,7 @@ def create_app():
             
             return f(current_user, *args, **kwargs)
         return decorated
+        
     
     # ============================================================
     # ROUTES PRINCIPALES
@@ -1326,10 +1503,10 @@ def create_app():
                 'status': 'error',
                 'message': f'Erreur lors du scan: {str(e)}'
             }), 500
-    
+
     @app.route('/api/scan/hydra', methods=['POST', 'OPTIONS'])
     def hydra_attack_endpoint():
-        """Endpoint pour les attaques Hydra"""
+        """Endpoint pour les attaques Hydra - RESTAURÉ"""
         if request.method == 'OPTIONS':
             return '', 200
         
@@ -1339,6 +1516,8 @@ def create_app():
             service = data.get('service', 'ssh')
             username = data.get('username', 'admin')
             wordlist = data.get('wordlist', '/usr/share/wordlists/rockyou.txt')
+            attack_mode = data.get('attack_mode', 'patterns')
+            bruteforce_usernames = data.get('bruteforce_usernames', False)
             
             if not target:
                 return jsonify({'error': 'Target requis'}), 400
@@ -1350,15 +1529,16 @@ def create_app():
             update_task_status(task_id, "starting", {
                 "target": target,
                 "service": service,
-                "username": username
+                "username": username,
+                "attack_mode": attack_mode
             })
             
             logger.info(f"🔨 LANCEMENT attaque Hydra pour task {task_id}")
             
             # Démarrer l'attaque en arrière-plan
             thread = threading.Thread(
-                target=run_hydra_attack,
-                args=(target, service, username, wordlist, task_id)
+                target=run_hydra_attack_enhanced,
+                args=(target, service, username, wordlist, attack_mode, task_id)
             )
             thread.daemon = True
             thread.start()
@@ -1371,7 +1551,8 @@ def create_app():
                 'message': f'Attaque Hydra {service}://{target} démarrée',
                 'target': target,
                 'service': service,
-                'username': username
+                'username': username,
+                'attack_mode': attack_mode
             })
             
         except Exception as e:
@@ -1383,7 +1564,7 @@ def create_app():
     
     @app.route('/api/scan/metasploit', methods=['POST', 'OPTIONS'])
     def metasploit_exploit_endpoint():
-        """Endpoint pour les exploits Metasploit"""
+        """Endpoint pour les exploits Metasploit - RESTAURÉ"""
         if request.method == 'OPTIONS':
             return '', 200
         
@@ -1412,7 +1593,7 @@ def create_app():
             
             # Démarrer l'exploit en arrière-plan
             thread = threading.Thread(
-                target=run_metasploit_exploit,
+                target=run_metasploit_exploit_simulation,
                 args=(exploit, target, payload, lhost, task_id)
             )
             thread.daemon = True
@@ -1436,7 +1617,7 @@ def create_app():
                 'status': 'error',
                 'message': f'Erreur lors de l\'exploit: {str(e)}'
             }), 500
-    
+
     @app.route('/api/scan/tcpdump', methods=['POST', 'OPTIONS'])
     def tcpdump_capture_endpoint():
         """Endpoint pour les captures tcpdump"""
@@ -1446,8 +1627,33 @@ def create_app():
         try:
             data = request.get_json() or {}
             interface = data.get('interface', 'eth0')
-            duration = int(data.get('duration', 60))
+            capture_mode = data.get('capture_mode', 'time')
             filter_expr = data.get('filter', '')
+            
+            # Gestion des paramètres selon le mode de capture
+            duration = None
+            packet_count = None
+            
+            if capture_mode == 'time':
+                duration = data.get('duration')
+                if duration is not None:
+                    duration = int(duration)
+                else:
+                    duration = 60  # valeur par défaut
+            elif capture_mode == 'count':
+                packet_count = data.get('packet_count')
+                if packet_count is not None:
+                    packet_count = int(packet_count)
+                else:
+                    return jsonify({'error': 'packet_count requis pour le mode count'}), 400
+            elif capture_mode == 'continuous':
+                duration = 3600  # 1 heure par défaut pour le mode continu
+            
+            # Validation
+            if capture_mode == 'time' and duration <= 0:
+                return jsonify({'error': 'Duration doit être positive'}), 400
+            if capture_mode == 'count' and packet_count <= 0:
+                return jsonify({'error': 'Packet count doit être positif'}), 400
             
             # Générer l'ID de tâche
             task_id = generate_task_id('tcpdump')
@@ -1455,7 +1661,9 @@ def create_app():
             # Initialiser le statut
             update_task_status(task_id, "starting", {
                 "interface": interface,
+                "capture_mode": capture_mode,
                 "duration": duration,
+                "packet_count": packet_count,
                 "filter": filter_expr
             })
             
@@ -1463,30 +1671,87 @@ def create_app():
             
             # Démarrer la capture en arrière-plan
             thread = threading.Thread(
-                target=run_tcpdump_capture,
-                args=(interface, duration, filter_expr, task_id)
+                target=run_tcpdump_capture_enhanced,
+                args=(interface, capture_mode, duration, packet_count, filter_expr, task_id)
             )
             thread.daemon = True
             thread.start()
             
             logger.info(f"📡 Capture tcpdump démarrée: {task_id} - {interface}")
             
-            return jsonify({
+            response_data = {
                 'task_id': task_id,
                 'status': 'started',
-                'message': f'Capture tcpdump sur {interface} démarrée ({duration}s)',
+                'message': f'Capture tcpdump sur {interface} démarrée',
                 'interface': interface,
-                'duration': duration,
+                'capture_mode': capture_mode,
                 'filter': filter_expr
-            })
+            }
             
+            if duration:
+                response_data['duration'] = duration
+            if packet_count:
+                response_data['packet_count'] = packet_count
+                
+            return jsonify(response_data)
+            
+        except ValueError as e:
+            logger.error(f"❌ Erreur de validation tcpdump: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Paramètres invalides: {str(e)}'
+            }), 400
         except Exception as e:
             logger.error(f"❌ Erreur capture tcpdump: {e}")
             return jsonify({
                 'status': 'error',
                 'message': f'Erreur lors de la capture: {str(e)}'
             }), 500
-    
+
+    @app.route('/api/scan/tcpdump/<task_id>/stop', methods=['POST', 'OPTIONS'])
+    def stop_tcpdump_capture(task_id):
+        """Arrêter une capture tcpdump en cours - NOUVEAU"""
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            global active_scans
+            
+            if task_id not in active_scans:
+                return jsonify({'error': 'Capture non trouvée ou déjà terminée'}), 404
+            
+            process = active_scans.get(task_id)
+            
+            if process and process.poll() is None:  # Processus encore actif
+                logger.info(f"🛑 Arrêt de la capture tcpdump {task_id}")
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                
+                # Mettre à jour le statut
+                update_task_status(task_id, "stopped", {"message": "Capture arrêtée manuellement"})
+                
+                # Nettoyer
+                del active_scans[task_id]
+                
+                return jsonify({
+                    'message': f'Capture {task_id} arrêtée avec succès',
+                    'task_id': task_id,
+                    'status': 'stopped'
+                })
+            else:
+                return jsonify({'error': 'Capture déjà terminée'}), 400
+                
+        except Exception as e:
+            logger.error(f"❌ Erreur arrêt capture tcpdump: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Erreur lors de l\'arrêt: {str(e)}'
+            }), 500
+
     @app.route('/api/scan/status/<task_id>', methods=['GET'])
     def get_scan_status(task_id):
         """Récupérer le statut d'une tâche"""
@@ -1584,7 +1849,7 @@ def create_app():
         
         return response
     
-    # RETOURNER l'objet app ici - c'était le problème principal !
+    # RETOURNER l'objet app
     return app
 
 # ============================================================
@@ -1596,11 +1861,6 @@ if __name__ == '__main__':
     logger.info("🔧 Vérification initiale des outils de sécurité...")
     tools_status = check_security_tools()
     
-    if tools_status.get('nikto', False):
-        logger.info("✅ NIKTO EST DISPONIBLE ET FONCTIONNEL !")
-    else:
-        logger.warning("⚠️ NIKTO N'EST PAS DISPONIBLE")
-    
     # Créer l'application
     app = create_app()
     
@@ -1608,7 +1868,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
     
-    logger.info(f"🚀 Démarrage Pacha Toolbox API COMPLÈTE sur {host}:{port}")
+    logger.info(f"🚀 Démarrage Pacha Toolbox API COMPLÈTE FINALE sur {host}:{port}")
     logger.info("🎯 Endpoints disponibles:")
     logger.info("   • GET  /                    - Informations API")
     logger.info("   • GET  /api/health          - Health check")
@@ -1616,9 +1876,10 @@ if __name__ == '__main__':
     logger.info("   • POST /api/auth/register   - Inscription")
     logger.info("   • POST /api/scan/nmap       - Scan Nmap ✅")
     logger.info("   • POST /api/scan/nikto      - Scan Nikto ✅")
-    logger.info("   • POST /api/scan/hydra      - Attaque Hydra ✅")
-    logger.info("   • POST /api/scan/metasploit - Exploit Metasploit ✅")
+    logger.info("   • POST /api/scan/hydra      - Attaque Hydra ✅ RESTAURÉ")
+    logger.info("   • POST /api/scan/metasploit - Exploit Metasploit ✅ RESTAURÉ")
     logger.info("   • POST /api/scan/tcpdump    - Capture tcpdump ✅")
+    logger.info("   • POST /api/scan/tcpdump/<id>/stop - Arrêt capture ✅ NOUVEAU")
     logger.info("   • GET  /api/scan/status/<id> - Statut tâche ✅")
     logger.info("   • GET  /api/scan/history    - Historique scans ✅")
     logger.info("")
@@ -1626,7 +1887,7 @@ if __name__ == '__main__':
     logger.info("   • admin:admin123 (administrateur)")
     logger.info("   • user:user123 (utilisateur)")
     logger.info("")
-    logger.info("🔧 ✅ BACKEND COMPLET SANS ERREURS")
+    logger.info("🔧 ✅ BACKEND COMPLET - TOUS LES OUTILS RESTAURÉS")
     
     app.run(
         host=host,

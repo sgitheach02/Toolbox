@@ -1,4 +1,442 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+const Terminal = ({ size = 16, color = "#666" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+    <line x1="8" y1="21" x2="16" y2="21"></line>
+    <line x1="12" y1="17" x2="12" y2="21"></line>
+  </svg>
+);
+
+const SessionInteraction = ({ session, onClose }) => {
+  const [command, setCommand] = useState('');
+  const [output, setOutput] = useState([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const terminalRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Commandes prédéfinies selon le type de session
+  const getAvailableCommands = () => {
+    if (session.type === 'meterpreter') {
+      return [
+        { cmd: 'sysinfo', desc: 'System information' },
+        { cmd: 'getuid', desc: 'Get current user ID' },
+        { cmd: 'pwd', desc: 'Print working directory' },
+        { cmd: 'ls', desc: 'List directory contents' },
+        { cmd: 'ps', desc: 'List processes' },
+        { cmd: 'shell', desc: 'Drop to system shell' },
+        { cmd: 'download', desc: 'Download file from target' },
+        { cmd: 'upload', desc: 'Upload file to target' },
+        { cmd: 'screenshot', desc: 'Take screenshot' },
+        { cmd: 'webcam_snap', desc: 'Take webcam photo' },
+        { cmd: 'keyscan_start', desc: 'Start keylogger' },
+        { cmd: 'migrate', desc: 'Migrate to another process' },
+        { cmd: 'getsystem', desc: 'Attempt to elevate privileges' },
+        { cmd: 'hashdump', desc: 'Dump password hashes' }
+      ];
+    } else {
+      return [
+        { cmd: 'whoami', desc: 'Current user' },
+        { cmd: 'pwd', desc: 'Current directory' },
+        { cmd: 'ls -la', desc: 'List files' },
+        { cmd: 'ps aux', desc: 'List processes' },
+        { cmd: 'uname -a', desc: 'System information' },
+        { cmd: 'ifconfig', desc: 'Network configuration' },
+        { cmd: 'netstat -tlnp', desc: 'Network connections' },
+        { cmd: 'cat /etc/passwd', desc: 'System users' },
+        { cmd: 'cat /etc/shadow', desc: 'Password hashes' },
+        { cmd: 'find / -perm -4000 2>/dev/null', desc: 'SUID binaries' }
+      ];
+    }
+  };
+
+  // Simuler l'exécution de commandes
+  const simulateCommandExecution = async (cmd) => {
+    const responses = {
+      // Meterpreter commands
+      'sysinfo': `Computer        : ${session.target}
+OS              : Linux Ubuntu 18.04
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x64/linux`,
+
+      'getuid': `Server username: uid=0, gid=0, euid=0, egid=0`,
+      
+      'pwd': `/root`,
+      
+      'ls': `drwxr-xr-x 1 root root  4096 Jun 19 12:30 .
+drwxr-xr-x 1 root root  4096 Jun 19 12:30 ..
+-rw-r--r-- 1 root root   220 Jun 19 12:30 .bash_logout
+-rw-r--r-- 1 root root  3771 Jun 19 12:30 .bashrc
+-rw-r--r-- 1 root root   807 Jun 19 12:30 .profile
+drwx------ 2 root root  4096 Jun 19 12:30 .ssh
+-rw------- 1 root root  1024 Jun 19 12:30 flag.txt`,
+
+      'ps': `PID   Name                 Arch  Session  User          Path
+---   ----                 ----  -------  ----          ----
+1     systemd              x64   0        root          /sbin/init
+2     kthreadd             x64   0        root          
+450   vsftpd               x64   0        root          /usr/sbin/vsftpd
+1234  bash                 x64   0        root          /bin/bash`,
+
+      // Shell commands
+      'whoami': 'root',
+      
+      'uname -a': 'Linux metasploitable 4.4.0-142-generic #168-Ubuntu SMP x86_64 GNU/Linux',
+      
+      'ls -la': `total 28
+drwxr-xr-x 1 root root  4096 Jun 19 12:30 .
+drwxr-xr-x 1 root root  4096 Jun 19 12:30 ..
+-rw-r--r-- 1 root root   220 Jun 19 12:30 .bash_logout
+-rw-r--r-- 1 root root  3771 Jun 19 12:30 .bashrc
+-rw-r--r-- 1 root root   807 Jun 19 12:30 .profile
+-rw------- 1 root root  1024 Jun 19 12:30 flag.txt`,
+
+      'ps aux': `USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.1  37700  5516 ?        Ss   12:30   0:01 /sbin/init
+root       450  0.0  0.0  53272  3084 ?        Ss   12:30   0:00 /usr/sbin/vsftpd
+root      1234  0.0  0.0  18508  3312 pts/0    Ss   12:35   0:00 /bin/bash`,
+
+      'ifconfig': `eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.154  netmask 255.255.255.0  broadcast 192.168.6.255
+        ether 02:42:c0:a8:06:9a  txqueuelen 0  (Ethernet)`,
+
+      'cat /etc/passwd': `root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/usr/sbin/nologin
+msfadmin:x:1000:1000:msfadmin,,,:/home/msfadmin:/bin/bash`,
+
+      'hashdump': `Administrator:500:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+msfadmin:1000:aad3b435b51404eeaad3b435b51404ee:e52cac67419a9a224a3b108f3fa6cb6d:::`,
+
+      'getsystem': `...got system via technique 1 (Named Pipe Impersonation (In Memory/Admin)).`,
+
+      'screenshot': `Screenshot saved to: /tmp/screenshot_20250619_123845.jpeg`,
+
+      'download': `[*] downloading: /etc/passwd -> /tmp/passwd
+[*] download successful`,
+
+      'migrate': `[*] Migrating from 1234 to 2345...
+[*] Migration completed successfully.`,
+    };
+
+    // Commandes avec paramètres
+    if (cmd.startsWith('cat ')) {
+      const file = cmd.split(' ')[1];
+      if (file === '/etc/shadow') {
+        return `root:$6$salt$encrypted_hash:18947:0:99999:7:::
+daemon:*:18947:0:99999:7:::
+msfadmin:$6$salt$another_hash:18947:0:99999:7:::`;
+      }
+      return `cat: ${file}: Permission denied`;
+    }
+
+    if (cmd.startsWith('find ')) {
+      return `/usr/bin/passwd
+/usr/bin/sudo
+/bin/su
+/usr/bin/pkexec`;
+    }
+
+    // Réponse par défaut
+    return responses[cmd] || `Command '${cmd}' executed successfully.
+Output would appear here in a real session.`;
+  };
+
+  const executeCommand = async () => {
+    if (!command.trim() || isExecuting) return;
+
+    setIsExecuting(true);
+    const currentCommand = command.trim();
+    
+    // Ajouter la commande à l'historique
+    setCommandHistory(prev => [...prev, currentCommand]);
+    
+    // Ajouter la commande à la sortie
+    const timestamp = new Date().toLocaleTimeString();
+    setOutput(prev => [...prev, {
+      type: 'command',
+      content: `meterpreter > ${currentCommand}`,
+      timestamp
+    }]);
+
+    setCommand('');
+    setHistoryIndex(-1);
+
+    try {
+      // Simuler le délai d'exécution
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+      
+      const result = await simulateCommandExecution(currentCommand);
+      
+      setOutput(prev => [...prev, {
+        type: 'output',
+        content: result,
+        timestamp: new Date().toLocaleTimeString()
+      }]);
+
+    } catch (error) {
+      setOutput(prev => [...prev, {
+        type: 'error',
+        content: `Error: ${error.message}`,
+        timestamp: new Date().toLocaleTimeString()
+      }]);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      executeCommand();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length > 0 && historyIndex < commandHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCommand('');
+      }
+    }
+  };
+
+  // Auto-scroll vers le bas
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  // Focus sur l'input
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        width: '90%',
+        height: '90%',
+        maxWidth: '1200px',
+        backgroundColor: '#0a0a0a',
+        border: '2px solid #00ff88',
+        borderRadius: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 20px 40px rgba(0, 255, 136, 0.3)'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px',
+          borderBottom: '1px solid #333',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#1a1a1a'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Terminal size={20} color="#00ff88" />
+            <div>
+              <div style={{ color: '#00ff88', fontWeight: '700', fontSize: '16px' }}>
+                Session {session.id} - {session.target}
+              </div>
+              <div style={{ color: '#888', fontSize: '12px' }}>
+                {session.type} | {session.platform} | {session.arch || 'x86'}
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              padding: '4px 8px',
+              backgroundColor: 'rgba(0, 255, 136, 0.2)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              color: '#00ff88',
+              fontWeight: '600'
+            }}>
+              ACTIVE
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ff6b6b',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px 8px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Terminal Area */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Commands Sidebar */}
+          <div style={{
+            width: '250px',
+            backgroundColor: '#151515',
+            borderRight: '1px solid #333',
+            padding: '16px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ color: '#00ff88', fontWeight: '600', marginBottom: '12px', fontSize: '14px' }}>
+              📋 Quick Commands
+            </div>
+            {getAvailableCommands().slice(0, 10).map((cmdInfo, index) => (
+              <div
+                key={index}
+                onClick={() => setCommand(cmdInfo.cmd)}
+                style={{
+                  padding: '8px',
+                  marginBottom: '4px',
+                  backgroundColor: '#222',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  border: '1px solid transparent'
+                }}
+                onMouseEnter={(e) => e.target.style.borderColor = '#00ff88'}
+                onMouseLeave={(e) => e.target.style.borderColor = 'transparent'}
+              >
+                <div style={{ color: '#00ff88', fontSize: '12px', fontFamily: 'monospace' }}>
+                  {cmdInfo.cmd}
+                </div>
+                <div style={{ color: '#888', fontSize: '10px' }}>
+                  {cmdInfo.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Terminal Output */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div
+              ref={terminalRef}
+              style={{
+                flex: 1,
+                backgroundColor: '#000',
+                padding: '16px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                overflowY: 'auto',
+                color: '#e5e5e5'
+              }}
+            >
+              {/* Initial message */}
+              <div style={{ color: '#00ff88', marginBottom: '16px' }}>
+                Meterpreter session {session.id} opened ({session.target}) at {session.opened_at}
+                <br />
+                Type 'help' for available commands, or use the sidebar for quick access.
+              </div>
+
+              {/* Command output */}
+              {output.map((item, index) => (
+                <div key={index} style={{ marginBottom: '8px' }}>
+                  {item.type === 'command' ? (
+                    <div style={{ color: '#00ff88' }}>{item.content}</div>
+                  ) : item.type === 'error' ? (
+                    <div style={{ color: '#ff6b6b' }}>{item.content}</div>
+                  ) : (
+                    <div style={{ color: '#e5e5e5', whiteSpace: 'pre-wrap' }}>{item.content}</div>
+                  )}
+                </div>
+              ))}
+
+              {/* Loading indicator */}
+              {isExecuting && (
+                <div style={{ color: '#888', fontStyle: 'italic' }}>
+                  Executing command...
+                </div>
+              )}
+            </div>
+
+            {/* Command Input */}
+            <div style={{
+              padding: '16px',
+              borderTop: '1px solid #333',
+              backgroundColor: '#1a1a1a',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ color: '#00ff88', fontFamily: 'monospace' }}>
+                meterpreter &gt;
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isExecuting}
+                placeholder="Enter command..."
+                style={{
+                  flex: 1,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#e5e5e5',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+              />
+              <button
+                onClick={executeCommand}
+                disabled={!command.trim() || isExecuting}
+                style={{
+                  backgroundColor: '#00ff88',
+                  color: '#000',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  opacity: (!command.trim() || isExecuting) ? 0.5 : 1
+                }}
+              >
+                Execute
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ================================
 // CONFIGURATION API
@@ -1027,6 +1465,491 @@ const NmapTab = () => {
 };
 
 // ================================
+// MODULE METASPLOIT
+// ================================
+
+const MetasploitTab = () => {
+  const [exploit, setExploit] = useState('');
+  const [target, setTarget] = useState('');
+  const [payload, setPayload] = useState('');
+  const [lhost, setLhost] = useState('');
+  const [lport, setLport] = useState('4444');
+  const [exploitMode, setExploitMode] = useState('predefined');
+  const [selectedCategory, setSelectedCategory] = useState('web');
+  const [currentTaskId, setCurrentTaskId] = useState(null);
+  const [results, setResults] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [error, setError] = useState('');
+  const [activeSession, setActiveSession] = useState(null);
+
+  // 📂 CHARGEMENT INITIAL
+  useEffect(() => {
+    const savedResults = persistenceService.load('metasploit_results', []);
+    const savedForm = persistenceService.load('metasploit_form', {});
+    
+    setResults(savedResults);
+    if (savedForm.exploit) setExploit(savedForm.exploit);
+    if (savedForm.target) setTarget(savedForm.target);
+    if (savedForm.payload) setPayload(savedForm.payload);
+    if (savedForm.lhost) setLhost(savedForm.lhost);
+    
+    console.log('📂 Metasploit: Données restaurées');
+  }, []);
+
+  // 💾 SAUVEGARDE AUTO
+  useEffect(() => {
+    if (exploit || target || payload || lhost) {
+      persistenceService.save('metasploit_form', { exploit, target, payload, lhost });
+    }
+  }, [exploit, target, payload, lhost]);
+
+  useEffect(() => {
+    if (results.length > 0) {
+      persistenceService.save('metasploit_results', results.slice(0, 20));
+    }
+  }, [results]);
+
+  const exploitCategories = {
+    web: [
+      { value: 'exploit/multi/http/struts2_content_type_ognl', label: 'Apache Struts2 OGNL' },
+      { value: 'exploit/multi/http/apache_mod_cgi_bash_env_exec', label: 'Apache mod_cgi Bash Environment' },
+      { value: 'exploit/linux/http/php_cgi_arg_injection', label: 'PHP CGI Argument Injection' }
+    ],
+    windows: [
+      { value: 'exploit/windows/smb/ms17_010_eternalblue', label: 'MS17-010 EternalBlue SMB' },
+      { value: 'exploit/windows/smb/ms08_067_netapi', label: 'MS08-067 NetAPI' },
+      { value: 'exploit/windows/dcerpc/ms03_026_dcom', label: 'MS03-026 DCOM' }
+    ],
+    linux: [
+      { value: 'exploit/unix/ftp/vsftpd_234_backdoor', label: 'VSFTPD 2.3.4 Backdoor' },
+      { value: 'exploit/multi/samba/usermap_script', label: 'Samba "username map script"' },
+      { value: 'exploit/unix/irc/unreal_ircd_3281_backdoor', label: 'UnrealIRCd 3.2.8.1 Backdoor' }
+    ]
+  };
+
+  const payloadOptions = [
+    { value: 'windows/meterpreter/reverse_tcp', label: 'Windows Meterpreter Reverse TCP' },
+    { value: 'linux/x86/meterpreter/reverse_tcp', label: 'Linux x86 Meterpreter Reverse TCP' },
+    { value: 'linux/x64/meterpreter/reverse_tcp', label: 'Linux x64 Meterpreter Reverse TCP' },
+    { value: 'windows/shell/reverse_tcp', label: 'Windows Shell Reverse TCP' },
+    { value: 'linux/x86/shell/reverse_tcp', label: 'Linux x86 Shell Reverse TCP' },
+    { value: 'cmd/unix/reverse', label: 'Unix Command Shell' }
+  ];
+
+  const taskStatus = useTaskPolling(currentTaskId, useCallback((status) => {
+    if (status.status === 'completed') {
+      const newResult = {
+        id: currentTaskId,
+        exploit: exploit,
+        target: target,
+        payload: payload,
+        lhost: lhost,
+        timestamp: new Date().toLocaleString(),
+        status: 'completed',
+        results: status.data.results || {},
+        raw_output: status.data.raw_output,
+        sessions: status.data.results?.sessions || []
+      };
+      
+      setResults(prev => [newResult, ...prev]);
+      
+      // Ajouter les sessions trouvées
+      if (status.data.results?.sessions?.length > 0) {
+        setSessions(prev => [...status.data.results.sessions, ...prev]);
+      }
+      
+      setError('');
+    } else if (status.status === 'failed') {
+      setError(status.data.error || 'Erreur inconnue');
+    }
+    setCurrentTaskId(null);
+  }, [currentTaskId, exploit, target, payload, lhost]));
+
+  const startExploit = async () => {
+    if (!exploit || !target || !payload || !lhost) {
+      setError('Veuillez renseigner tous les champs requis');
+      return;
+    }
+
+    setError('');
+    try {
+      const response = await apiService.request('/scan/metasploit', {
+        method: 'POST',
+        body: JSON.stringify({ exploit, target, payload, lhost })
+      });
+      setCurrentTaskId(response.task_id);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const clearResults = () => {
+    setResults([]);
+    setSessions([]);
+    persistenceService.remove('metasploit_results');
+  };
+
+  // NOUVELLE FONCTION: Ouvrir interaction session
+  const openSessionInteraction = (session) => {
+    console.log('🔗 Ouverture interaction session:', session);
+    setActiveSession(session);
+  };
+
+  // NOUVELLE FONCTION: Fermer interaction session
+  const closeSessionInteraction = () => {
+    console.log('❌ Fermeture interaction session');
+    setActiveSession(null);
+  };
+
+  const isExploiting = currentTaskId && taskStatus?.status === 'running';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Crosshairs size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Metasploit Framework - Exploitation Engine
+            </h2>
+          </div>
+          {results.length > 0 && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+              <Badge variant="success">{results.length} sauvés</Badge>
+              <Button variant="danger" size="sm" onClick={clearResults}>🧹 Clear</Button>
+            </div>
+          )}
+        </div>
+
+        {/* Avertissement de sécurité */}
+        <div style={{
+          padding: theme.spacing.md,
+          backgroundColor: 'rgba(220, 38, 38, 0.1)',
+          border: `1px solid ${theme.colors.status.error}`,
+          borderRadius: theme.borderRadius.md,
+          marginBottom: theme.spacing.lg
+        }}>
+          <div style={{ color: theme.colors.status.error, fontWeight: '600', marginBottom: theme.spacing.sm }}>
+            ⚠️ AVERTISSEMENT CRITIQUE
+          </div>
+          <div style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
+            Metasploit Framework ne doit être utilisé QUE sur vos propres systèmes ou avec autorisation écrite explicite.
+            L'utilisation non autorisée constitue une violation de la loi et peut entraîner des poursuites pénales.
+          </div>
+        </div>
+
+        {isExploiting ? (
+          <div style={{
+            padding: theme.spacing.xl,
+            textAlign: 'center',
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <Loader size={32} color={theme.colors.accent.primary} />
+            <div style={{ color: theme.colors.text.primary, fontSize: '16px', fontWeight: '600', marginTop: theme.spacing.md }}>
+              💣 Exploitation Metasploit en cours...
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '14px', marginTop: theme.spacing.sm }}>
+              {exploit} contre {target}
+            </div>
+            <div style={{
+              marginTop: theme.spacing.md,
+              padding: theme.spacing.sm,
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              💾 Résultats sauvegardés automatiquement
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  📂 Catégorie {selectedCategory && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={[
+                    { value: 'web', label: '🌐 Exploits Web' },
+                    { value: 'windows', label: '🪟 Exploits Windows' },
+                    { value: 'linux', label: '🐧 Exploits Linux/Unix' }
+                  ]}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  placeholder="Catégorie d'exploits"
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  💣 Exploit {exploit && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={exploitCategories[selectedCategory] || []}
+                  value={exploit}
+                  onChange={(e) => setExploit(e.target.value)}
+                  placeholder="Choisir un exploit"
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🎯 Target {target && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Input
+                  placeholder="192.168.1.100 ou example.com"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  📦 Payload {payload && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={payloadOptions}
+                  value={payload}
+                  onChange={(e) => setPayload(e.target.value)}
+                  placeholder="Type de payload"
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🏠 LHOST {lhost && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Input
+                  placeholder="192.168.1.50 (votre IP)"
+                  value={lhost}
+                  onChange={(e) => setLhost(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🔌 LPORT
+                </label>
+                <Input
+                  placeholder="4444"
+                  value={lport}
+                  onChange={(e) => setLport(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div style={{
+                marginTop: theme.spacing.md,
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(220, 38, 38, 0.2)',
+                border: `1px solid ${theme.colors.status.error}`,
+                color: '#ff6b6b'
+              }}>
+                ❌ {error}
+              </div>
+            )}
+
+            <Button
+              onClick={startExploit}
+              disabled={!exploit || !target || !payload || !lhost}
+              variant="primary"
+              icon={Play}
+              fullWidth
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              💣 Start Metasploit Exploit
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {/* Sessions actives */}
+      {sessions.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            🔗 Sessions Actives ({sessions.length}) - Cliquez pour interagir
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: theme.spacing.md }}>
+            {sessions.slice(0, 5).map((session, index) => (
+              <div 
+                key={index} 
+                onClick={() => openSessionInteraction(session)}
+                style={{
+                  padding: theme.spacing.md,
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  borderRadius: theme.borderRadius.md,
+                  border: `2px solid ${theme.colors.status.success}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.borderColor = theme.colors.accent.primary;
+                  e.target.style.backgroundColor = 'rgba(0, 255, 136, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.borderColor = theme.colors.status.success;
+                  e.target.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  backgroundColor: theme.colors.accent.primary,
+                  color: '#000000',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase'
+                }}>
+                  🖱️ CLICK TO INTERACT
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.sm }}>
+                  <Badge variant="success">SESSION {session.id || index + 1}</Badge>
+                  <div style={{ fontSize: '12px', color: theme.colors.text.muted }}>
+                    {session.timestamp || new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: theme.spacing.sm }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Terminal size={16} color={theme.colors.accent.primary} />
+                    🎯 {session.target || target}
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '12px', marginTop: '4px' }}>
+                    Type: <strong>{session.type || 'shell'}</strong> | Platform: <strong>{session.platform || 'linux'}</strong>
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: theme.colors.text.muted, 
+                  fontFamily: 'monospace',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  padding: '4px 6px',
+                  borderRadius: '4px'
+                }}>
+                  Exploit: {session.exploit_used || exploit}
+                </div>
+
+                <div style={{ marginTop: theme.spacing.sm, display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {(session.type === 'meterpreter' ? 
+                    ['sysinfo', 'getuid', 'ps', 'hashdump'] : 
+                    ['whoami', 'uname -a', 'ps aux', 'ls -la']
+                  ).map(cmd => (
+                    <span key={cmd} style={{
+                      fontSize: '9px',
+                      padding: '2px 4px',
+                      backgroundColor: 'rgba(0, 255, 136, 0.2)',
+                      borderRadius: '3px',
+                      color: theme.colors.accent.primary
+                    }}>
+                      {cmd}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Résultats */}
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            💣 Metasploit Results ({results.length})
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="success">SAVED</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.target}</span>
+                <Badge variant="info">{result.exploit?.split('/').pop()}</Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: theme.spacing.sm }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: result.sessions?.length > 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${result.sessions?.length > 0 ? theme.colors.status.success : theme.colors.status.error}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🔗 Sessions
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.sessions?.length || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {/* Modal d'interaction session */}
+      {activeSession && (
+        <SessionInteraction
+          session={activeSession}
+          onClose={closeSessionInteraction}
+        />
+      )}
+    </div>
+  );
+};
+// ================================
 // MODULE HYDRA
 // ================================
 
@@ -1603,6 +2526,547 @@ const HydraTab = () => {
                   </div>
                   <div style={{ color: theme.colors.text.muted, fontSize: '11px' }}>
                     Target may be secure or wordlist insufficient
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
+
+// ================================
+// MODULE TCPDUMP
+// ================================
+
+const TcpdumpTab = () => {
+  const [interface_, setInterface_] = useState('');
+  const [filter, setFilter] = useState('');
+  const [duration, setDuration] = useState('60');
+  const [packetCount, setPacketCount] = useState('');
+  const [captureMode, setCaptureMode] = useState('time'); // 'time', 'count', 'continuous'
+  const [currentTaskId, setCurrentTaskId] = useState(null);
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState('');
+
+  // 📂 CHARGEMENT INITIAL
+  useEffect(() => {
+    const savedResults = persistenceService.load('tcpdump_results', []);
+    const savedForm = persistenceService.load('tcpdump_form', {});
+    
+    setResults(savedResults);
+    if (savedForm.interface_) setInterface_(savedForm.interface_);
+    if (savedForm.filter) setFilter(savedForm.filter);
+    if (savedForm.duration) setDuration(savedForm.duration);
+    if (savedForm.packetCount) setPacketCount(savedForm.packetCount);
+    if (savedForm.captureMode) setCaptureMode(savedForm.captureMode);
+    
+    console.log('📂 Tcpdump: Données restaurées');
+  }, []);
+
+  // 💾 SAUVEGARDE AUTO - FIXÉE
+  useEffect(() => {
+    if (interface_ || filter || duration !== '60' || packetCount || captureMode !== 'time') {
+      persistenceService.save('tcpdump_form', { 
+        interface_, 
+        filter, 
+        duration, 
+        packetCount, 
+        captureMode 
+      });
+    }
+  }, [interface_, filter, duration, packetCount, captureMode]);
+
+  useEffect(() => {
+    if (results.length > 0) {
+      persistenceService.save('tcpdump_results', results.slice(0, 20));
+    }
+  }, [results]);
+
+  const interfaces = [
+    { value: 'eth0', label: 'eth0 - Ethernet primaire' },
+    { value: 'wlan0', label: 'wlan0 - Interface WiFi' },
+    { value: 'lo', label: 'lo - Loopback' },
+    { value: 'any', label: 'any - Toutes interfaces' },
+    { value: 'tun0', label: 'tun0 - VPN Interface' }
+  ];
+
+  const filterPresets = [
+    { value: '', label: 'Aucun filtre (tout capturer)' },
+    { value: 'tcp port 80', label: 'HTTP Traffic (port 80)' },
+    { value: 'tcp port 443', label: 'HTTPS Traffic (port 443)' },
+    { value: 'tcp port 22', label: 'SSH Traffic (port 22)' },
+    { value: 'udp port 53', label: 'DNS Queries (port 53)' },
+    { value: 'icmp', label: 'ICMP Packets (ping)' },
+    { value: 'tcp port 21', label: 'FTP Traffic (port 21)' },
+    { value: 'tcp port 23', label: 'Telnet Traffic (port 23)' },
+    { value: 'host 192.168.1.1', label: 'Traffic vers/depuis gateway' },
+    { value: 'net 192.168.1.0/24', label: 'Trafic réseau local' }
+  ];
+
+  const taskStatus = useTaskPolling(currentTaskId, useCallback((status) => {
+    if (status.status === 'completed' || status.status === 'stopped') {
+      const newResult = {
+        id: currentTaskId,
+        interface: interface_,
+        filter: filter,
+        duration: duration,
+        packetCount: packetCount,
+        captureMode: captureMode,
+        timestamp: new Date().toLocaleString(),
+        status: status.status,
+        results: status.data.results || {},
+        raw_output: status.data.raw_output,
+        packets_captured: status.data.results?.packets_captured || 0,
+        protocols: status.data.results?.protocols || {},
+        top_hosts: status.data.results?.top_hosts || [],
+        command: status.data.command
+      };
+      
+      setResults(prev => [newResult, ...prev]);
+      setError('');
+      setCurrentTaskId(null);
+    } else if (status.status === 'failed') {
+      setError(status.data.error || 'Erreur inconnue');
+      setCurrentTaskId(null);
+    }
+  }, [currentTaskId, interface_, filter, duration, packetCount, captureMode]));
+
+  const startCapture = async () => {
+    if (!interface_) {
+      setError('Veuillez sélectionner une interface réseau');
+      return;
+    }
+
+    if (captureMode === 'time' && (!duration || duration < 1)) {
+      setError('Veuillez spécifier une durée valide');
+      return;
+    }
+
+    if (captureMode === 'count' && (!packetCount || packetCount < 1)) {
+      setError('Veuillez spécifier un nombre de paquets valide');
+      return;
+    }
+
+    setError('');
+    try {
+      const payload = {
+        interface: interface_,
+        filter: filter || undefined,
+        capture_mode: captureMode,
+        // Ne pas inclure les champs null/undefined
+        ...(captureMode === 'time' && duration && { duration: parseInt(duration) }),
+        ...(captureMode === 'count' && packetCount && { packet_count: parseInt(packetCount) })
+      };
+
+      const response = await apiService.request('/scan/tcpdump', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      setCurrentTaskId(response.task_id);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  // FONCTION STOP AJOUTÉE
+  const stopCapture = async () => {
+    if (currentTaskId) {
+      try {
+        await apiService.request(`/scan/tcpdump/${currentTaskId}/stop`, {
+          method: 'POST'
+        });
+        setError('');
+        // Le polling se chargera de mettre à jour le statut
+      } catch (error) {
+        setError(`Erreur arrêt capture: ${error.message}`);
+      }
+    }
+  };
+
+  const clearResults = () => {
+    setResults([]);
+    persistenceService.remove('tcpdump_results');
+  };
+
+  const getProtocolColor = (protocol) => {
+    switch (protocol.toLowerCase()) {
+      case 'tcp': return theme.colors.status.info;
+      case 'udp': return theme.colors.status.warning;
+      case 'icmp': return theme.colors.status.success;
+      case 'http': return '#ff6b6b';
+      case 'https': return '#00ff88';
+      default: return theme.colors.text.muted;
+    }
+  };
+
+  const isCapturing = currentTaskId && (taskStatus?.status === 'running' || taskStatus?.status === 'starting');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Network size={20} color={theme.colors.accent.primary} />
+            <h2 style={{ color: theme.colors.text.primary, margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              Tcpdump - Network Packet Capture & Analysis
+            </h2>
+          </div>
+          {results.length > 0 && (
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+              <Badge variant="success">{results.length} sauvés</Badge>
+              <Button variant="danger" size="sm" onClick={clearResults}>🧹 Clear</Button>
+            </div>
+          )}
+        </div>
+
+        {/* Avertissement de sécurité */}
+        <div style={{
+          padding: theme.spacing.md,
+          backgroundColor: 'rgba(234, 179, 8, 0.1)',
+          border: `1px solid ${theme.colors.status.warning}`,
+          borderRadius: theme.borderRadius.md,
+          marginBottom: theme.spacing.lg
+        }}>
+          <div style={{ color: theme.colors.status.warning, fontWeight: '600', marginBottom: theme.spacing.sm }}>
+            ⚠️ AVERTISSEMENT RÉSEAU
+          </div>
+          <div style={{ color: theme.colors.text.secondary, fontSize: '13px' }}>
+            La capture de paquets réseau peut capturer des données sensibles. Utilisez uniquement sur vos propres réseaux 
+            ou avec autorisation explicite. Respectez la confidentialité et la législation en vigueur.
+          </div>
+        </div>
+
+        {isCapturing ? (
+          <div style={{
+            padding: theme.spacing.xl,
+            textAlign: 'center',
+            backgroundColor: theme.colors.bg.tertiary,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.bg.accent}`
+          }}>
+            <Loader size={32} color={theme.colors.accent.primary} />
+            <div style={{ color: theme.colors.text.primary, fontSize: '16px', fontWeight: '600', marginTop: theme.spacing.md }}>
+              📡 Capture Tcpdump en cours...
+            </div>
+            <div style={{ color: theme.colors.text.muted, fontSize: '14px', marginTop: theme.spacing.sm }}>
+              Interface: {interface_} | Filtre: {filter || 'Aucun'} | Mode: {captureMode}
+            </div>
+            <div style={{
+              marginTop: theme.spacing.md,
+              padding: theme.spacing.sm,
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '12px',
+              color: theme.colors.accent.primary
+            }}>
+              💾 Résultats sauvegardés automatiquement | Task ID: {currentTaskId}
+            </div>
+            {/* BOUTON STOP FIXÉ */}
+            <Button
+              onClick={stopCapture}
+              variant="danger"
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              🛑 Stop Capture
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing.md }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🔗 Interface Réseau {interface_ && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={interfaces}
+                  value={interface_}
+                  onChange={(e) => setInterface_(e.target.value)}
+                  placeholder="Choisir interface"
+                />
+                <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                  💡 'any' capture toutes les interfaces
+                </div>
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  🔍 Filtre BPF {filter && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={filterPresets}
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Filtres prédéfinis"
+                />
+                <Input
+                  placeholder="Ou filtre personnalisé (ex: host 192.168.1.1 and port 80)"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  style={{ marginTop: theme.spacing.sm, fontSize: '11px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: theme.spacing.sm, 
+                  color: theme.colors.text.secondary,
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}>
+                  ⚙️ Mode de Capture {captureMode && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                </label>
+                <Select
+                  options={[
+                    { value: 'time', label: '⏱️ Durée fixe (secondes)' },
+                    { value: 'count', label: '📊 Nombre de paquets' },
+                    { value: 'continuous', label: '🔄 Continu (manuel stop)' }
+                  ]}
+                  value={captureMode}
+                  onChange={(e) => setCaptureMode(e.target.value)}
+                  placeholder="Mode de capture"
+                />
+              </div>
+
+              {captureMode === 'time' && (
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500'
+                  }}>
+                    ⏱️ Durée (secondes) {duration && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="60"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    min="1"
+                    max="3600"
+                  />
+                  <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                    📝 Recommandé: 60-300 secondes
+                  </div>
+                </div>
+              )}
+
+              {captureMode === 'count' && (
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: theme.spacing.sm, 
+                    color: theme.colors.text.secondary,
+                    fontSize: '13px',
+                    fontWeight: '500'
+                  }}>
+                    📊 Nombre de Paquets {packetCount && <span style={{ color: theme.colors.accent.primary }}>💾</span>}
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="1000"
+                    value={packetCount}
+                    onChange={(e) => setPacketCount(e.target.value)}
+                    min="1"
+                    max="100000"
+                  />
+                  <div style={{ fontSize: '11px', color: theme.colors.text.muted, marginTop: '4px' }}>
+                    📝 Recommandé: 1000-10000 paquets
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div style={{
+                marginTop: theme.spacing.md,
+                padding: theme.spacing.md,
+                borderRadius: theme.borderRadius.md,
+                background: 'rgba(220, 38, 38, 0.2)',
+                border: `1px solid ${theme.colors.status.error}`,
+                color: '#ff6b6b'
+              }}>
+                ❌ {error}
+              </div>
+            )}
+
+            <Button
+              onClick={startCapture}
+              disabled={
+                !interface_ || 
+                (captureMode === 'time' && (!duration || duration < 1)) ||
+                (captureMode === 'count' && (!packetCount || packetCount < 1))
+              }
+              variant="primary"
+              icon={Play}
+              fullWidth
+              style={{ marginTop: theme.spacing.lg }}
+            >
+              📡 Start Packet Capture
+              {captureMode === 'time' && ` (${duration}s)`}
+              {captureMode === 'count' && ` (${packetCount} packets)`}
+              {captureMode === 'continuous' && ' (Manual Stop)'}
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {results.length > 0 && (
+        <Card>
+          <h3 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.lg }}>
+            📡 Tcpdump Results ({results.length}) - Auto-sauvegardés
+          </h3>
+          {results.map(result => (
+            <div key={result.id} style={{
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.bg.tertiary,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing.md,
+              border: `1px solid ${theme.colors.bg.accent}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                <Badge variant="success">SAVED</Badge>
+                <span style={{ color: theme.colors.text.primary, fontWeight: '600' }}>{result.interface}</span>
+                <Badge variant="info">{result.captureMode}</Badge>
+                {result.filter && <Badge variant="default">{result.filter}</Badge>}
+                <Badge variant={result.status === 'completed' ? 'success' : 'warning'}>
+                  {result.status === 'stopped' ? 'STOPPED' : 'COMPLETED'}
+                </Badge>
+                <span style={{ color: theme.colors.text.muted, fontSize: '12px' }}>{result.timestamp}</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.accent.primary}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    📦 Packets
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.packets_captured || 0}
+                  </div>
+                </div>
+                
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.info}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🌐 Protocols
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {Object.keys(result.protocols || {}).length}
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: theme.spacing.sm,
+                  backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.status.warning}`
+                }}>
+                  <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                    🏠 Hosts
+                  </div>
+                  <div style={{ color: theme.colors.text.secondary, fontSize: '11px' }}>
+                    {result.top_hosts?.length || 0}
+                  </div>
+                </div>
+
+                {result.command && (
+                  <div style={{
+                    padding: theme.spacing.sm,
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    borderRadius: theme.borderRadius.sm,
+                    border: `1px solid ${theme.colors.status.error}`
+                  }}>
+                    <div style={{ color: theme.colors.text.primary, fontWeight: '600', fontSize: '12px' }}>
+                      ⚡ Command
+                    </div>
+                    <div style={{ 
+                      color: theme.colors.text.secondary, 
+                      fontSize: '10px',
+                      fontFamily: 'monospace'
+                    }}>
+                      tcpdump -i {result.interface}...
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Protocols breakdown */}
+              {result.protocols && Object.keys(result.protocols).length > 0 && (
+                <div style={{ marginBottom: theme.spacing.md }}>
+                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
+                    📊 Protocol Distribution
+                  </h4>
+                  <div style={{ display: 'flex', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                    {Object.entries(result.protocols).slice(0, 8).map(([protocol, count], index) => (
+                      <div key={index} style={{
+                        padding: '4px 8px',
+                        backgroundColor: getProtocolColor(protocol) + '20',
+                        border: `1px solid ${getProtocolColor(protocol)}`,
+                        borderRadius: theme.borderRadius.sm,
+                        fontSize: '11px',
+                        color: getProtocolColor(protocol),
+                        fontWeight: '600'
+                      }}>
+                        {protocol.toUpperCase()}: {count}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Top hosts */}
+              {result.top_hosts && result.top_hosts.length > 0 && (
+                <div>
+                  <h4 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.sm, fontSize: '14px' }}>
+                    🏠 Top Active Hosts
+                  </h4>
+                  <div style={{ 
+                    backgroundColor: theme.colors.bg.primary,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: theme.spacing.sm,
+                    maxHeight: '150px',
+                    overflowY: 'auto'
+                  }}>
+                    {result.top_hosts.slice(0, 10).map((host, index) => (
+                      <div key={index} style={{
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                        color: theme.colors.text.secondary,
+                        marginBottom: '3px',
+                        display: 'flex',
+                        justifyContent: 'space-between'
+                      }}>
+                        <span>{host.ip || host}</span>
+                        <span style={{ color: theme.colors.accent.primary }}>{host.packets || 'N/A'}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -2200,6 +3664,10 @@ const PachaPentestSuite = () => {
         );
       case 'hydra':
         return <HydraTab />;
+      case 'metasploit':
+        return <MetasploitTab />;
+      case 'tcpdump':
+        return <TcpdumpTab />; 
       default:
         return (
           <Card style={{ textAlign: 'center', padding: theme.spacing.xl }}>
@@ -2273,5 +3741,548 @@ const PachaPentestSuite = () => {
     </div>
   );
 };
+
+const SessionInteractionWithAPI = ({ session, onClose }) => {
+  const [command, setCommand] = useState('');
+  const [output, setOutput] = useState([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [sessionDetails, setSessionDetails] = useState(null);
+  const terminalRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Charger les détails de la session et l'historique
+  useEffect(() => {
+    const loadSessionDetails = async () => {
+      try {
+        const response = await apiService.request(`/sessions/${session.id}`);
+        setSessionDetails(response.session);
+        
+        // Charger l'historique des commandes
+        if (response.command_history) {
+          const historyOutput = response.command_history.map(cmd => [
+            {
+              type: 'command',
+              content: `${session.type === 'meterpreter' ? 'meterpreter' : 'shell'} > ${cmd.command}`,
+              timestamp: cmd.timestamp
+            },
+            {
+              type: 'output',
+              content: cmd.output,
+              timestamp: cmd.timestamp
+            }
+          ]).flat();
+          
+          setOutput(historyOutput);
+        }
+        
+        // Extraire les commandes pour l'historique
+        const commands = response.command_history?.map(cmd => cmd.command) || [];
+        setCommandHistory(commands);
+        
+      } catch (error) {
+        console.error('Erreur chargement session:', error);
+        setOutput([{
+          type: 'error',
+          content: `Erreur chargement session: ${error.message}`,
+          timestamp: new Date().toLocaleTimeString()
+        }]);
+      }
+    };
+
+    if (session.id) {
+      loadSessionDetails();
+    }
+  }, [session.id]);
+
+  // Exécuter une commande via l'API
+  const executeCommand = async () => {
+    if (!command.trim() || isExecuting) return;
+
+    setIsExecuting(true);
+    const currentCommand = command.trim();
+    
+    // Ajouter la commande à l'historique local
+    setCommandHistory(prev => [...prev, currentCommand]);
+    
+    // Ajouter la commande à la sortie
+    const timestamp = new Date().toLocaleTimeString();
+    const prompt = session.type === 'meterpreter' ? 'meterpreter' : 'shell';
+    
+    setOutput(prev => [...prev, {
+      type: 'command',
+      content: `${prompt} > ${currentCommand}`,
+      timestamp
+    }]);
+
+    setCommand('');
+    setHistoryIndex(-1);
+
+    try {
+      // Appel API réel
+      const response = await apiService.request(`/sessions/${session.id}/execute`, {
+        method: 'POST',
+        body: JSON.stringify({ command: currentCommand })
+      });
+
+      if (response.success) {
+        setOutput(prev => [...prev, {
+          type: 'output',
+          content: response.output,
+          timestamp: response.timestamp || new Date().toLocaleTimeString()
+        }]);
+      } else {
+        setOutput(prev => [...prev, {
+          type: 'error',
+          content: response.error || 'Erreur inconnue',
+          timestamp: new Date().toLocaleTimeString()
+        }]);
+      }
+
+    } catch (error) {
+      setOutput(prev => [...prev, {
+        type: 'error',
+        content: `Erreur API: ${error.message}`,
+        timestamp: new Date().toLocaleTimeString()
+      }]);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  // Fermer la session via l'API
+  const closeSession = async () => {
+    try {
+      await apiService.request(`/sessions/${session.id}/close`, {
+        method: 'POST'
+      });
+      console.log(`Session ${session.id} fermée`);
+    } catch (error) {
+      console.error('Erreur fermeture session:', error);
+    }
+    onClose();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      executeCommand();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length > 0 && historyIndex < commandHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCommand('');
+      }
+    }
+  };
+
+  // Auto-scroll
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  // Focus sur l'input
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  // Commandes suggérées selon le type
+  const getQuickCommands = () => {
+    if (session.type === 'meterpreter') {
+      return [
+        { cmd: 'sysinfo', desc: 'System information', icon: '💻' },
+        { cmd: 'getuid', desc: 'Current user ID', icon: '👤' },
+        { cmd: 'ps', desc: 'List processes', icon: '⚙️' },
+        { cmd: 'hashdump', desc: 'Dump password hashes', icon: '🔐' },
+        { cmd: 'screenshot', desc: 'Take screenshot', icon: '📸' },
+        { cmd: 'shell', desc: 'Drop to system shell', icon: '🐚' },
+        { cmd: 'download /etc/passwd', desc: 'Download passwd file', icon: '⬇️' },
+        { cmd: 'migrate 1234', desc: 'Migrate to process', icon: '🔄' },
+        { cmd: 'getsystem', desc: 'Elevate privileges', icon: '🔒' },
+        { cmd: 'webcam_snap', desc: 'Take webcam photo', icon: '📷' }
+      ];
+    } else {
+      return [
+        { cmd: 'whoami', desc: 'Current user', icon: '👤' },
+        { cmd: 'uname -a', desc: 'System information', icon: '💻' },
+        { cmd: 'ps aux', desc: 'List processes', icon: '⚙️' },
+        { cmd: 'cat /etc/passwd', desc: 'System users', icon: '📄' },
+        { cmd: 'cat /etc/shadow', desc: 'Password hashes', icon: '🔐' },
+        { cmd: 'ls -la', desc: 'List files detailed', icon: '📁' },
+        { cmd: 'ifconfig', desc: 'Network config', icon: '🌐' },
+        { cmd: 'netstat -tlnp', desc: 'Network connections', icon: '🔗' },
+        { cmd: 'find / -perm -4000 2>/dev/null', desc: 'SUID binaries', icon: '🔍' },
+        { cmd: 'cat /root/flag.txt', desc: 'Get the flag!', icon: '🚩' }
+      ];
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.95)',
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        width: '95%',
+        height: '95%',
+        maxWidth: '1400px',
+        backgroundColor: '#0a0a0a',
+        border: '2px solid #00ff88',
+        borderRadius: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 20px 40px rgba(0, 255, 136, 0.3)'
+      }}>
+        {/* Header avec stats temps réel */}
+        <div style={{
+          padding: '16px',
+          borderBottom: '1px solid #333',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#1a1a1a'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Terminal size={20} color="#00ff88" />
+            <div>
+              <div style={{ color: '#00ff88', fontWeight: '700', fontSize: '16px' }}>
+                🔗 Session {session.id} - {session.target}
+              </div>
+              <div style={{ color: '#888', fontSize: '12px' }}>
+                {session.type} | {session.platform} | {sessionDetails?.commands_executed || 0} commandes
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              padding: '4px 8px',
+              backgroundColor: 'rgba(0, 255, 136, 0.2)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              color: '#00ff88',
+              fontWeight: '600'
+            }}>
+              🟢 LIVE API
+            </div>
+            <button
+              onClick={closeSession}
+              style={{
+                background: '#ff6b6b',
+                border: 'none',
+                color: '#fff',
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                fontWeight: '600'
+              }}
+            >
+              🔒 Close Session
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ff6b6b',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px 8px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Terminal Area */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Commands Sidebar avec API */}
+          <div style={{
+            width: '280px',
+            backgroundColor: '#151515',
+            borderRight: '1px solid #333',
+            padding: '16px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ color: '#00ff88', fontWeight: '600', marginBottom: '12px', fontSize: '14px' }}>
+              ⚡ Quick Commands ({session.type})
+            </div>
+            
+            {getQuickCommands().map((cmdInfo, index) => (
+              <div
+                key={index}
+                onClick={() => setCommand(cmdInfo.cmd)}
+                style={{
+                  padding: '10px',
+                  marginBottom: '6px',
+                  backgroundColor: '#222',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  border: '1px solid transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.borderColor = '#00ff88';
+                  e.target.style.backgroundColor = '#2a2a2a';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.borderColor = 'transparent';
+                  e.target.style.backgroundColor = '#222';
+                }}
+              >
+                <div style={{ 
+                  color: '#00ff88', 
+                  fontSize: '12px', 
+                  fontFamily: 'monospace',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>{cmdInfo.icon}</span>
+                  {cmdInfo.cmd}
+                </div>
+                <div style={{ color: '#888', fontSize: '10px', marginTop: '2px' }}>
+                  {cmdInfo.desc}
+                </div>
+              </div>
+            ))}
+
+            {/* Stats de session */}
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '12px', 
+              backgroundColor: '#1a1a1a',
+              borderRadius: '6px',
+              border: '1px solid #333'
+            }}>
+              <div style={{ color: '#00ff88', fontWeight: '600', marginBottom: '8px', fontSize: '12px' }}>
+                📊 Session Stats
+              </div>
+              <div style={{ fontSize: '11px', color: '#888' }}>
+                <div>Commands: {commandHistory.length}</div>
+                <div>Type: {session.type}</div>
+                <div>Platform: {session.platform}</div>
+                <div>Created: {session.opened_at}</div>
+              </div>
+            </div>
+
+            {/* Aide rapide */}
+            <div style={{ 
+              marginTop: '12px', 
+              padding: '10px', 
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              borderRadius: '6px',
+              border: '1px solid rgba(0, 255, 136, 0.3)'
+            }}>
+              <div style={{ color: '#00ff88', fontWeight: '600', marginBottom: '6px', fontSize: '11px' }}>
+                💡 Quick Tips
+              </div>
+              <div style={{ fontSize: '9px', color: '#888', lineHeight: '1.4' }}>
+                • ↑↓ pour naviguer l'historique<br/>
+                • Tab pour auto-complétion<br/>
+                • 'help' pour aide complète<br/>
+                • Clic sur commandes sidebar
+              </div>
+            </div>
+          </div>
+
+          {/* Terminal Output avec indicateur API */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div
+              ref={terminalRef}
+              style={{
+                flex: 1,
+                backgroundColor: '#000',
+                padding: '16px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                overflowY: 'auto',
+                color: '#e5e5e5'
+              }}
+            >
+              {/* Message initial avec API info */}
+              <div style={{ color: '#00ff88', marginBottom: '16px' }}>
+                🔗 Meterpreter session {session.id} opened ({session.target}) via REAL API
+                <br />
+                ⚡ Live backend interaction - Commands are executed on simulated target
+                <br />
+                📡 Type 'help' for available commands, or use the sidebar for quick access.
+                <br />
+                {session.exploit_used && `🎯 Exploited via: ${session.exploit_used}`}
+              </div>
+
+              {/* Command output */}
+              {output.map((item, index) => (
+                <div key={index} style={{ marginBottom: '8px' }}>
+                  {item.type === 'command' ? (
+                    <div style={{ color: '#00ff88', fontWeight: '600' }}>{item.content}</div>
+                  ) : item.type === 'error' ? (
+                    <div style={{ color: '#ff6b6b', backgroundColor: 'rgba(255, 107, 107, 0.1)', padding: '4px', borderRadius: '3px' }}>
+                      ❌ {item.content}
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      color: '#e5e5e5', 
+                      whiteSpace: 'pre-wrap',
+                      backgroundColor: item.content.includes('flag') || item.content.includes('CTF') ? 'rgba(0, 255, 136, 0.1)' : 'transparent',
+                      padding: item.content.includes('flag') || item.content.includes('CTF') ? '4px' : '0',
+                      borderRadius: '3px'
+                    }}>
+                      {item.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Loading indicator avec animation */}
+              {isExecuting && (
+                <div style={{ 
+                  color: '#888', 
+                  fontStyle: 'italic',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    border: '2px solid #333',
+                    borderTop: '2px solid #00ff88',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  Executing command via API...
+                </div>
+              )}
+            </div>
+
+            {/* Command Input avec indicateurs */}
+            <div style={{
+              padding: '16px',
+              borderTop: '1px solid #333',
+              backgroundColor: '#1a1a1a',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ color: '#00ff88', fontFamily: 'monospace', fontWeight: '600' }}>
+                  {session.type === 'meterpreter' ? 'meterpreter' : 'shell'} &gt;
+                </span>
+                {isExecuting && (
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    backgroundColor: '#00ff88',
+                    borderRadius: '50%',
+                    animation: 'pulse 1s infinite'
+                  }}></div>
+                )}
+              </div>
+              
+              <input
+                ref={inputRef}
+                type="text"
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isExecuting}
+                placeholder={isExecuting ? "Executing..." : "Enter command..."}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#e5e5e5',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  outline: 'none',
+                  opacity: isExecuting ? 0.6 : 1
+                }}
+              />
+              
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={executeCommand}
+                  disabled={!command.trim() || isExecuting}
+                  style={{
+                    backgroundColor: '#00ff88',
+                    color: '#000',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    opacity: (!command.trim() || isExecuting) ? 0.5 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isExecuting ? '⏳ Executing...' : '🚀 Execute'}
+                </button>
+                
+                <button
+                  onClick={() => setCommand('')}
+                  style={{
+                    backgroundColor: '#333',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Styles intégrés pour animations */}
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.3; }
+            }
+          `}
+        </style>
+      </div>
+    </div>
+  );
+};
+
 
 export default PachaPentestSuite;
