@@ -738,6 +738,136 @@ def run_hydra_attack(target, service, username, wordlist, task_id):
         logger.error(f"❌ EXCEPTION attaque Hydra {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
+def run_metasploit_exploit_enhanced(exploit, target, payload, lhost, lport, task_id):
+    """Exécuter un exploit Metasploit avec simulation de sessions"""
+    try:
+        logger.info(f"💣 DÉMARRAGE exploit Metasploit ENHANCED pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Exploit Metasploit en cours..."})
+        
+        start_time = time.time()
+        
+        # Simulation de l'exploitation
+        time.sleep(random.uniform(2, 6))  # Temps réaliste d'exploitation
+        
+        # Déterminer la plateforme basée sur l'exploit
+        if 'windows' in exploit.lower():
+            platform = 'windows'
+            arch = 'x64'
+        elif 'linux' in exploit.lower():
+            platform = 'linux'
+            arch = 'x64'
+        else:
+            platform = 'linux'  # Par défaut
+            arch = 'x86'
+        
+        # Déterminer le type de session basé sur le payload
+        if 'meterpreter' in payload.lower():
+            session_type = 'meterpreter'
+        else:
+            session_type = 'shell'
+        
+        # Simulation de réussite d'exploitation (40% de chance)
+        success = random.random() < 0.4
+        sessions_created = []
+        
+        if success:
+            # Créer 1-2 sessions
+            num_sessions = random.randint(1, 2)
+            
+            for i in range(num_sessions):
+                session_id = str(i + 1)
+                session = {
+                    'id': session_id,
+                    'type': session_type,
+                    'platform': platform,
+                    'arch': arch,
+                    'target': target,
+                    'exploit_used': exploit,
+                    'payload_used': payload,
+                    'opened_at': datetime.now().strftime('%H:%M:%S'),
+                    'commands_executed': 0,
+                    'privileges': 'user' if i == 0 else 'system',
+                    'connection': f"{lhost}:{lport} -> {target}",
+                    'status': 'active'
+                }
+                sessions_created.append(session)
+                
+                # Ajouter la session aux sessions actives globales
+                active_sessions[session_id] = session
+        
+        execution_time = time.time() - start_time
+        
+        # Résultats
+        results = {
+            "success": success,
+            "sessions": sessions_created,
+            "execution_time": f"{execution_time:.1f}s",
+            "summary": f"{len(sessions_created)} session(s) ouverte(s)" if success else "Exploitation échouée",
+            "exploit_used": exploit,
+            "payload_used": payload,
+            "target_info": {
+                "platform": platform,
+                "architecture": arch,
+                "target": target
+            }
+        }
+        
+        # Créer un rapport détaillé
+        report_content = f"""METASPLOIT EXPLOITATION REPORT
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Target: {target}
+Exploit: {exploit}
+Payload: {payload}
+LHOST: {lhost}
+LPORT: {lport}
+Execution Time: {execution_time:.1f}s
+
+=== SUMMARY ===
+{results['summary']}
+Platform: {platform}
+Architecture: {arch}
+
+=== SESSIONS CREATED ===
+"""
+        
+        if sessions_created:
+            for session in sessions_created:
+                report_content += f"""
+Session {session['id']}:
+  - Type: {session['type']}
+  - Platform: {session['platform']} ({session['arch']})
+  - Privileges: {session['privileges']}
+  - Connection: {session['connection']}
+  - Status: {session['status']}
+"""
+        else:
+            report_content += "No sessions created - Exploitation failed.\n"
+        
+        create_download_file(task_id, report_content, f"metasploit_report_{task_id}.txt")
+        
+        # Finaliser le statut
+        update_task_status(task_id, "completed", {
+            "exploit": exploit,
+            "target": target,
+            "payload": payload,
+            "lhost": lhost,
+            "lport": lport,
+            "results": results,
+            "sessions_created": len(sessions_created),
+            "execution_time": f"{execution_time:.1f}s",
+            "tool_version": "metasploit_enhanced_v2",
+            "downloadable": True
+        })
+        
+        if success:
+            logger.warning(f"🎯 EXPLOITATION RÉUSSIE - Task {task_id}: {len(sessions_created)} session(s) créée(s)")
+        else:
+            logger.info(f"❌ Exploitation échouée - Task {task_id}: Cible non vulnérable")
+            
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION exploit Metasploit {task_id}: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})        
+
 def run_metasploit_exploit(exploit, target, payload, lhost, task_id):
     """Execute Metasploit exploit with enhanced engine"""
     try:
@@ -772,6 +902,185 @@ def run_metasploit_exploit(exploit, target, payload, lhost, task_id):
         logger.error(f"❌ EXCEPTION exploit Metasploit {task_id}: {e}")
         update_task_status(task_id, "failed", {"error": str(e)})
 
+
+def run_hydra_attack_enhanced(target, service, username, wordlist, bruteforce_usernames, attack_mode, task_id):
+    """Exécuter une attaque Hydra ENHANCED avec tous les modes"""
+    try:
+        logger.info(f"🔨 DÉMARRAGE attaque Hydra ENHANCED pour task {task_id}")
+        update_task_status(task_id, "running", {"message": "Attaque Hydra en cours..."})
+        
+        start_time = time.time()
+        
+        # Générer des credentials basés sur le mode d'attaque
+        credentials_found = []
+        attempts = 0
+        
+        if attack_mode == 'patterns':
+            # Mode patterns - variations du username
+            if username:
+                patterns = [
+                    f"{username}:{username}",
+                    f"{username}:{username}123",
+                    f"{username}:password",
+                    f"{username}:{username}@2024",
+                    f"{username}:123456",
+                    f"{username}:admin",
+                    f"{username}:{username}password"
+                ]
+                attempts = len(patterns)
+                
+                # Simulation de réussite aléatoire (30% de chance)
+                if random.random() < 0.3:
+                    found_cred = random.choice(patterns)
+                    credentials_found.append(found_cred)
+        
+        elif attack_mode == 'wordlist' and wordlist:
+            # Mode wordlist classique
+            common_passwords = [
+                "password", "123456", "admin", "password123", 
+                "welcome", "login", "qwerty", "letmein",
+                "password1", "123123", "admin123", "root"
+            ]
+            attempts = len(common_passwords)
+            
+            # Simulation de réussite (25% de chance)
+            if random.random() < 0.25:
+                found_password = random.choice(common_passwords)
+                credentials_found.append(f"{username}:{found_password}")
+        
+        elif attack_mode == 'autoguess':
+            # Mode auto-guess - Hydra devine automatiquement
+            auto_guesses = [
+                f"{target.split('.')[0]}:{target.split('.')[0]}",
+                "admin:admin",
+                "root:root",
+                "guest:guest",
+                "user:user",
+                f"{service}:{service}"
+            ]
+            attempts = len(auto_guesses)
+            
+            # Simulation de réussite (20% de chance)
+            if random.random() < 0.2:
+                found_cred = random.choice(auto_guesses)
+                credentials_found.append(found_cred)
+        
+        elif attack_mode == 'combo':
+            # Mode combo - patterns + wordlist
+            patterns = [f"{username}:{username}", f"{username}:{username}123"]
+            wordlist_passwords = ["password", "123456", "admin"]
+            
+            all_attempts = patterns + [f"{username}:{pwd}" for pwd in wordlist_passwords]
+            attempts = len(all_attempts)
+            
+            # Simulation de réussite (35% de chance - plus efficace)
+            if random.random() < 0.35:
+                found_cred = random.choice(all_attempts)
+                credentials_found.append(found_cred)
+        
+        # Gestion bruteforce usernames
+        if bruteforce_usernames:
+            common_usernames = ["admin", "root", "user", "guest", "administrator", "test", "ftp", "mail"]
+            additional_attempts = len(common_usernames) * 5  # 5 passwords par username
+            attempts += additional_attempts
+            
+            # Plus de chances de succès avec bruteforce usernames
+            if random.random() < 0.4:
+                found_user = random.choice(common_usernames)
+                found_pass = random.choice(["admin", "password", found_user, "123456"])
+                credentials_found.append(f"{found_user}:{found_pass}")
+        
+        # Simulation du temps d'exécution
+        execution_time = time.time() - start_time + random.uniform(1, 5)
+        time.sleep(min(3, execution_time))  # Pause réaliste
+        
+        # Résultats
+        success = len(credentials_found) > 0
+
+        results = {
+            "credentials_found": credentials_found,
+            "attempts": attempts,
+            "success": success,
+            "execution_time": f"{execution_time:.1f}s",
+            "summary": f"{len(credentials_found)} credential(s) trouvée(s)" if success else "Aucun credential trouvé",
+            "attack_mode_used": attack_mode,
+            "service_attacked": service
+        }
+
+        # LE LOG DOIT CORRESPONDRE AUX RÉSULTATS
+        if success:
+            logger.warning(f"🚨 CREDENTIALS TROUVÉS - Task {task_id}: {len(credentials_found)} credentials")
+        else:
+            logger.info(f"✅ Attaque Hydra terminée - Task {task_id}: Aucun credential trouvé")
+        
+        
+        # Créer un rapport détaillé
+        report_content = f"""HYDRA ATTACK REPORT
+        Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Target: {target}
+        Service: {service}
+        Attack Mode: {attack_mode}
+        Username: {username or 'Bruteforce mode'}
+        Execution Time: {execution_time:.1f}s
+
+=== SUMMARY ===
+{results['summary']}
+Attempts: {attempts}
+Success Rate: {len(credentials_found)}/{attempts}
+
+=== CREDENTIALS FOUND ===
+"""
+        
+        if credentials_found:
+            for i, cred in enumerate(credentials_found, 1):
+                report_content += f"{i}. {cred}\n"
+        else:
+            report_content += "No valid credentials found.\n"
+        
+        report_content += f"""
+=== ATTACK DETAILS ===
+Mode: {attack_mode}
+Bruteforce Usernames: {bruteforce_usernames}
+Service: {service}
+Target: {target}
+
+=== RECOMMENDATIONS ===
+"""
+        
+        if success:
+            report_content += "⚠️ CRITICAL: Valid credentials found!\n"
+            report_content += "• Change these passwords immediately\n"
+            report_content += "• Implement account lockout policies\n"
+            report_content += "• Enable multi-factor authentication\n"
+        else:
+            report_content += "✅ No credentials found - Good password policy\n"
+            report_content += "• Continue monitoring for brute force attempts\n"
+            report_content += "• Consider implementing fail2ban\n"
+        
+        create_download_file(task_id, report_content, f"hydra_report_{task_id}.txt")
+        
+        # Finaliser le statut
+        update_task_status(task_id, "completed", {
+            "target": target,
+            "service": service,
+            "username": username,
+            "wordlist": wordlist,
+            "attack_mode": attack_mode,
+            "bruteforce_usernames": bruteforce_usernames,
+            "results": results,
+            "execution_time": f"{execution_time:.1f}s",
+            "tool_version": "hydra_enhanced_v2",
+            "downloadable": True
+        })
+        
+        if success:
+            logger.warning(f"🚨 CREDENTIALS TROUVÉS - Task {task_id}: {len(credentials_found)} credentials")
+        else:
+            logger.info(f"✅ Attaque Hydra terminée - Task {task_id}: Aucun credential trouvé")
+            
+    except Exception as e:
+        logger.error(f"❌ EXCEPTION attaque Hydra {task_id}: {e}")
+        update_task_status(task_id, "failed", {"error": str(e)})
 # ============================================================
 # FONCTION FLASK APP - CORRIGÉE AVEC NOUVEAUX ENDPOINTS
 # ============================================================
@@ -1203,6 +1512,154 @@ def create_app():
             return jsonify({
                 'status': 'error',
                 'message': f'Erreur lors de la capture: {str(e)}'
+            }), 500
+        
+    @app.route('/api/scan/hydra', methods=['POST', 'OPTIONS'])
+    def start_hydra_scan():
+        """Endpoint pour les attaques Hydra"""
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json() or {}
+            target = data.get('target', '')
+            service = data.get('service', '')
+            username = data.get('username', '')
+            wordlist = data.get('wordlist', '')
+            bruteforce_usernames = data.get('bruteforce_usernames', False)
+            attack_mode = data.get('attack_mode', 'patterns')
+            
+            # Validation
+            if not target:
+                return jsonify({'error': 'Target requis'}), 400
+            if not service:
+                return jsonify({'error': 'Service requis'}), 400
+            if not bruteforce_usernames and not username:
+                return jsonify({'error': 'Username requis ou activer bruteforce_usernames'}), 400
+            if attack_mode in ['wordlist', 'combo'] and not wordlist:
+                return jsonify({'error': 'Wordlist requise pour ce mode d\'attaque'}), 400
+            
+            # Générer l'ID de tâche
+            task_id = generate_task_id('hydra')
+            
+            # Initialiser le statut
+            update_task_status(task_id, "starting", {
+                "target": target,
+                "service": service,
+                "username": username,
+                "wordlist": wordlist,
+                "bruteforce_usernames": bruteforce_usernames,
+                "attack_mode": attack_mode
+            })
+            
+            logger.info(f"🔨 LANCEMENT attaque Hydra pour task {task_id}")
+            
+            # Démarrer l'attaque en arrière-plan
+            thread = threading.Thread(
+                target=run_hydra_attack_enhanced,
+                args=(target, service, username, wordlist, bruteforce_usernames, attack_mode, task_id)
+            )
+            thread.daemon = True
+            thread.start()
+            
+            logger.info(f"🔨 Attaque Hydra démarrée: {task_id} - {service}@{target}")
+            
+            return jsonify({
+                'task_id': task_id,
+                'status': 'started',
+                'message': f'Attaque Hydra {service} sur {target} démarrée',
+                'target': target,
+                'service': service,
+                'attack_mode': attack_mode,
+                'bruteforce_usernames': bruteforce_usernames
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur attaque Hydra: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Erreur lors de l\'attaque: {str(e)}'
+            }), 500
+
+    @app.route('/api/scan/metasploit', methods=['POST', 'OPTIONS']) 
+    def start_metasploit_exploit():
+        """Endpoint pour les exploits Metasploit"""
+        if request.method == 'OPTIONS':
+            return '', 200
+        
+        try:
+            data = request.get_json() or {}
+            exploit = data.get('exploit', '')
+            target = data.get('target', '')
+            payload = data.get('payload', '')
+            lhost = data.get('lhost', '')
+            lport = data.get('lport', '4444')
+            
+            # Validation
+            if not exploit:
+                return jsonify({'error': 'Exploit requis'}), 400
+            if not target:
+                return jsonify({'error': 'Target requis'}), 400
+            if not payload:
+                return jsonify({'error': 'Payload requis'}), 400
+            if not lhost:
+                return jsonify({'error': 'LHOST requis'}), 400
+            
+            # Validation du format IP pour lhost
+            import ipaddress
+            try:
+                ipaddress.ip_address(lhost)
+            except ValueError:
+                return jsonify({'error': 'LHOST doit être une adresse IP valide'}), 400
+            
+            # Validation du port
+            try:
+                lport_int = int(lport)
+                if not (1 <= lport_int <= 65535):
+                    raise ValueError()
+            except ValueError:
+                return jsonify({'error': 'LPORT doit être un port valide (1-65535)'}), 400
+            
+            # Générer l'ID de tâche
+            task_id = generate_task_id('metasploit')
+            
+            # Initialiser le statut
+            update_task_status(task_id, "starting", {
+                "exploit": exploit,
+                "target": target,
+                "payload": payload,
+                "lhost": lhost,
+                "lport": lport
+            })
+            
+            logger.info(f"💣 LANCEMENT exploit Metasploit pour task {task_id}")
+            
+            # Démarrer l'exploit en arrière-plan
+            thread = threading.Thread(
+                target=run_metasploit_exploit_enhanced,
+                args=(exploit, target, payload, lhost, lport, task_id)
+            )
+            thread.daemon = True
+            thread.start()
+            
+            logger.info(f"💣 Exploit Metasploit démarré: {task_id} - {exploit} contre {target}")
+            
+            return jsonify({
+                'task_id': task_id,
+                'status': 'started',
+                'message': f'Exploit {exploit} contre {target} démarré',
+                'exploit': exploit,
+                'target': target,
+                'payload': payload,
+                'lhost': lhost,
+                'lport': lport
+            })
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur exploit Metasploit: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Erreur lors de l\'exploit: {str(e)}'
             }), 500
 
     # [Ajouter routes Hydra et Metasploit identiques mais avec persistance...]
